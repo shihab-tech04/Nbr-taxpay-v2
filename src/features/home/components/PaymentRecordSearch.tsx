@@ -1,13 +1,12 @@
 import React, { useId, useState, type FormEvent } from 'react';
-import { ArrowRight, Search, X } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { AppIconButton } from '../../../design-system/buttons';
+import { AppSearchField } from '../../../design-system/forms';
+import { sanitizeReferenceQuery } from '../hooks/useHomeNavigation';
 import type { HomeCopy } from '../model/home.types';
 import { LineArt } from './LineArt';
 
 type SearchState = { status: 'idle' } | { status: 'error' };
-
-export function sanitizeReferenceQuery(value: string): string {
-  return value.trim();
-}
 
 export function PaymentRecordSearch({
   c,
@@ -68,51 +67,82 @@ export function PaymentRecordSearch({
           <label htmlFor={id} className="sr-only">
             {c.find.title}
           </label>
-          <div
-            className={`flex h-[52px] items-center gap-2 rounded-2xl bg-white pr-1.5 pl-4 ring-1 transition focus-within:ring-2 focus-within:ring-[#7497cd]/60 shadow-[0_1px_2px_rgba(21,32,51,0.04)] ${
-              state.status === 'error' ? 'ring-[#e5484d]/60' : 'ring-[#dfe5ee]'
-            }`}
-          >
-            <Search className="size-[18px] shrink-0 text-[#5d697e]" aria-hidden="true" />
-            <input
-              id={id}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                if (state.status !== 'idle') setState({ status: 'idle' });
-              }}
-              placeholder={c.find.placeholder}
-              aria-invalid={state.status === 'error'}
-              aria-describedby={state.status === 'error' ? `${id}-error` : undefined}
-              autoComplete="off"
-              spellCheck={false}
-              type="search"
-              maxLength={120}
-              data-testid="home2-reference"
-              className="min-w-0 flex-1 bg-transparent text-[14px] text-[#0f1d34] outline-none placeholder:text-[#9aa1b4] [&::-webkit-search-cancel-button]:hidden"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('');
-                  setState({ status: 'idle' });
-                }}
-                className="grid size-7 shrink-0 place-items-center rounded-full text-[#5f6880] transition hover:bg-[#e7e9ef]/60 hover:text-[#141b2d]"
-                aria-label={c.find.clear}
+          <AppSearchField
+            id={id}
+            allowPublicLookup
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (state.status !== 'idle') setState({ status: 'idle' });
+            }}
+            onClear={() => {
+              setQuery('');
+              setState({ status: 'idle' });
+            }}
+            clearAriaLabel={c.find.clear}
+            placeholder={c.find.placeholder}
+            error={state.status === 'error'}
+            trailingAction={
+              <AppIconButton
+                type="submit"
+                tone="homeSubmit"
+                disabled={!query.trim()}
+                aria-label={c.find.search}
               >
-                <X className="size-4" />
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={!query.trim()}
-              className="home2-press grid size-10 shrink-0 place-items-center rounded-xl bg-[#e6edf8] text-[#1c3d70] ring-1 ring-[#cad8ef] hover:bg-[#cad8ef] disabled:cursor-not-allowed disabled:opacity-80"
-              aria-label={c.find.search}
-            >
-              <ArrowRight className="size-[18px]" />
-            </button>
-          </div>
+                <ArrowRight className="size-[18px]" aria-hidden="true" />
+              </AppIconButton>
+            }
+            slotProps={{
+              input: {
+                className: 'h-[52px]',
+              },
+              htmlInput: {
+                maxLength: 120,
+                autoComplete: 'off',
+                spellCheck: false,
+                'data-testid': 'home2-reference',
+                'aria-invalid': state.status === 'error',
+                'aria-describedby': state.status === 'error' ? `${id}-error` : undefined,
+              },
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                height: 52,
+                minHeight: 52,
+                borderRadius: '16px',
+                backgroundColor: '#FFFFFF',
+                paddingLeft: '14px',
+                paddingRight: '6px',
+                boxShadow: '0 1px 2px rgba(21,32,51,0.04)',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: state.status === 'error' ? 'rgba(229, 72, 77, 0.6)' : '#DFE5EE',
+                  borderWidth: '1px',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: state.status === 'error' ? '#E5484D' : '#CAD8EF',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: state.status === 'error' ? '#E5484D' : '#7497CD',
+                  borderWidth: '2px',
+                },
+                '&.Mui-focused': {
+                  boxShadow:
+                    state.status === 'error'
+                      ? '0 0 0 3px rgba(229, 72, 77, 0.14)'
+                      : '0 0 0 3px rgba(116, 151, 205, 0.25)',
+                },
+              },
+              '& .MuiOutlinedInput-input': {
+                padding: '10px 0',
+                fontSize: '14px',
+                color: '#0F1D34',
+                '&::placeholder': {
+                  color: '#9AA1B4',
+                  opacity: 1,
+                },
+              },
+            }}
+          />
           <div aria-live="polite">
             {state.status === 'error' && (
               <p id={`${id}-error`} className="mt-2 pl-1 text-[12px] font-medium text-[#d0353b]">

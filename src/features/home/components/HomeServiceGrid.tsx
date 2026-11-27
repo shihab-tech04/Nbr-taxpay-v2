@@ -1,10 +1,16 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { AppButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 import { HomeTile } from './HomeBrand';
 import { AllTaxPaymentsCard } from './AllTaxPaymentsCard';
 import { PaymentHistoryCard } from './PaymentHistoryCard';
-import { DesktopMiniTile, DesktopWideTile, MobileMiniTile, MobileSecurityTile } from './ServiceTile';
+import {
+  DesktopMiniTile,
+  DesktopWideTile,
+  MobileMiniTile,
+  MobileSecurityTile,
+} from './ServiceTile';
 import { HelpCard } from './HelpCard';
 
 export function HomeServiceGrid({
@@ -95,15 +101,36 @@ export function HomeServiceGrid({
         >
           {c.section.title}
         </h2>
-        <button
-          type="button"
+        <AppButton
+          tone="homeOutlined"
+          size="medium"
           data-testid="home2-dashboard-action"
           onClick={open('login')}
-          className="home2-press group flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2 text-[14px] font-semibold text-[#244d8f] ring-1 ring-[#dfe5ee] transition hover:bg-[#f7f9fd] hover:text-[#162d53]"
+          endIcon={
+            <ArrowRight
+              className="size-4 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          }
+          className="home2-press group shrink-0"
+          sx={{
+            minHeight: 40,
+            px: 2,
+            py: 1,
+            fontSize: '14px',
+            fontWeight: 600,
+            color: '#244d8f',
+            borderColor: '#dfe5ee',
+            bgcolor: '#ffffff',
+            '&:hover': {
+              bgcolor: '#f7f9fd',
+              color: '#162d53',
+              borderColor: '#dfe5ee',
+            },
+          }}
         >
           {signedIn ? c.dashboardCta : c.section.cta}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-        </button>
+        </AppButton>
       </HomeTile>
 
       <div className="grid grid-cols-12 grid-rows-[repeat(2,minmax(150px,auto))_minmax(112px,auto)] gap-4">

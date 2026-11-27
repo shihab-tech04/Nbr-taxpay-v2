@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
 import { FileText, Plus } from 'lucide-react';
 import { AppTextField, AppSelectField, AppTextArea } from '../../design-system/forms';
+import { AppButton } from '../../design-system/buttons';
 
 export const CorrectionsView: React.FC = () => {
   const { t } = useTranslation();
@@ -52,12 +53,16 @@ export const CorrectionsView: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500">Apply for challan corrections and track NBR administrative review status.</p>
           </div>
-          <button
+          <AppButton
+            tone="primary"
+            size="small"
+            previewRestricted
+            startIcon={<Plus size={16} />}
             onClick={() => setShowModal(true)}
-            className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm"
+            sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
           >
-            <Plus size={16} /> {t('submitCorrection')}
-          </button>
+            {t('submitCorrection')}
+          </AppButton>
         </div>
 
         {showModal && (
@@ -115,22 +120,25 @@ export const CorrectionsView: React.FC = () => {
               />
             </div>
             <div className="flex justify-end gap-3">
-              <button
+              <AppButton
                 type="button"
+                tone="secondary"
+                size="small"
                 onClick={() => {
                   setErrors({});
                   setShowModal(false);
                 }}
-                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold"
               >
                 {t('cancel')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 type="submit"
-                className="px-4 py-2 bg-teal-700 text-white rounded-lg text-xs font-semibold"
+                tone="primary"
+                size="small"
+                previewRestricted
               >
                 {t('save')}
-              </button>
+              </AppButton>
             </div>
           </form>
         )}

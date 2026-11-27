@@ -1,29 +1,33 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 import { Search, X } from 'lucide-react';
 import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import { AppIconButton } from '../buttons';
 import { AppTextField, AppTextFieldProps } from './AppTextField';
 import { mergeSlotEntry } from './fieldUtils';
 
 export type AppSearchFieldProps = Omit<AppTextFieldProps, 'type'> & {
   onClear?: () => void;
   clearAriaLabel?: string;
+  trailingAction?: React.ReactNode;
 };
 
 export const AppSearchField: React.FC<AppSearchFieldProps> = ({
   value,
   onClear,
   clearAriaLabel,
+  trailingAction,
   disabled = false,
   readOnly = false,
+  allowPublicLookup = false,
   slotProps,
   ...props
 }) => {
   const { t } = useTranslation();
   const hasValue = value !== undefined && value !== null && String(value).length > 0;
-  const isActionDisabled = Boolean(disabled || readOnly || PUBLIC_PREVIEW);
+  const previewLocked = Boolean(PUBLIC_PREVIEW && !allowPublicLookup);
+  const isActionDisabled = Boolean(disabled || readOnly || previewLocked);
 
   const handleClear = () => {
     if (isActionDisabled || !onClear) return;
@@ -37,31 +41,34 @@ export const AppSearchField: React.FC<AppSearchFieldProps> = ({
   const resolvedClearLabel =
     clearAriaLabel || t('clearSearch', { defaultValue: 'Clear search' });
 
+  const hasEndAdornment = (hasValue && onClear) || trailingAction;
+
   const mergedInputSlot = mergeSlotEntry(
     'input',
     {
       startAdornment: (
         <InputAdornment position="start">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
+          <Search className="w-4 h-4 text-[#5d697e] dark:text-slate-500" aria-hidden="true" />
         </InputAdornment>
       ),
-      endAdornment:
-        hasValue && onClear ? (
-          <InputAdornment position="end">
-            <IconButton
-              type="button"
+      endAdornment: hasEndAdornment ? (
+        <InputAdornment position="end" sx={{ gap: 0.75 }}>
+          {hasValue && onClear && (
+            <AppIconButton
+              tone="homeClear"
               aria-label={resolvedClearLabel}
               onClick={handleClear}
               onMouseDown={handleMouseDownClear}
               disabled={isActionDisabled}
-              edge="end"
+              edge={trailingAction ? false : 'end'}
               size="small"
-              sx={{ color: 'text.secondary' }}
             >
               <X className="w-4 h-4" aria-hidden="true" />
-            </IconButton>
-          </InputAdornment>
-        ) : undefined,
+            </AppIconButton>
+          )}
+          {trailingAction}
+        </InputAdornment>
+      ) : undefined,
     },
     slotProps?.input
   );
@@ -80,6 +87,7 @@ export const AppSearchField: React.FC<AppSearchFieldProps> = ({
       value={value}
       disabled={disabled}
       readOnly={readOnly}
+      allowPublicLookup={allowPublicLookup}
       slotProps={{
         ...slotProps,
         input: mergedInputSlot,

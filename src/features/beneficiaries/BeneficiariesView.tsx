@@ -9,6 +9,7 @@ import {
   validateTin,
   validateBangladeshPhone,
 } from '../../design-system/forms';
+import { AppButton, AppIconButton } from '../../design-system/buttons';
 import { Beneficiary } from '../../types/tax';
 
 type RelationshipType = Beneficiary['relationship'];
@@ -61,12 +62,16 @@ export const BeneficiariesView: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500">Manage family members and client TIN mappings for facilitated tax payments.</p>
           </div>
-          <button
+          <AppButton
+            tone="primary"
+            size="small"
+            previewRestricted
+            startIcon={<Plus size={16} />}
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors"
+            sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
           >
-            <Plus size={16} /> {t('addBeneficiary')}
-          </button>
+            {t('addBeneficiary')}
+          </AppButton>
         </div>
 
         {showAddModal && (
@@ -144,22 +149,25 @@ export const BeneficiariesView: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-2">
-              <button
+              <AppButton
                 type="button"
+                tone="secondary"
+                size="small"
                 onClick={() => {
                   setErrors({});
                   setShowAddModal(false);
                 }}
-                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold"
               >
                 {t('cancel')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 type="submit"
-                className="px-4 py-2 bg-teal-700 text-white rounded-lg text-xs font-semibold"
+                tone="primary"
+                size="small"
+                previewRestricted
               >
                 {t('save')}
-              </button>
+              </AppButton>
             </div>
           </form>
         )}
@@ -190,13 +198,16 @@ export const BeneficiariesView: React.FC = () => {
                   <td className="p-4 font-mono">{b.phone}</td>
                   <td className="p-4 font-mono">{b.createdAt}</td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => deleteBeneficiary(b.id)}
-                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    <AppIconButton
+                      tone="danger"
+                      size="small"
+                      previewRestricted
+                      aria-label={`Delete ${b.name}`}
                       title="Delete"
+                      onClick={() => deleteBeneficiary(b.id)}
                     >
                       <Trash2 size={16} />
-                    </button>
+                    </AppIconButton>
                   </td>
                 </tr>
               ))}

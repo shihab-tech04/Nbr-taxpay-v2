@@ -1,5 +1,13 @@
 import React from 'react';
-import { CircleHelp, House, MessageCircle, ShieldAlert, Wallet, type LucideIcon } from 'lucide-react';
+import {
+  CircleHelp,
+  House,
+  MessageCircle,
+  ShieldAlert,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
+import { AppCardButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 
 function MobileNavItem({
@@ -14,13 +22,23 @@ function MobileNavItem({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <AppCardButton
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex min-w-14 flex-col items-center gap-1 rounded-lg px-1.5 py-1 text-[10.5px] font-semibold transition ${
-        active ? 'text-[#1c3d70]' : 'text-[#5d697e]'
-      }`}
+      sx={{
+        minWidth: 56,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 0.5,
+        borderRadius: '8px',
+        px: 0.75,
+        py: 0.5,
+        fontSize: '10.5px',
+        fontWeight: 600,
+        color: active ? '#1c3d70' : '#5d697e',
+        textAlign: 'center',
+      }}
     >
       <span
         className={`grid h-7 w-11 place-items-center rounded-full ${
@@ -30,7 +48,7 @@ function MobileNavItem({
         <Icon className="size-[19px]" strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
       </span>
       {label}
-    </button>
+    </AppCardButton>
   );
 }
 
@@ -54,7 +72,11 @@ export function HomeMobileNavigation({
           label={c.nav.guideShort}
           onClick={() => onAction('guide')}
         />
-        <MobileNavItem icon={ShieldAlert} label={c.nav.report} onClick={() => onAction('report')} />
+        <MobileNavItem
+          icon={ShieldAlert}
+          label={c.nav.report}
+          onClick={() => onAction('report')}
+        />
         <MobileNavItem icon={MessageCircle} label={c.nav.help} onClick={() => onAction('help')} />
       </div>
     </nav>

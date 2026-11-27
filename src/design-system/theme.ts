@@ -14,6 +14,33 @@ export const FORM_TOKENS = {
   adornmentGap: 8,
 } as const;
 
+export const BUTTON_TOKENS = {
+  heightSmall: 36,
+  heightMedium: 40,
+  heightLarge: 48,
+  borderRadius: 10,
+  heroBorderRadius: 12,
+  iconRadius: 8,
+  cardRadius: 20,
+  fontSizeSmall: '0.75rem',
+  fontSizeMedium: '0.875rem',
+  fontSizeLarge: '0.90625rem',
+  paddingSmall: '6px 14px',
+  paddingMedium: '8px 18px',
+  paddingLarge: '10px 24px',
+  iconGap: 8,
+  iconSizeSmall: 16,
+  iconSizeMedium: 18,
+  homePrimary: '#2F55A4',
+  homePrimaryHover: '#1F3C7A',
+  homeAccentText: '#1C3D70',
+  homeAccentBorder: '#CAD8EF',
+  homeAccentBgHover: '#F4F7FC',
+  confirmMain: '#10B981',
+  confirmHover: '#059669',
+  confirmText: '#022C22',
+} as const;
+
 export const getTheme = (mode: 'light' | 'dark') => {
   const isLight = mode === 'light';
   const formColors = {
@@ -33,11 +60,21 @@ export const getTheme = (mode: 'light' | 'dark') => {
     selectedItemHoverBg: isLight ? 'rgba(15, 118, 110, 0.16)' : 'rgba(20, 184, 166, 0.26)',
   };
 
+  const buttonColors = {
+    focusOutline: isLight ? '#0F766E' : '#2DD4BF',
+    neutralBg: isLight ? '#F1F5F9' : '#1E293B',
+    neutralHover: isLight ? '#E2E8F0' : '#334155',
+    neutralBorder: isLight ? '#CBD5E1' : '#334155',
+    neutralText: isLight ? '#0F172A' : '#F8FAFC',
+    disabledBg: isLight ? '#E2E8F0' : '#1E293B',
+    disabledText: isLight ? '#64748B' : '#94A3B8',
+  };
+
   return createTheme({
     palette: {
       mode,
       primary: {
-        main: '#0F766E', // Emerald / Teal
+        main: '#0F766E',
         light: '#14B8A6',
         dark: '#115E59',
         contrastText: '#ffffff',
@@ -73,19 +110,110 @@ export const getTheme = (mode: 'light' | 'dark') => {
       },
       button: {
         textTransform: 'none',
-        fontWeight: 500,
+        fontWeight: 600,
+        lineHeight: 1.35,
       },
     },
     shape: {
       borderRadius: FORM_TOKENS.borderRadius,
     },
     components: {
-      MuiButton: {
+      MuiButtonBase: {
         styleOverrides: {
           root: {
+            fontFamily: 'inherit',
+            '&:focus-visible': {
+              outline: `2px solid ${buttonColors.focusOutline}`,
+              outlineOffset: 2,
+            },
+            '&.Mui-disabled': {
+              cursor: 'not-allowed',
+            },
+          },
+        },
+      },
+      MuiButton: {
+        defaultProps: {
+          disableElevation: true,
+        },
+        styleOverrides: {
+          root: {
+            borderRadius: BUTTON_TOKENS.borderRadius,
+            minHeight: BUTTON_TOKENS.heightMedium,
+            padding: BUTTON_TOKENS.paddingMedium,
+            fontSize: BUTTON_TOKENS.fontSizeMedium,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            gap: BUTTON_TOKENS.iconGap,
             boxShadow: 'none',
+            transition:
+              'background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 140ms ease',
             '&:hover': {
               boxShadow: 'none',
+            },
+            '&:active:not(:disabled)': {
+              transform: 'scale(0.985)',
+            },
+            '&.MuiButton-sizeSmall': {
+              minHeight: BUTTON_TOKENS.heightSmall,
+              padding: BUTTON_TOKENS.paddingSmall,
+              fontSize: BUTTON_TOKENS.fontSizeSmall,
+            },
+            '&.MuiButton-sizeLarge': {
+              minHeight: BUTTON_TOKENS.heightLarge,
+              padding: BUTTON_TOKENS.paddingLarge,
+              fontSize: BUTTON_TOKENS.fontSizeLarge,
+              borderRadius: BUTTON_TOKENS.heroBorderRadius,
+            },
+            '&.Mui-disabled': {
+              cursor: 'not-allowed',
+              pointerEvents: 'auto',
+              opacity: 0.62,
+            },
+            '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+              margin: 0,
+            },
+            '&.MuiButton-containedPrimary': {
+              backgroundColor: '#0F766E',
+              color: '#FFFFFF',
+              '&:hover': {
+                backgroundColor: '#115E59',
+              },
+              '&.Mui-disabled': {
+                backgroundColor: buttonColors.disabledBg,
+                color: buttonColors.disabledText,
+              },
+            },
+            '&.MuiButton-outlinedPrimary': {
+              borderColor: buttonColors.neutralBorder,
+              color: buttonColors.neutralText,
+              '&:hover': {
+                borderColor: formColors.borderHover,
+                backgroundColor: isLight ? 'rgba(15, 118, 110, 0.06)' : 'rgba(45, 212, 191, 0.1)',
+              },
+            },
+            '&.MuiButton-containedError': {
+              backgroundColor: formColors.borderError,
+              color: '#FFFFFF',
+              '&:hover': {
+                backgroundColor: isLight ? '#BE123C' : '#F43F5E',
+              },
+            },
+          },
+        },
+      },
+      MuiIconButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: BUTTON_TOKENS.iconRadius,
+            transition: 'background-color 150ms ease, color 150ms ease, transform 140ms ease',
+            '&:active:not(:disabled)': {
+              transform: 'scale(0.96)',
+            },
+            '&.Mui-disabled': {
+              cursor: 'not-allowed',
+              pointerEvents: 'auto',
+              opacity: 0.48,
             },
           },
         },

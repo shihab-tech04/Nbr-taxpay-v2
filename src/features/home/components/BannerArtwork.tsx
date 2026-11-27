@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { findCategoryFallbackImage } from '../model/home.tokens';
+import { findCategoryFallbackImage } from '../model/home.slides';
 import type { BannerSlide } from '../model/home.types';
 
 export function BannerArtwork({

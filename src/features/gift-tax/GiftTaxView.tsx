@@ -15,6 +15,7 @@ import {
   validateCurrencyAmount,
   validateTin,
 } from '../../design-system/forms';
+import { AppButton } from '../../design-system/buttons';
 
 export const GiftTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -224,13 +225,18 @@ export const GiftTaxView: React.FC = () => {
               </div>
             </div>
 
-            <button
+            <AppButton
               type="button"
+              tone="primary"
+              size="large"
+              fullWidth
+              previewRestricted
+              endIcon={<ArrowRight size={16} />}
               onClick={handleNext}
-              className="w-full py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-colors"
+              sx={{ fontSize: '0.75rem' }}
             >
-              Proceed to Gift Details <ArrowRight size={16} />
-            </button>
+              Proceed to Gift Details
+            </AppButton>
           </div>
         )}
 
@@ -283,20 +289,24 @@ export const GiftTaxView: React.FC = () => {
             </div>
 
             <div className="flex gap-4">
-              <button
+              <AppButton
                 type="button"
+                tone="secondary"
                 onClick={() => setStage(1)}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('back')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 type="button"
+                tone="primary"
+                previewRestricted
+                endIcon={<ArrowRight size={16} />}
                 onClick={handleNext}
-                className="w-2/3 py-3 bg-teal-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
-                Proceed to Preview <ArrowRight size={16} />
-              </button>
+                Proceed to Preview
+              </AppButton>
             </div>
           </div>
         )}
@@ -325,18 +335,22 @@ export const GiftTaxView: React.FC = () => {
             </div>
 
             <div className="flex gap-4">
-              <button
+              <AppButton
+                tone="secondary"
                 onClick={() => setStage(2)}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('back')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="confirm"
+                previewRestricted
+                endIcon={<CheckCircle size={16} />}
                 onClick={handlePay}
-                className="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg"
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
               >
-                {t('confirmPayment')} <CheckCircle size={16} />
-              </button>
+                {t('confirmPayment')}
+              </AppButton>
             </div>
           </div>
         )}
@@ -350,18 +364,20 @@ export const GiftTaxView: React.FC = () => {
             <p className="text-xs text-slate-500">Challan successfully generated for donor {donorName} and donee {doneeName}.</p>
 
             <div className="flex justify-center gap-4 pt-4">
-              <button
+              <AppButton
+                tone="primary"
                 onClick={() => setCompletedTx(completedTx)}
-                className="px-6 py-3 bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 View Official Receipt
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="secondary"
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-3 border border-slate-300 rounded-xl text-xs font-semibold"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 Return to Dashboard
-              </button>
+              </AppButton>
             </div>
           </div>
         )}

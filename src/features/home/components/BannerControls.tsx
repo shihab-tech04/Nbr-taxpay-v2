@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AppCardButton, AppIconButton } from '../../../design-system/buttons';
 import type { BannerSlide, HomeCopy } from '../model/home.types';
 
 export function BannerControls({
@@ -25,36 +26,40 @@ export function BannerControls({
       role="group"
       aria-label={c.carousel.controlsLabel}
     >
-      <button
-        type="button"
+      <AppIconButton
+        tone="homeArrow"
         className="home2-slider2__arrow home2-press"
         onClick={onPrev}
         aria-label={c.carousel.prev}
       >
         <ChevronLeft size={18} aria-hidden="true" />
-      </button>
+      </AppIconButton>
       <div className="home2-slider2__dots">
         {slides.map((slide, i) => (
-          <button
-            type="button"
+          <AppCardButton
             key={slide.id}
             className="home2-slider2__dot"
             aria-current={i === activeIndex ? 'true' : undefined}
             aria-label={c.carousel.goTo(i + 1)}
             onClick={() => onSelect(i)}
+            sx={{
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '6px',
+            }}
           >
             <span aria-hidden="true" />
-          </button>
+          </AppCardButton>
         ))}
       </div>
-      <button
-        type="button"
+      <AppIconButton
+        tone="homeArrow"
         className="home2-slider2__arrow home2-press"
         onClick={onNext}
         aria-label={c.carousel.next}
       >
         <ChevronRight size={18} aria-hidden="true" />
-      </button>
+      </AppIconButton>
     </div>
   );
 }

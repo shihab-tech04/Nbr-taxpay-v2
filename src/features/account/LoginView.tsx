@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { ArrowRight, UserCheck } from 'lucide-react';
 import { AppNumberField, validateOtp, validateTin } from '../../design-system/forms';
+import { AppButton } from '../../design-system/buttons';
 
 export const LoginView: React.FC = () => {
   const { t } = useTranslation();
@@ -82,12 +83,16 @@ export const LoginView: React.FC = () => {
               />
             </div>
 
-            <button
+            <AppButton
               type="submit"
-              className="w-full py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+              tone="primary"
+              size="large"
+              fullWidth
+              previewRestricted
+              endIcon={<ArrowRight size={16} />}
             >
-              Continue with OTP <ArrowRight size={16} />
-            </button>
+              Continue with OTP
+            </AppButton>
           </form>
         ) : (
           <form onSubmit={handleOtpSubmit} noValidate className="space-y-4">
@@ -117,22 +122,26 @@ export const LoginView: React.FC = () => {
             </div>
 
             <div className="flex gap-3">
-              <button
+              <AppButton
                 type="button"
+                tone="secondary"
                 onClick={() => {
                   setOtpError('');
                   setStep('tin');
                 }}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('back')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 type="submit"
-                className="w-2/3 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
+                tone="primary"
+                previewRestricted
+                endIcon={<UserCheck size={16} />}
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5 }}
               >
-                Verify & Sign In <UserCheck size={16} />
-              </button>
+                Verify & Sign In
+              </AppButton>
             </div>
           </form>
         )}

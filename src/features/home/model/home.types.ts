@@ -47,6 +47,23 @@ export interface BannerSlide {
 
 export type BannerLoadStatus = 'loading' | 'ready' | 'unavailable';
 
+export type BannerCmsConnectionState =
+  | 'unconfigured'
+  | 'loading'
+  | 'configured'
+  | 'empty'
+  | 'unavailable'
+  | 'ready';
+
+export interface HelpGuideTopic {
+  id: string;
+  title: string;
+  summary: string;
+  keywords: readonly string[];
+  answer: string;
+  category: string;
+}
+
 export interface HomeCopy {
   meta: { title: string };
   nav: { home: string; guide: string; guideShort: string; report: string; help: string };
@@ -79,9 +96,13 @@ export interface HomeCopy {
     placeholder: string;
     emptyError: string;
     tooShort: string;
+    invalidFormat: string;
+    serviceUnavailableTitle: string;
+    previewLookupNotice: string;
+    unauthorizedTitle: string;
+    unauthorizedHint: string;
     noRecord: (ref: string) => string;
     noRecordHint: string;
-    previewLookupNotice: string;
     sampleMatchBadge: string;
     search: string;
     clear: string;
@@ -132,12 +153,16 @@ export interface HomeCopy {
       travelBody: string;
       giftTitle: string;
       giftBody: string;
-      allTitle: string;
-      allBody: string;
     };
     helpTitle: string;
     helpSubtitle: string;
-    helpTopics: ReadonlyArray<{ title: string; summary: string; route: string; cta: string }>;
+    helpOpening: string;
+    helpQuestionPlaceholder: string;
+    helpSendLabel: string;
+    helpOpenGuide: string;
+    helpDisclaimer: string;
+    helpFallbackAnswer: string;
+    helpTopics: readonly HelpGuideTopic[];
     helplineLabel: string;
     lookupTitle: string;
     lookupClose: string;

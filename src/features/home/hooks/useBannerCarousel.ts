@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type React from 'react';
-import { SLIDER2_TIMING } from '../model/home.tokens';
+import { SLIDER2_TIMING } from '../model/home.manifest';
 import type { BannerSlide } from '../model/home.types';
 
 export function resolveNextSlideIndex(currentIndex: number, total: number): number {
@@ -11,6 +11,21 @@ export function resolveNextSlideIndex(currentIndex: number, total: number): numb
 export function resolvePreviousSlideIndex(currentIndex: number, total: number): number {
   if (total <= 1) return 0;
   return (currentIndex - 1 + total) % total;
+}
+
+export function reconcileActiveBannerIndex(
+  slides: readonly BannerSlide[],
+  preferredBannerId: string | null,
+  fallbackIndex: number
+): number {
+  if (slides.length === 0) return 0;
+  if (preferredBannerId) {
+    const matchedIndex = slides.findIndex((slide) => slide.id === preferredBannerId);
+    if (matchedIndex !== -1) {
+      return matchedIndex;
+    }
+  }
+  return Math.min(Math.max(fallbackIndex, 0), slides.length - 1);
 }
 
 export function evaluateSwipeDirection(
@@ -25,52 +40,102 @@ export function evaluateSwipeDirection(
   return null;
 }
 
+function usePrefersReducedMotion(): boolean {
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return () => {};
+    }
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mql.addEventListener('change', onStoreChange);
+    return () => mql.removeEventListener('change', onStoreChange);
+  }, []);
+
+  const getSnapshot = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return false;
+    }
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
+}
+
+function useDocumentVisibility(): boolean {
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    if (typeof document === 'undefined') return () => {};
+    document.addEventListener('visibilitychange', onStoreChange);
+    return () => document.removeEventListener('visibilitychange', onStoreChange);
+  }, []);
+
+  const getSnapshot = () => {
+    if (typeof document === 'undefined') return true;
+    return document.visibilityState === 'visible';
+  };
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => true);
+}
+
+interface ActiveBannerCursor {
+  bannerId: string | null;
+  fallbackIndex: number;
+}
+
 export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [cursor, setCursor] = useState<ActiveBannerCursor>(() => ({
+    bannerId: slides[0]?.id ?? null,
+    fallbackIndex: 0,
+  }));
   const [visibleImageReady, setVisibleImageReady] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
-  const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  const isDocumentVisible = useDocumentVisibility();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const carouselRef = useRef<HTMLElement>(null);
   const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
 
-  const safeIndex = slides.length > 0 ? Math.min(activeIndex, slides.length - 1) : 0;
+  const activeIndex = reconcileActiveBannerIndex(
+    slides,
+    cursor.bannerId,
+    cursor.fallbackIndex
+  );
 
   const goNext = useCallback(() => {
-    setActiveIndex((index) => resolveNextSlideIndex(index, slides.length));
-  }, [slides.length]);
+    setCursor((prev) => {
+      const currentIdx = reconcileActiveBannerIndex(slides, prev.bannerId, prev.fallbackIndex);
+      const nextIdx = resolveNextSlideIndex(currentIdx, slides.length);
+      return {
+        bannerId: slides[nextIdx]?.id ?? null,
+        fallbackIndex: nextIdx,
+      };
+    });
+  }, [slides]);
 
   const goPrevious = useCallback(() => {
-    setActiveIndex((index) => resolvePreviousSlideIndex(index, slides.length));
-  }, [slides.length]);
+    setCursor((prev) => {
+      const currentIdx = reconcileActiveBannerIndex(slides, prev.bannerId, prev.fallbackIndex);
+      const nextIdx = resolvePreviousSlideIndex(currentIdx, slides.length);
+      return {
+        bannerId: slides[nextIdx]?.id ?? null,
+        fallbackIndex: nextIdx,
+      };
+    });
+  }, [slides]);
 
   const goTo = useCallback(
     (index: number) => {
       if (index >= 0 && index < slides.length) {
-        setActiveIndex(index);
+        setCursor({
+          bannerId: slides[index]?.id ?? null,
+          fallbackIndex: index,
+        });
       }
     },
-    [slides.length]
+    [slides]
   );
-
-  useEffect(() => {
-    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onMotionChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
-    setPrefersReducedMotion(motionPreference.matches);
-    motionPreference.addEventListener('change', onMotionChange);
-    return () => motionPreference.removeEventListener('change', onMotionChange);
-  }, []);
-
-  useEffect(() => {
-    const onVisibilityChange = () => setIsDocumentVisible(document.visibilityState === 'visible');
-    onVisibilityChange();
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, []);
 
   useEffect(() => {
     if (
@@ -87,7 +152,7 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
     const timer = window.setTimeout(goNext, SLIDER2_TIMING.autoplayIntervalMs);
     return () => window.clearTimeout(timer);
   }, [
-    safeIndex,
+    activeIndex,
     slides.length,
     goNext,
     hasFocus,
@@ -102,7 +167,8 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
     const target = event.target as HTMLElement;
     if (
       target !== carouselRef.current &&
-      (target.closest('button, a, input, textarea, select, [role="button"]') || target.isContentEditable)
+      (target.closest('button, a, input, textarea, select, [role="button"]') ||
+        target.isContentEditable)
     ) {
       return;
     }
@@ -116,7 +182,10 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
   };
 
   const onPointerEnter = (event: React.PointerEvent) => {
-    if (event.pointerType === 'mouse' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    if (
+      event.pointerType === 'mouse' &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    ) {
       setIsHovered(true);
     }
   };
@@ -165,7 +234,7 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
   };
 
   return {
-    activeIndex: safeIndex,
+    activeIndex,
     visibleImageReady,
     setVisibleImageReady,
     isSwiping,

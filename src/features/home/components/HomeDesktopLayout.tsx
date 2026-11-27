@@ -1,5 +1,4 @@
 import React from 'react';
-import { MessageCircle } from 'lucide-react';
 import type { HomeViewProps } from '../model/home.types';
 import { HomeTile } from './HomeBrand';
 import { HomeHeader } from './HomeHeader';
@@ -33,9 +32,9 @@ export function HomeDesktopLayout({
           aria-label={c.heroTitle}
           className="grid grid-cols-[minmax(0,1fr)_clamp(320px,30vw,372px)] gap-3"
         >
-          <TileSliderWrapper>
+          <HomeTile>
             <Slider2 language={language} c={c} onAction={onAction} paused={sliderPaused} />
-          </TileSliderWrapper>
+          </HomeTile>
 
           <div className="home2-v2-type flex flex-col gap-4">
             <HomeTile delay={80}>
@@ -56,18 +55,6 @@ export function HomeDesktopLayout({
       </main>
 
       <HomeFooter c={c} variant="desktop" onAction={onAction} />
-
-      <button
-        type="button"
-        onClick={() => onAction('help')}
-        className="home2-v2-type home2-press fixed right-6 bottom-6 z-30 flex h-11 items-center gap-2 rounded-full bg-white pr-4.5 pl-3.5 text-[13.5px] font-semibold text-[#1c3d70] shadow-[0_10px_28px_-12px_rgba(15,29,52,0.35)] ring-1 ring-[#dfe5ee] hover:bg-[#f4f7fc]"
-      >
-        <MessageCircle className="size-[18px]" aria-hidden="true" /> {c.nav.help}
-      </button>
     </div>
   );
-}
-
-function TileSliderWrapper({ children }: { children: React.ReactNode }) {
-  return <HomeTile>{children}</HomeTile>;
 }

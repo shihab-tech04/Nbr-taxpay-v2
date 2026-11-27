@@ -1,9 +1,7 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 export const Footer: React.FC = () => {
-  const { t } = useTranslation();
 
   return (
     <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">

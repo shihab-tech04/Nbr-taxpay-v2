@@ -14,6 +14,7 @@ import {
   AppTextField,
   validateCurrencyAmount,
 } from '../../design-system/forms';
+import { AppButton, AppCardButton, AppIconButton } from '../../design-system/buttons';
 
 export const AllTaxPaymentsView: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -149,27 +150,31 @@ export const AllTaxPaymentsView: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
             <h3 className="text-lg font-bold">Select Tax Payment Category</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div 
+              <AppCardButton
+                selected={selectedCategory === 'tax_with_return'}
                 onClick={() => { setSelectedCategory('tax_with_return'); setStep('form'); }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'tax_with_return' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                className={`p-6 rounded-2xl border-2 transition-all ${selectedCategory === 'tax_with_return' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                sx={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', p: 3, borderRadius: '16px' }}
               >
                 <div className="w-10 h-10 rounded-lg bg-teal-700 text-white flex items-center justify-center font-bold mb-4">01</div>
                 <h4 className="font-bold text-lg mb-2">{t('taxWithReturn')}</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   Mandatory annual tax submission along with your income tax return for individuals and companies.
                 </p>
-              </div>
+              </AppCardButton>
 
-              <div 
+              <AppCardButton
+                selected={selectedCategory === 'other_tax'}
                 onClick={() => { setSelectedCategory('other_tax'); setStep('form'); }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'other_tax' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                className={`p-6 rounded-2xl border-2 transition-all ${selectedCategory === 'other_tax' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                sx={{ width: '100%', flexDirection: 'column', alignItems: 'flex-start', p: 3, borderRadius: '16px' }}
               >
                 <div className="w-10 h-10 rounded-lg bg-teal-700 text-white flex items-center justify-center font-bold mb-4">02</div>
                 <h4 className="font-bold text-lg mb-2">{t('otherTax')}</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   Advance Income Tax (AIT), Source Tax (TDS), Capital Gains, and property transfer tax heads.
                 </p>
-              </div>
+              </AppCardButton>
             </div>
           </div>
         )}
@@ -178,12 +183,14 @@ export const AllTaxPaymentsView: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
               <h3 className="text-lg font-bold">Configure Tax Line Items</h3>
-              <button 
+              <AppButton
+                tone="ghost"
+                size="small"
                 onClick={() => setStep('chooser')}
-                className="text-xs font-semibold text-teal-700 hover:underline"
+                sx={{ color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
               >
                 Change Category
-              </button>
+              </AppButton>
             </div>
 
             {formBannerError && (
@@ -288,13 +295,17 @@ export const AllTaxPaymentsView: React.FC = () => {
               </div>
             </div>
 
-            <button
+            <AppButton
               type="button"
+              tone="neutral"
+              fullWidth
+              previewRestricted
+              startIcon={<Plus size={16} />}
               onClick={handleAddItem}
-              className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
+              sx={{ borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
             >
-              <Plus size={16} /> {t('addHead')}
-            </button>
+              {t('addHead')}
+            </AppButton>
 
             {/* Current Items Table */}
             {items.length > 0 && (
@@ -320,9 +331,15 @@ export const AllTaxPaymentsView: React.FC = () => {
                           <td className="p-3 font-mono">{item.assessmentYear}</td>
                           <td className="p-3 text-right font-mono font-semibold">৳ {item.amount.toLocaleString()}</td>
                           <td className="p-3 text-center">
-                            <button onClick={() => handleRemoveItem(idx)} className="text-rose-600 hover:text-rose-800">
+                            <AppIconButton
+                              tone="danger"
+                              size="small"
+                              previewRestricted
+                              aria-label={`Remove ${item.headNameEn}`}
+                              onClick={() => handleRemoveItem(idx)}
+                            >
                               <Trash2 size={16} />
-                            </button>
+                            </AppIconButton>
                           </td>
                         </tr>
                       ))}
@@ -340,18 +357,23 @@ export const AllTaxPaymentsView: React.FC = () => {
             )}
 
             <div className="flex gap-4 pt-4">
-              <button
+              <AppButton
+                tone="secondary"
+                previewRestricted
                 onClick={handleSaveDraft}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('saveDraft')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="primary"
+                previewRestricted
+                endIcon={<ArrowRight size={16} />}
                 onClick={handleProceedToPreview}
-                className="w-2/3 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
-                {t('proceedToPreview')} <ArrowRight size={16} />
-              </button>
+                {t('proceedToPreview')}
+              </AppButton>
             </div>
           </div>
         )}
@@ -382,13 +404,21 @@ export const AllTaxPaymentsView: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3">Select Payment Gateway / Channel</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {(['bKash', 'Nagad', 'Rocket', 'Visa/Mastercard', 'CityBank'] as const).map(channel => (
-                  <div
+                  <AppCardButton
                     key={channel}
+                    selected={paymentChannel === channel}
                     onClick={() => setPaymentChannel(channel)}
-                    className={`p-4 rounded-xl border-2 cursor-pointer text-center font-semibold text-xs transition-all ${paymentChannel === channel ? 'border-teal-600 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                    className={`p-4 rounded-xl border-2 text-center font-semibold text-xs transition-all ${paymentChannel === channel ? 'border-teal-600 bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                    sx={{
+                      width: '100%',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      p: 2,
+                      borderRadius: '12px',
+                    }}
                   >
                     {channel}
-                  </div>
+                  </AppCardButton>
                 ))}
               </div>
             </div>
@@ -402,18 +432,22 @@ export const AllTaxPaymentsView: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
+              <AppButton
+                tone="secondary"
                 onClick={() => setStep('form')}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('back')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="confirm"
+                previewRestricted
+                endIcon={<CheckCircle size={16} />}
                 onClick={handleConfirmPayment}
-                className="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg"
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
               >
-                {t('confirmPayment')} <CheckCircle size={16} />
-              </button>
+                {t('confirmPayment')}
+              </AppButton>
             </div>
           </div>
         )}
@@ -448,18 +482,20 @@ export const AllTaxPaymentsView: React.FC = () => {
             </div>
 
             <div className="flex justify-center gap-4 pt-4">
-              <button
+              <AppButton
+                tone="primary"
                 onClick={() => setCompletedTx(completedTx)}
-                className="px-6 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 View Official Receipt
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="secondary"
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 Return to Dashboard
-              </button>
+              </AppButton>
             </div>
           </div>
         )}

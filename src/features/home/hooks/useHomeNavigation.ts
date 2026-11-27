@@ -4,25 +4,47 @@ import { useApp } from '../../../shared/AppContext';
 import { PUBLIC_PREVIEW } from '../../../shared/previewMode';
 import type { PaymentTransaction } from '../../../types/tax';
 import type { HomeAction } from '../model/home.types';
+import { resolveHomeActionTarget } from '../model/routeContract';
+import { isBannerCmsConfigured } from '../services/bannerService';
 
 export type LookupOutcome =
   | { kind: 'too_short'; reference: string }
-  | { kind: 'preview_blocked'; reference: string }
+  | { kind: 'invalid'; reference: string }
+  | { kind: 'service_unavailable'; reference: string }
+  | { kind: 'unauthorized'; reference: string }
   | { kind: 'matched_sample'; reference: string; transaction: PaymentTransaction }
   | { kind: 'not_found'; reference: string };
+
+export interface RecordLookupContext {
+  isPreviewMode: boolean;
+  serviceAvailable: boolean;
+  signedIn: boolean;
+}
+
+const VALID_REFERENCE_PATTERN = /^[A-Za-z0-9\-/_.]+$/;
+
+export function sanitizeReferenceQuery(value: string): string {
+  return value.trim();
+}
 
 export function evaluateRecordLookup(
   rawReference: string,
   transactions: PaymentTransaction[],
-  isPreviewMode: boolean
+  context: RecordLookupContext
 ): LookupOutcome | null {
-  const reference = rawReference.trim();
+  const reference = sanitizeReferenceQuery(rawReference);
   if (!reference) return null;
   if (reference.length < 6) {
     return { kind: 'too_short', reference };
   }
-  if (isPreviewMode) {
-    return { kind: 'preview_blocked', reference };
+  if (!VALID_REFERENCE_PATTERN.test(reference)) {
+    return { kind: 'invalid', reference };
+  }
+  if (context.isPreviewMode || !context.serviceAvailable) {
+    return { kind: 'service_unavailable', reference };
+  }
+  if (!context.signedIn) {
+    return { kind: 'unauthorized', reference };
   }
   const needle = reference.toUpperCase();
   const matched = transactions.find(
@@ -52,53 +74,23 @@ export function useHomeNavigation() {
 
   const handleAction = useCallback(
     (action: HomeAction) => {
-      switch (action) {
-        case 'home':
-          navigate('/');
-          if (typeof window !== 'undefined') {
+      const target = resolveHomeActionTarget(action, isAuthenticated);
+      switch (target.kind) {
+        case 'navigate':
+          navigate(target.path);
+          if (target.scrollTop && typeof window !== 'undefined') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
           break;
-        case 'pay':
-          navigate('/all-taxes');
+        case 'dialog':
+          if (target.dialog === 'other') setOtherTaxOpen(true);
+          else setHelpOpen(true);
           break;
-        case 'other':
-          setOtherTaxOpen(true);
+        case 'unavailable':
+          setUnavailableKind(target.unavailableKind);
           break;
-        case 'login':
-          navigate(isAuthenticated ? '/dashboard' : '/login');
-          break;
-        case 'guide':
-        case 'receipts':
-        case 'security':
-        case 'report':
-          navigate('/support');
-          break;
-        case 'help':
-          setHelpOpen(true);
-          break;
-        case 'history':
-        case 'again':
-          navigate('/history');
-          break;
-        case 'drafts':
-          navigate('/drafts');
-          break;
-        case 'corrections':
-          navigate('/corrections');
-          break;
-        case 'certificates':
-          if (isAuthenticated) {
-            navigate('/history');
-          } else {
-            setUnavailableKind('certificates');
-          }
-          break;
-        case 'status':
-          setUnavailableKind('status');
-          break;
-        case 'nbr':
-          // External link handled via semantic <a href="https://nbr.gov.bd/">
+        case 'external':
+          // Handled via semantic <a href="https://nbr.gov.bd/">
           break;
       }
     },
@@ -107,12 +99,16 @@ export function useHomeNavigation() {
 
   const handleSearch = useCallback(
     (reference: string) => {
-      const outcome = evaluateRecordLookup(reference, transactions, PUBLIC_PREVIEW);
+      const outcome = evaluateRecordLookup(reference, transactions, {
+        isPreviewMode: PUBLIC_PREVIEW,
+        serviceAvailable: isBannerCmsConfigured(),
+        signedIn: isAuthenticated,
+      });
       if (outcome) {
         setLookupOutcome(outcome);
       }
     },
-    [transactions]
+    [isAuthenticated, transactions]
   );
 
   const sliderPaused =

@@ -11,6 +11,7 @@ import {
   sanitizePassport,
   validatePassport,
 } from '../../design-system/forms';
+import { AppButton } from '../../design-system/buttons';
 
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -169,12 +170,17 @@ export const TravelTaxView: React.FC = () => {
               <ShieldCheck className="text-teal-600" size={32} />
             </div>
 
-            <button
+            <AppButton
               type="submit"
-              className="w-full py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm"
+              tone="primary"
+              size="large"
+              fullWidth
+              previewRestricted
+              endIcon={<ArrowRight size={16} />}
+              sx={{ fontSize: '0.75rem' }}
             >
-              Proceed to Preview <ArrowRight size={16} />
-            </button>
+              Proceed to Preview
+            </AppButton>
           </form>
         )}
 
@@ -206,18 +212,22 @@ export const TravelTaxView: React.FC = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <button
+              <AppButton
+                tone="secondary"
                 onClick={() => setStep('form')}
-                className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-colors"
+                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
               >
                 {t('back')}
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="confirm"
+                previewRestricted
+                endIcon={<CheckCircle size={16} />}
                 onClick={handlePay}
-                className="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg transition-colors"
+                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
               >
-                {t('confirmPayment')} <CheckCircle size={16} />
-              </button>
+                {t('confirmPayment')}
+              </AppButton>
             </div>
           </div>
         )}
@@ -231,18 +241,20 @@ export const TravelTaxView: React.FC = () => {
             <p className="text-xs text-slate-500">Departure challan generated for passport {passportNumber}.</p>
 
             <div className="flex justify-center gap-4 pt-4">
-              <button
+              <AppButton
+                tone="primary"
                 onClick={() => setCompletedTx(completedTx)}
-                className="px-6 py-3 bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 View Official Receipt
-              </button>
-              <button
+              </AppButton>
+              <AppButton
+                tone="secondary"
                 onClick={() => navigate('/dashboard')}
-                className="px-6 py-3 border border-slate-300 rounded-xl text-xs font-semibold"
+                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
               >
                 Return to Dashboard
-              </button>
+              </AppButton>
             </div>
           </div>
         )}

@@ -1,4 +1,4 @@
-/* Scoped Home 2 ("Bento 03") layout, typography, motion, and line-art styles */
+/* Scoped Home 2 ("Bento 03") typography, animation, line-art, and ultra-narrow header rules */
 .home2-import-root {
   font-family: 'Poppins', 'Hind Siliguri', ui-sans-serif, system-ui, sans-serif;
   color: #141b2d;
@@ -15,16 +15,14 @@
   font-family: 'Hind Siliguri', 'Poppins', sans-serif;
 }
 
-.home2-import-root .home2-no-scrollbar {
-  scrollbar-width: none;
-}
-
-.home2-import-root .home2-no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
 .home2-import-root .home2-press {
-  transition: scale 160ms ease, translate 300ms ease, transform 300ms ease, background-color 160ms ease, color 160ms ease, box-shadow 300ms ease;
+  transition:
+    scale 160ms ease,
+    translate 300ms ease,
+    transform 300ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 300ms ease;
 }
 
 .home2-import-root .home2-press:active {
@@ -62,8 +60,7 @@
 
 @media (max-width: 360px) {
   .home2-import-root header[role='banner'] {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-inline: 10px;
     gap: 4px;
   }
   .home2-import-root header[role='banner'] > div:first-child {

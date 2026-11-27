@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { FALLBACK_SLIDES } from '../model/home.tokens';
+import React from 'react';
+import { FALLBACK_SLIDES } from '../model/home.slides';
 import type { HomeAction, HomeCopy, HomeLang } from '../model/home.types';
 import { slider2ThemeStyle } from '../services/bannerService';
 import { usePublishedBanners } from '../hooks/usePublishedBanners';
@@ -19,14 +19,10 @@ export function Slider2({
   onAction: (action: HomeAction) => void;
   paused?: boolean;
 }) {
-  const { slides, bannerStatus, retryLoad, setActiveBannerId } = usePublishedBanners();
+  const { slides, bannerStatus, cmsState, isLiveCmsConnected, retryLoad } = usePublishedBanners();
   const carousel = useBannerCarousel(slides, paused);
   const current = slides[carousel.activeIndex];
   const fixedSlide = slides.find((slide) => !slide.serviceCode) ?? FALLBACK_SLIDES[0];
-
-  useEffect(() => {
-    setActiveBannerId(current?.id ?? null);
-  }, [current?.id, setActiveBannerId]);
 
   const currentHeading = current
     ? language === 'bn'
@@ -38,6 +34,8 @@ export function Slider2({
     <div
       className="home2-slider2"
       data-testid="slider2"
+      data-cms-state={cmsState}
+      data-cms-live={isLiveCmsConnected}
       ref={carousel.containerRef}
       onPointerEnter={carousel.onPointerEnter}
       onPointerLeave={carousel.onPointerLeave}

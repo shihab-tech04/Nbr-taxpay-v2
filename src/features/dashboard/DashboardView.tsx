@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
-import { 
-  User, ShieldCheck, FileText, Plane, Gift, 
-  ArrowRight, Download, Eye, Plus, CheckCircle 
-} from 'lucide-react';
+import { ArrowRight, Eye, Plus } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
+import { AppButton, AppCardButton } from '../../design-system/buttons';
 
 export const DashboardView: React.FC = () => {
   const { t } = useTranslation();
@@ -43,18 +41,24 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
+            <AppButton
+              tone="primary"
+              size="small"
+              previewRestricted
+              startIcon={<Plus size={16} />}
               onClick={() => navigate('/all-taxes')}
-              className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors"
+              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
             >
-              <Plus size={16} /> New Tax Payment
-            </button>
-            <button
+              New Tax Payment
+            </AppButton>
+            <AppButton
+              tone="neutral"
+              size="small"
               onClick={() => navigate('/beneficiaries')}
-              className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold transition-colors"
+              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
             >
               Manage Beneficiaries ({beneficiaries.length})
-            </button>
+            </AppButton>
           </div>
         </div>
 
@@ -68,39 +72,59 @@ export const DashboardView: React.FC = () => {
             <p className="text-[11px] text-slate-500">Across {transactions.filter(t => t.status === 'Completed').length} sample challans</p>
           </div>
 
-          <div 
+          <AppCardButton
             onClick={() => navigate('/drafts')}
-            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 cursor-pointer hover:border-teal-500 transition-colors"
+            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 hover:border-teal-500 transition-colors"
+            sx={{
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              p: 3,
+              borderRadius: '16px',
+            }}
           >
             <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('activeDraftsCount')}</span>
             <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white">
               {drafts.length}
             </div>
             <p className="text-[11px] text-slate-500">Saved payment drafts awaiting checkout</p>
-          </div>
+          </AppCardButton>
 
-          <div 
+          <AppCardButton
             onClick={() => navigate('/beneficiaries')}
-            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 cursor-pointer hover:border-teal-500 transition-colors"
+            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 hover:border-teal-500 transition-colors"
+            sx={{
+              width: '100%',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              p: 3,
+              borderRadius: '16px',
+            }}
           >
             <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('beneficiariesCount')}</span>
             <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white">
               {beneficiaries.length}
             </div>
             <p className="text-[11px] text-slate-500">Illustrative family and client records</p>
-          </div>
+          </AppCardButton>
         </div>
 
         {/* Recent Payment Activity Table */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">{t('recentActivity')}</h3>
-            <button 
+            <AppButton
+              tone="ghost"
+              size="small"
+              endIcon={<ArrowRight size={14} />}
               onClick={() => navigate('/history')}
-              className="text-xs font-semibold text-teal-700 dark:text-teal-400 hover:underline flex items-center gap-1"
+              sx={{
+                color: 'primary.main',
+                '&:hover': { bgcolor: 'action.hover', textDecoration: 'underline' },
+              }}
             >
-              View All History <ArrowRight size={14} />
-            </button>
+              View All History
+            </AppButton>
           </div>
 
           <div className="overflow-x-auto">
@@ -134,12 +158,22 @@ export const DashboardView: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
+                      <AppButton
+                        tone="secondary"
+                        size="small"
+                        startIcon={<Eye size={14} />}
                         onClick={() => setSelectedTx(tx)}
-                        className="px-3 py-1 bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 hover:bg-teal-100 rounded-lg text-xs font-medium transition-colors inline-flex items-center gap-1"
+                        sx={{
+                          minHeight: 30,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '8px',
+                          color: 'primary.main',
+                          borderColor: 'divider',
+                        }}
                       >
-                        <Eye size={14} /> Receipt
-                      </button>
+                        Receipt
+                      </AppButton>
                     </td>
                   </tr>
                 ))}

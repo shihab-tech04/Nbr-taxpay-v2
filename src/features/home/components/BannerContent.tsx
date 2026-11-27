@@ -1,5 +1,6 @@
 import React from 'react';
 import { ReceiptText, WalletCards } from 'lucide-react';
+import { AppButton } from '../../../design-system/buttons';
 import type { BannerLoadStatus, BannerSlide, HomeCopy, HomeLang } from '../model/home.types';
 
 export function BannerContent({
@@ -55,29 +56,45 @@ export function BannerContent({
           )}
         </p>
         <div className="home2-slider2__actions">
-          <button
-            type="button"
+          <AppButton
+            tone="hero"
+            size="large"
             data-testid="home2-pay"
             className="home2-slider2__pay home2-press"
             onClick={onPayTax}
+            startIcon={<WalletCards size={18} aria-hidden="true" />}
           >
-            <WalletCards size={18} aria-hidden="true" />
             {hasSlides ? primaryAction : c.payTax}
-          </button>
-          <button
-            type="button"
+          </AppButton>
+          <AppButton
+            tone="heroSecondary"
+            size="large"
             data-testid="home2-other"
             className="home2-slider2__other home2-press"
             onClick={onOtherTax}
+            startIcon={<ReceiptText size={18} aria-hidden="true" />}
           >
-            <ReceiptText size={18} aria-hidden="true" />
             {c.otherTax}
-          </button>
+          </AppButton>
         </div>
         {!hasSlides && bannerStatus === 'unavailable' && (
-          <button type="button" className="home2-slider2__retry" onClick={onRetry}>
+          <AppButton
+            tone="ghost"
+            size="small"
+            className="home2-slider2__retry"
+            onClick={onRetry}
+            sx={{
+              mt: 1.5,
+              px: 0,
+              minHeight: 32,
+              color: 'var(--slider2-heading)',
+              textDecoration: 'underline',
+              bgcolor: 'transparent',
+              '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
+            }}
+          >
             {c.carousel.retryLabel}
-          </button>
+          </AppButton>
         )}
       </div>
     </div>

@@ -1,11 +1,11 @@
 import React from 'react';
 import { PaymentTransaction } from '../types/tax';
 import { useTranslation } from 'react-i18next';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, 
-  Button, IconButton, Divider, Box, Typography 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { CheckCircle, Download, Printer, X, ShieldCheck } from 'lucide-react';
+import { AppButton, AppIconButton } from '../design-system/buttons';
 
 interface ReceiptModalProps {
   open: boolean;
@@ -34,9 +34,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
             <p className="text-xs text-slate-500 dark:text-slate-400">Ref: {transaction.transactionRef}</p>
           </div>
         </div>
-        <IconButton onClick={onClose} size="small">
+        <AppIconButton aria-label="Close receipt" onClick={onClose} size="small">
           <X size={20} />
-        </IconButton>
+        </AppIconButton>
       </DialogTitle>
 
       <DialogContent className="p-6 space-y-6">
@@ -116,16 +116,16 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
       </DialogContent>
 
       <DialogActions className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 justify-between">
-        <Button onClick={onClose} variant="outlined" size="small">
+        <AppButton tone="secondary" size="small" onClick={onClose}>
           {t('back')}
-        </Button>
+        </AppButton>
         <div className="flex gap-2">
-          <Button onClick={handlePrint} variant="outlined" startIcon={<Printer size={16} />} size="small">
+          <AppButton tone="secondary" size="small" onClick={handlePrint} startIcon={<Printer size={16} />}>
             {t('printChallan')}
-          </Button>
-          <Button disabled variant="contained" startIcon={<Download size={16} />} size="small">
+          </AppButton>
+          <AppButton tone="primary" size="small" disabled startIcon={<Download size={16} />}>
             {t('downloadChallan')}
-          </Button>
+          </AppButton>
         </div>
       </DialogActions>
     </Dialog>

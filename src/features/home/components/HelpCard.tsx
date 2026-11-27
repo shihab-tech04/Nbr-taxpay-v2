@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, MessageCircle } from 'lucide-react';
+import { AppButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 import { LineArt } from './LineArt';
 
@@ -42,26 +43,48 @@ export function HelpCard({
         </p>
       </div>
       <div className={`relative grid grid-cols-2 gap-2 ${isMobile ? 'mt-4' : ''}`}>
-        <button
-          type="button"
+        <AppButton
+          tone="ghost"
+          size="medium"
           data-testid="home2-guide-action"
           onClick={() => onAction('guide')}
-          className={`home2-press flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-white text-[13px] font-semibold ring-1 ring-black/5 hover:bg-white/80 ${
-            isMobile ? '' : 'px-3'
-          }`}
+          endIcon={<ArrowRight className="size-4 shrink-0" aria-hidden="true" />}
+          className="home2-press"
+          sx={{
+            minHeight: 40,
+            px: isMobile ? 1 : 1.5,
+            borderRadius: '8px',
+            bgcolor: '#ffffff',
+            color: '#0f1d34',
+            fontSize: '13px',
+            fontWeight: 600,
+            boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.8)' },
+          }}
         >
-          {c.help.guide} <ArrowRight className="size-4 shrink-0" />
-        </button>
-        <button
-          type="button"
+          {c.help.guide}
+        </AppButton>
+        <AppButton
+          tone="ghost"
+          size="medium"
           data-testid="home2-chat-action"
           onClick={() => onAction('help')}
-          className={`home2-press flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-white/50 text-[13px] font-semibold ring-1 ring-black/5 hover:bg-white/80 ${
-            isMobile ? '' : 'px-3'
-          }`}
+          startIcon={<MessageCircle className="size-4 shrink-0" aria-hidden="true" />}
+          className="home2-press"
+          sx={{
+            minHeight: 40,
+            px: isMobile ? 1 : 1.5,
+            borderRadius: '8px',
+            bgcolor: 'rgba(255,255,255,0.5)',
+            color: '#0f1d34',
+            fontSize: '13px',
+            fontWeight: 600,
+            boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.05)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.8)' },
+          }}
         >
-          <MessageCircle className="size-4 shrink-0" /> {c.help.chat}
-        </button>
+          {c.help.chat}
+        </AppButton>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { AppSlotProps, mergeSlotEntry } from './fieldUtils';
 export type AppTextFieldProps = Omit<OutlinedTextFieldProps, 'variant'> & {
   variant?: 'outlined';
   readOnly?: boolean;
+  allowPublicLookup?: boolean;
 };
 
 export const AppTextField: React.FC<AppTextFieldProps> = ({
@@ -14,12 +15,14 @@ export const AppTextField: React.FC<AppTextFieldProps> = ({
   size = 'small',
   disabled = false,
   readOnly = false,
+  allowPublicLookup = false,
   slotProps,
   select,
   ...props
 }) => {
-  const effectiveDisabled = Boolean(disabled || PUBLIC_PREVIEW);
-  const effectiveReadOnly = Boolean(readOnly || PUBLIC_PREVIEW);
+  const previewLocked = Boolean(PUBLIC_PREVIEW && !allowPublicLookup);
+  const effectiveDisabled = Boolean(disabled || previewLocked);
+  const effectiveReadOnly = Boolean(readOnly || previewLocked);
 
   const readOnlyClass =
     effectiveReadOnly && !effectiveDisabled ? 'Mui-readOnly' : undefined;

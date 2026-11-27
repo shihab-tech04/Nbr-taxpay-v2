@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { FileText, Play, Trash2 } from 'lucide-react';
+import { AppButton, AppIconButton } from '../../design-system/buttons';
 
 export const DraftsView: React.FC = () => {
   const { t } = useTranslation();
@@ -32,18 +33,25 @@ export const DraftsView: React.FC = () => {
                   <p className="text-xs text-slate-500 font-mono">Last updated: {d.updatedAt} · Items: {d.items.length}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
+                  <AppButton
+                    tone="primary"
+                    size="small"
+                    previewRestricted
+                    startIcon={<Play size={14} />}
                     onClick={() => navigate('/all-taxes')}
-                    className="px-4 py-2 bg-teal-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-sm"
+                    sx={{ borderRadius: '12px', px: 2 }}
                   >
-                    <Play size={14} /> Resume
-                  </button>
-                  <button
+                    Resume
+                  </AppButton>
+                  <AppIconButton
+                    tone="danger"
+                    size="small"
+                    previewRestricted
+                    aria-label={`Delete draft ${d.title}`}
                     onClick={() => deleteDraft(d.id)}
-                    className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl"
                   >
                     <Trash2 size={16} />
-                  </button>
+                  </AppIconButton>
                 </div>
               </div>
             ))

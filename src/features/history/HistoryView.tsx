@@ -6,6 +6,7 @@ import { FileText, Eye, RotateCcw } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
 import { AppSearchField } from '../../design-system/forms';
+import { AppButton } from '../../design-system/buttons';
 
 export const HistoryView: React.FC = () => {
   const { t } = useTranslation();
@@ -21,7 +22,7 @@ export const HistoryView: React.FC = () => {
     tx.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handlePayAgain = (tx: PaymentTransaction) => {
+  const handlePayAgain = () => {
     navigate('/all-taxes');
   };
 
@@ -71,19 +72,39 @@ export const HistoryView: React.FC = () => {
                   <td className="p-4 font-semibold">{tx.paymentChannel}</td>
                   <td className="p-4 font-mono font-bold text-teal-700">৳ {tx.totalAmount.toLocaleString()}</td>
                   <td className="p-4 font-mono">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                  <td className="p-4 text-right space-x-2">
-                    <button
-                      onClick={() => setSelectedTx(tx)}
-                      className="px-3 py-1.5 bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 rounded-lg font-medium inline-flex items-center gap-1"
-                    >
-                      <Eye size={14} /> Receipt
-                    </button>
-                    <button
-                      onClick={() => handlePayAgain(tx)}
-                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-medium inline-flex items-center gap-1"
-                    >
-                      <RotateCcw size={14} /> Pay Again
-                    </button>
+                  <td className="p-4 text-right">
+                    <div className="inline-flex items-center justify-end gap-2">
+                      <AppButton
+                        tone="secondary"
+                        size="small"
+                        startIcon={<Eye size={14} />}
+                        onClick={() => setSelectedTx(tx)}
+                        sx={{
+                          minHeight: 30,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '8px',
+                          color: 'primary.main',
+                          borderColor: 'divider',
+                        }}
+                      >
+                        Receipt
+                      </AppButton>
+                      <AppButton
+                        tone="neutral"
+                        size="small"
+                        startIcon={<RotateCcw size={14} />}
+                        onClick={handlePayAgain}
+                        sx={{
+                          minHeight: 30,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: '8px',
+                        }}
+                      >
+                        Pay Again
+                      </AppButton>
+                    </div>
                   </td>
                 </tr>
               ))}

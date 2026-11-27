@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
 import { Eye, EyeOff } from 'lucide-react';
 import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import { AppIconButton } from '../buttons';
 import { AppTextField, AppTextFieldProps } from './AppTextField';
 import { mergeSlotEntry } from './fieldUtils';
 
@@ -39,8 +39,7 @@ export const AppPasswordField: React.FC<AppPasswordFieldProps> = ({
     {
       endAdornment: (
         <InputAdornment position="end">
-          <IconButton
-            type="button"
+          <AppIconButton
             aria-label={toggleLabel}
             aria-pressed={showPassword}
             onClick={handleClickShowPassword}
@@ -48,14 +47,13 @@ export const AppPasswordField: React.FC<AppPasswordFieldProps> = ({
             disabled={isButtonDisabled}
             edge="end"
             size="small"
-            sx={{ color: 'text.secondary' }}
           >
             {showPassword ? (
               <EyeOff className="w-4 h-4" aria-hidden="true" />
             ) : (
               <Eye className="w-4 h-4" aria-hidden="true" />
             )}
-          </IconButton>
+          </AppIconButton>
         </InputAdornment>
       ),
     },

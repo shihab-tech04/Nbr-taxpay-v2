@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
+import { AppCardButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 import { LineArt } from './LineArt';
 
@@ -20,10 +21,16 @@ export function AllTaxPaymentsCard({
 
   if (variant === 'mobile') {
     return (
-      <button
-        type="button"
+      <AppCardButton
         onClick={() => onAction('pay')}
         className={`home2-press relative block w-full overflow-hidden bg-[#a5bce1] p-5 text-left ${surface}`}
+        sx={{
+          display: 'block',
+          width: '100%',
+          borderRadius: '20px',
+          p: 2.5,
+          textAlign: 'left',
+        }}
       >
         <LineArt
           name="wallet"
@@ -55,15 +62,21 @@ export function AllTaxPaymentsCard({
             </li>
           ))}
         </ol>
-      </button>
+      </AppCardButton>
     );
   }
 
   return (
-    <button
-      type="button"
+    <AppCardButton
       onClick={() => onAction('pay')}
       className={`home2-press group relative flex h-full w-full flex-col overflow-hidden bg-[#a5bce1] p-7 text-left ${surface} ${desktopHover}`}
+      sx={{
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        borderRadius: '20px',
+        p: 3.5,
+      }}
     >
       <LineArt
         name="wallet"
@@ -79,7 +92,9 @@ export function AllTaxPaymentsCard({
               aria-hidden="true"
             />
           </h3>
-          <p className="mt-1.5 max-w-[320px] text-[14px] leading-snug text-[#0f1d34]/75">{f.body}</p>
+          <p className="mt-1.5 max-w-[320px] text-[14px] leading-snug text-[#0f1d34]/75">
+            {f.body}
+          </p>
         </div>
         <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
           {f.chips.map((x) => (
@@ -99,6 +114,6 @@ export function AllTaxPaymentsCard({
           ))}
         </ol>
       </div>
-    </button>
+    </AppCardButton>
   );
 }

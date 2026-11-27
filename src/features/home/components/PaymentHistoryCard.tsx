@@ -1,5 +1,6 @@
 import React from 'react';
 import { Download, Receipt } from 'lucide-react';
+import { AppCardButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 import { LineArt } from './LineArt';
 
@@ -20,10 +21,16 @@ export function PaymentHistoryCard({
 
   if (variant === 'mobile') {
     return (
-      <button
-        type="button"
+      <AppCardButton
         onClick={() => onAction('history')}
         className={`home2-press relative flex h-full w-full flex-col overflow-hidden bg-[#e3ddd4] p-4 text-left ${surface}`}
+        sx={{
+          flexDirection: 'column',
+          width: '100%',
+          height: '100%',
+          borderRadius: '20px',
+          p: 2,
+        }}
       >
         <LineArt
           name="receipts"
@@ -46,15 +53,21 @@ export function PaymentHistoryCard({
             </div>
           ))}
         </div>
-      </button>
+      </AppCardButton>
     );
   }
 
   return (
-    <button
-      type="button"
+    <AppCardButton
       onClick={() => onAction('history')}
       className={`home2-press group relative flex h-full w-full flex-col overflow-hidden bg-[#e3ddd4] p-6 text-left ${surface} ${desktopHover}`}
+      sx={{
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
+        borderRadius: '20px',
+        p: 3,
+      }}
     >
       <LineArt
         name="receipts"
@@ -65,7 +78,7 @@ export function PaymentHistoryCard({
         <h3 className="text-[18px] leading-tight font-bold tracking-[-0.015em]">{f.title}</h3>
         <p className="mt-1.5 text-[13px] leading-snug text-[#3e4b62]">{f.body}</p>
       </div>
-      <div className="relative mt-auto space-y-1.5 pt-5">
+      <div className="relative mt-auto w-full space-y-1.5 pt-5">
         {c.taxYears.map((y) => (
           <div
             key={y}
@@ -80,6 +93,6 @@ export function PaymentHistoryCard({
           </div>
         ))}
       </div>
-    </button>
+    </AppCardButton>
   );
 }

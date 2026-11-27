@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, CircleHelp, Globe, House, ShieldAlert, type LucideIcon } from 'lucide-react';
+import { AppButton } from '../../../design-system/buttons';
 import type { HomeAction, HomeCopy } from '../model/home.types';
 import { HomeLogo } from './HomeBrand';
 
@@ -15,18 +16,29 @@ function DesktopNavLink({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <AppButton
+      tone="ghost"
+      size="small"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex h-9 items-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold transition ${
-        active
-          ? 'bg-[#f4f7fc] text-[#1c3d70]'
-          : 'text-[#3e4b62] hover:bg-[#f4f6fa] hover:text-[#0f1d34]'
-      }`}
+      startIcon={<Icon className="size-4" aria-hidden="true" />}
+      sx={{
+        minHeight: 36,
+        height: 36,
+        px: 1.75,
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: 600,
+        bgcolor: active ? '#f4f7fc' : 'transparent',
+        color: active ? '#1c3d70' : '#3e4b62',
+        '&:hover': {
+          bgcolor: active ? '#f4f7fc' : '#f4f6fa',
+          color: active ? '#1c3d70' : '#0f1d34',
+        },
+      }}
     >
-      <Icon className="size-4" aria-hidden="true" /> {label}
-    </button>
+      {label}
+    </AppButton>
   );
 }
 
@@ -51,22 +63,41 @@ export function HomeHeader({
       >
         <HomeLogo />
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
+          <AppButton
+            tone="ghost"
+            size="small"
             onClick={onToggleLang}
             aria-label={c.langSwitchLabel}
-            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold text-[#0f1d34]"
+            startIcon={<Globe className="size-[15px] text-[#5d697e]" aria-hidden="true" />}
+            sx={{
+              minHeight: 36,
+              height: 36,
+              px: 1.25,
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              color: '#0f1d34',
+              minWidth: 'auto',
+            }}
           >
-            <Globe className="size-[15px] text-[#5d697e]" aria-hidden="true" /> {c.langSwitch}
-          </button>
-          <button
-            type="button"
+            {c.langSwitch}
+          </AppButton>
+          <AppButton
+            tone="homeOutlined"
+            size="small"
             onClick={() => onAction('login')}
-            className="home2-press flex h-9 items-center gap-1 rounded-lg bg-white pr-2.5 pl-3 text-[12.5px] font-semibold text-[#1c3d70] ring-1 ring-[#cad8ef]"
+            endIcon={<ArrowRight className="size-[15px]" aria-hidden="true" />}
+            className="home2-press"
+            sx={{
+              minHeight: 36,
+              height: 36,
+              pl: 1.5,
+              pr: 1.25,
+              fontSize: '12.5px',
+            }}
           >
             {signedIn ? c.dashboard : c.login}
-            <ArrowRight className="size-[15px]" aria-hidden="true" />
-          </button>
+          </AppButton>
         </div>
       </header>
     );
@@ -98,22 +129,41 @@ export function HomeHeader({
           />
         </nav>
         <div className="flex items-center gap-2 justify-self-end">
-          <button
-            type="button"
+          <AppButton
+            tone="ghost"
+            size="medium"
             onClick={onToggleLang}
             aria-label={c.langSwitchLabel}
-            className="flex h-10 items-center gap-2 rounded-lg px-3 text-[13.5px] font-semibold text-[#0f1d34] transition hover:bg-[#f4f6fa]"
+            startIcon={<Globe className="size-4 text-[#5d697e]" aria-hidden="true" />}
+            sx={{
+              minHeight: 40,
+              height: 40,
+              px: 1.5,
+              borderRadius: '8px',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              color: '#0f1d34',
+              '&:hover': { bgcolor: '#f4f6fa' },
+            }}
           >
-            <Globe className="size-4 text-[#5d697e]" aria-hidden="true" /> {c.langSwitch}
-          </button>
-          <button
-            type="button"
+            {c.langSwitch}
+          </AppButton>
+          <AppButton
+            tone="homeOutlined"
+            size="medium"
             onClick={() => onAction('login')}
-            className="home2-press flex h-10 items-center gap-1.5 rounded-lg bg-white pr-3.5 pl-4 text-[13.5px] font-semibold text-[#1c3d70] ring-1 ring-[#cad8ef] hover:bg-[#f4f7fc]"
+            endIcon={<ArrowRight className="size-4" aria-hidden="true" />}
+            className="home2-press"
+            sx={{
+              minHeight: 40,
+              height: 40,
+              pl: 2,
+              pr: 1.75,
+              fontSize: '13.5px',
+            }}
           >
             {signedIn ? c.dashboard : c.login}
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </button>
+          </AppButton>
         </div>
       </div>
     </header>
