@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { FileText, Plus, ShieldCheck } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
+import { AppTextField, AppSelectField, AppTextArea } from '../../design-system/forms';
 
 export const CorrectionsView: React.FC = () => {
   const { t } = useTranslation();
   const { corrections, addCorrection, transactions } = useApp();
 
-  const [transactionId, setTransactionId] = useState('');
   const [challanNumber, setChallanNumber] = useState('');
   const [reason, setReason] = useState('Incorrect Assessment Year');
   const [description, setDescription] = useState('');
@@ -54,38 +54,40 @@ export const CorrectionsView: React.FC = () => {
             <h3 className="text-base font-bold">New Challan Correction Application</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Challan Number</label>
-                <input
-                  type="text"
+                <AppTextField
+                  label="Challan Number"
                   value={challanNumber}
                   onChange={e => setChallanNumber(e.target.value)}
                   placeholder="e.g., NBR-CHL-2026-881920"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-xs"
                   required
+                  slotProps={{
+                    htmlInput: {
+                      className: 'font-mono'
+                    }
+                  }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Reason for Correction</label>
-                <select
+                <AppSelectField
+                  label="Reason for Correction"
                   value={reason}
                   onChange={e => setReason(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  <option value="Incorrect Assessment Year">Incorrect Assessment Year</option>
-                  <option value="Typo in Taxpayer TIN">Typo in Taxpayer TIN</option>
-                  <option value="Incorrect Tax Head Allocation">Incorrect Tax Head Allocation</option>
-                  <option value="Amount Adjustment">Amount Adjustment</option>
-                </select>
+                  options={[
+                    { value: 'Incorrect Assessment Year', label: 'Incorrect Assessment Year' },
+                    { value: 'Typo in Taxpayer TIN', label: 'Typo in Taxpayer TIN' },
+                    { value: 'Incorrect Tax Head Allocation', label: 'Incorrect Tax Head Allocation' },
+                    { value: 'Amount Adjustment', label: 'Amount Adjustment' }
+                  ]}
+                />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Detailed Explanation</label>
-              <textarea
+              <AppTextArea
+                label="Detailed Explanation"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Explain the required correction..."
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                 required
               />
             </div>

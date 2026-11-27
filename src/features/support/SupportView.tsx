@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { HelpCircle, PhoneCall, Plus, CheckCircle } from 'lucide-react';
+import { HelpCircle, PhoneCall, Plus } from 'lucide-react';
+import { AppTextField, AppSelectField, AppTextArea } from '../../design-system/forms';
 
 export const SupportView: React.FC = () => {
   const { t } = useTranslation();
-  const { supportTickets, addSupportTicket } = useApp();
+  const { addSupportTicket } = useApp();
 
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState<'Technical' | 'Tax Assessment' | 'Payment Issue' | 'Other'>('Payment Issue');
@@ -58,38 +59,35 @@ export const SupportView: React.FC = () => {
             <h3 className="text-base font-bold">Create Support Ticket</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Subject</label>
-                <input
-                  type="text"
+                <AppTextField
+                  label="Subject"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
                   placeholder="e.g., Payment gateway timeout"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-                <select
+                <AppSelectField
+                  label="Category"
                   value={category}
                   onChange={e => setCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  <option value="Payment Issue">Payment Issue</option>
-                  <option value="Tax Assessment">Tax Assessment</option>
-                  <option value="Technical">Technical</option>
-                  <option value="Other">Other</option>
-                </select>
+                  options={[
+                    { value: 'Payment Issue', label: 'Payment Issue' },
+                    { value: 'Tax Assessment', label: 'Tax Assessment' },
+                    { value: 'Technical', label: 'Technical' },
+                    { value: 'Other', label: 'Other' }
+                  ]}
+                />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Message</label>
-              <textarea
+              <AppTextArea
+                label="Message"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 rows={3}
                 placeholder="Describe your issue in detail..."
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                 required
               />
             </div>

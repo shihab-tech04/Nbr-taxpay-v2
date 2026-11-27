@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
-import { ShieldCheck, ArrowRight, Lock, UserCheck } from 'lucide-react';
+import { ArrowRight, UserCheck } from 'lucide-react';
+import { AppNumberField, AppTextField } from '../../design-system/forms';
 
 export const LoginView: React.FC = () => {
   const { t } = useTranslation();
@@ -55,19 +56,15 @@ export const LoginView: React.FC = () => {
         {step === 'tin' ? (
           <form onSubmit={handleTinSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                {t('taxpayerTin')}
-              </label>
-              <input
-                type="text"
+              <AppNumberField
+                label={t('taxpayerTin')}
                 maxLength={12}
                 value={tin}
                 onChange={e => setTin(e.target.value)}
                 placeholder="e.g., 882349102384"
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-teal-600"
                 required
+                helperText="Enter exactly 12 numeric digits assigned by NBR."
               />
-              <span className="text-[11px] text-slate-500 mt-1 block">Enter exactly 12 numeric digits assigned by NBR.</span>
             </div>
 
             <button
@@ -79,20 +76,21 @@ export const LoginView: React.FC = () => {
           </form>
         ) : (
           <form onSubmit={handleOtpSubmit} className="space-y-4">
-            <div className="p-3 bg-teal-50 dark:bg-teal-950/4ns rounded-lg text-xs text-teal-800 dark:text-teal-200">
+            <div className="p-3 bg-teal-50 dark:bg-teal-950/40 rounded-lg text-xs text-teal-800 dark:text-teal-200">
               OTP sent to registered mobile linked with TIN <strong className="font-mono">{tin}</strong>. (Simulation code: <span className="font-mono font-bold">123456</span>)
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Enter 6-Digit OTP Verification Code
-              </label>
-              <input
-                type="text"
-                maxLength={6}
+              <AppTextField
+                label="Enter 6-Digit OTP Verification Code"
+                inputProps={{ maxLength: 6 }}
                 value={otp}
                 onChange={e => setOtp(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white font-mono text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-teal-600"
                 required
+                slotProps={{
+                  htmlInput: {
+                    className: 'text-center font-mono tracking-widest text-lg'
+                  }
+                }}
               />
             </div>
 

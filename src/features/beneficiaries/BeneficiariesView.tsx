@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { Users, Plus, Trash2, ShieldCheck } from 'lucide-react';
+import { Users, Plus, Trash2 } from 'lucide-react';
+import { AppTextField, AppNumberField, AppSelectField } from '../../design-system/forms';
 
 export const BeneficiariesView: React.FC = () => {
   const { t } = useTranslation();
@@ -49,51 +50,45 @@ export const BeneficiariesView: React.FC = () => {
             <h3 className="text-base font-bold">Add New Beneficiary / Recipient</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('name')}</label>
-                <input
-                  type="text"
+                <AppTextField
+                  label={t('name')}
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">12-Digit TIN</label>
-                <input
-                  type="text"
+                <AppNumberField
+                  label="12-Digit TIN"
                   maxLength={12}
                   value={tin}
                   onChange={e => setTin(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-xs"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('relationship')}</label>
-                <select
+                <AppSelectField
+                  label={t('relationship')}
                   value={relationship}
                   onChange={e => setRelationship(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  <option value="Father">{t('father')}</option>
-                  <option value="Mother">{t('mother')}</option>
-                  <option value="Siblings">{t('siblings')}</option>
-                  <option value="Son">{t('son')}</option>
-                  <option value="Daughter">{t('daughter')}</option>
-                  <option value="Spouse">{t('spouse')}</option>
-                  <option value="Friends">{t('friends')}</option>
-                  <option value="Clients">{t('clients')}</option>
-                  <option value="Others">{t('others')}</option>
-                </select>
+                  options={[
+                    { value: 'Father', label: t('father') },
+                    { value: 'Mother', label: t('mother') },
+                    { value: 'Siblings', label: t('siblings') },
+                    { value: 'Son', label: t('son') },
+                    { value: 'Daughter', label: t('daughter') },
+                    { value: 'Spouse', label: t('spouse') },
+                    { value: 'Friends', label: t('friends') },
+                    { value: 'Clients', label: t('clients') },
+                    { value: 'Others', label: t('others') }
+                  ]}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('phone')}</label>
-                <input
-                  type="text"
+                <AppTextField
+                  label={t('phone')}
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs font-mono"
                   required
                 />
               </div>

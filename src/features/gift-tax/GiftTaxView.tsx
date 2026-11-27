@@ -5,11 +5,12 @@ import { useApp } from '../../shared/AppContext';
 import { Gift, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
+import { AppNumberField, AppTextField, AppSelectField, AppCurrencyField, AppTextArea } from '../../design-system/forms';
 
 export const GiftTaxView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, addTransaction, beneficiaries } = useApp();
+  const { user, addTransaction } = useApp();
 
   const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
   const [donorTin, setDonorTin] = useState(user.tin);
@@ -91,22 +92,19 @@ export const GiftTaxView: React.FC = () => {
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-teal-700">Donor (Payer & Credit Receiver)</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('giftDonorTin')}</label>
-                    <input
-                      type="text"
+                    <AppNumberField
+                      label={t('giftDonorTin')}
+                      maxLength={12}
                       value={donorTin}
                       onChange={e => setDonorTin(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-xs"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Donor Name</label>
-                    <input
-                      type="text"
+                    <AppTextField
+                      label="Donor Name"
                       value={donorName}
                       onChange={e => setDonorName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                       required
                     />
                   </div>
@@ -117,40 +115,37 @@ export const GiftTaxView: React.FC = () => {
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-teal-700">Donee (Recipient)</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('giftDoneeTin')}</label>
-                    <input
-                      type="text"
+                    <AppNumberField
+                      label={t('giftDoneeTin')}
+                      maxLength={12}
                       value={doneeTin}
                       onChange={e => setDoneeTin(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-xs"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Donee Name</label>
-                    <input
-                      type="text"
+                    <AppTextField
+                      label="Donee Name"
                       value={doneeName}
                       onChange={e => setDoneeName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('relationship')}</label>
-                    <select
+                    <AppSelectField
+                      label={t('relationship')}
                       value={relationship}
                       onChange={e => setRelationship(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                    >
-                      <option value="Father">Father</option>
-                      <option value="Mother">Mother</option>
-                      <option value="Spouse">Spouse</option>
-                      <option value="Son">Son</option>
-                      <option value="Daughter">Daughter</option>
-                      <option value="Siblings">Siblings</option>
-                      <option value="Others">Others</option>
-                    </select>
+                      options={[
+                        { value: 'Father', label: 'Father' },
+                        { value: 'Mother', label: 'Mother' },
+                        { value: 'Spouse', label: 'Spouse' },
+                        { value: 'Son', label: 'Son' },
+                        { value: 'Daughter', label: 'Daughter' },
+                        { value: 'Siblings', label: 'Siblings' },
+                        { value: 'Others', label: 'Others' }
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -171,23 +166,20 @@ export const GiftTaxView: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('giftAmount')} (BDT)</label>
-                <input
-                  type="number"
+                <AppCurrencyField
+                  label={`${t('giftAmount')} (BDT)`}
                   value={giftAmount}
                   onChange={e => setGiftAmount(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-sm"
-                  min={1000}
+                  inputProps={{ min: 1000 }}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('giftDescription')}</label>
-                <textarea
+                <AppTextArea
+                  label={t('giftDescription')}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                 />
               </div>
 

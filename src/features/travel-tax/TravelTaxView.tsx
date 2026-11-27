@@ -5,6 +5,7 @@ import { useApp } from '../../shared/AppContext';
 import { Plane, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
+import { AppTextField, AppSelectField } from '../../design-system/forms';
 
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -79,59 +80,52 @@ export const TravelTaxView: React.FC = () => {
           <form onSubmit={handleProceed} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {t('passportNumber')}
-                </label>
-                <input
-                  type="text"
+                <AppTextField
+                  label={t('passportNumber')}
                   value={passportNumber}
                   onChange={e => setPassportNumber(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent font-mono text-xs uppercase"
                   required
+                  slotProps={{
+                    htmlInput: {
+                      className: 'font-mono uppercase'
+                    }
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {t('name')} (Passenger)
-                </label>
-                <input
-                  type="text"
+                <AppTextField
+                  label={`${t('name')} (Passenger)`}
                   value={passengerName}
                   onChange={e => setPassengerName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {t('travelDestination')}
-                </label>
-                <select
+                <AppSelectField
+                  label={t('travelDestination')}
                   value={destination}
                   onChange={e => handleDestinationChange(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  <option value="India (By Air)">India (By Air) - ৳ 2,000</option>
-                  <option value="India (By Land/Water)">India (By Land/Water) - ৳ 1,000</option>
-                  <option value="SAARC Countries">SAARC Countries (Other than India) - ৳ 3,000</option>
-                  <option value="Other International">Other International Destinations - ৳ 5,000</option>
-                </select>
+                  options={[
+                    { value: 'India (By Air)', label: 'India (By Air) - ৳ 2,000' },
+                    { value: 'India (By Land/Water)', label: 'India (By Land/Water) - ৳ 1,000' },
+                    { value: 'SAARC Countries', label: 'SAARC Countries (Other than India) - ৳ 3,000' },
+                    { value: 'Other International', label: 'Other International Destinations - ৳ 5,000' }
+                  ]}
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  {t('travelClass')}
-                </label>
-                <select
+                <AppSelectField
+                  label={t('travelClass')}
                   value={travelClass}
                   onChange={e => setTravelClass(e.target.value as any)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  <option value="Economy">Economy Class</option>
-                  <option value="Business">Business / First Class (+ ৳ 1,000 surcharge)</option>
-                </select>
+                  options={[
+                    { value: 'Economy', label: 'Economy Class' },
+                    { value: 'Business', label: 'Business / First Class (+ ৳ 1,000 surcharge)' }
+                  ]}
+                />
               </div>
             </div>
 

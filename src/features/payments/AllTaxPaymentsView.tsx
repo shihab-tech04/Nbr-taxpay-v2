@@ -5,10 +5,10 @@ import { useApp } from '../../shared/AppContext';
 import { TAX_HEADS } from '../../shared/mockData';
 import { PaymentLineItem, PaymentTransaction, TaxHeadCategory } from '../../types/tax';
 import { 
-  FileText, Plus, Trash2, ArrowRight, ShieldCheck, 
-  CreditCard, CheckCircle 
+  Plus, Trash2, ArrowRight, ShieldCheck, CheckCircle 
 } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { AppSelectField, AppCurrencyField, AppTextField } from '../../design-system/forms';
 
 export const AllTaxPaymentsView: React.FC = () => {
   const { t } = useTranslation();
@@ -120,7 +120,7 @@ export const AllTaxPaymentsView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div 
                 onClick={() => { setSelectedCategory('tax_with_return'); setStep('form'); }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'tax_with_return' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/2opath' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'tax_with_return' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
               >
                 <div className="w-10 h-10 rounded-lg bg-teal-700 text-white flex items-center justify-center font-bold mb-4">01</div>
                 <h4 className="font-bold text-lg mb-2">{t('taxWithReturn')}</h4>
@@ -131,7 +131,7 @@ export const AllTaxPaymentsView: React.FC = () => {
 
               <div 
                 onClick={() => { setSelectedCategory('other_tax'); setStep('form'); }}
-                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'other_tax' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/2opath' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
+                className={`p-6 rounded-2xl border-2 cursor-pointer transition-all ${selectedCategory === 'other_tax' ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/20' : 'border-slate-200 dark:border-slate-800 hover:border-teal-400'}`}
               >
                 <div className="w-10 h-10 rounded-lg bg-teal-700 text-white flex items-center justify-center font-bold mb-4">02</div>
                 <h4 className="font-bold text-lg mb-2">{t('otherTax')}</h4>
@@ -169,17 +169,18 @@ export const AllTaxPaymentsView: React.FC = () => {
 
               {isForBeneficiary && (
                 <div className="pt-2">
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Select Beneficiary</label>
-                  <select
+                  <AppSelectField
+                    label="Select Beneficiary"
                     value={beneficiaryTin}
                     onChange={e => setBeneficiaryTin(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                  >
-                    <option value="">-- Select Beneficiary --</option>
-                    {beneficiaries.map(b => (
-                      <option key={b.id} value={b.tin}>{b.name} (TIN: {b.tin} - {b.relationship})</option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: '-- Select Beneficiary --' },
+                      ...beneficiaries.map(b => ({
+                        value: b.tin,
+                        label: `${b.name} (TIN: ${b.tin} - ${b.relationship})`
+                      }))
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -187,50 +188,47 @@ export const AllTaxPaymentsView: React.FC = () => {
             {/* Assessment Year & Head selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('assessmentYear')}</label>
-                <select
+                <AppSelectField
+                  label={t('assessmentYear')}
                   value={assessmentYear}
                   onChange={e => setAssessmentYear(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs font-mono"
-                >
-                  <option value="2025-2026">2025-2026</option>
-                  <option value="2026-2027">2026-2027</option>
-                  <option value="2024-2025">2024-2025</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Tax Head</label>
-                <select
-                  value={selectedHeadId}
-                  onChange={e => setSelectedHeadId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
-                >
-                  {TAX_HEADS.filter(h => h.category === selectedCategory || selectedCategory === 'other_tax').map(h => (
-                    <option key={h.id} value={h.id}>[{h.code}] {h.nameEn}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{t('amountBdt')}</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={e => setAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs font-mono"
-                  min={100}
+                  options={[
+                    { value: '2025-2026', label: '2025-2026' },
+                    { value: '2026-2027', label: '2026-2027' },
+                    { value: '2024-2025', label: '2024-2025' }
+                  ]}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Remarks / Note (Optional)</label>
-                <input
-                  type="text"
+                <AppSelectField
+                  label="Tax Head"
+                  value={selectedHeadId}
+                  onChange={e => setSelectedHeadId(e.target.value)}
+                  options={TAX_HEADS
+                    .filter(h => h.category === selectedCategory || selectedCategory === 'other_tax')
+                    .map(h => ({
+                      value: h.id,
+                      label: `[${h.code}] ${h.nameEn}`
+                    }))}
+                />
+              </div>
+
+              <div>
+                <AppCurrencyField
+                  label={t('amountBdt')}
+                  value={amount}
+                  onChange={e => setAmount(Number(e.target.value))}
+                  inputProps={{ min: 100 }}
+                />
+              </div>
+
+              <div>
+                <AppTextField
+                  label="Remarks / Note (Optional)"
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
                   placeholder="e.g., Q2 installment"
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
                 />
               </div>
             </div>

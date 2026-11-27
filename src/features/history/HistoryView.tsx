@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
-import { FileText, Eye, RotateCcw, Search } from 'lucide-react';
+import { FileText, Eye, RotateCcw } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
+import { AppSearchField } from '../../design-system/forms';
 
 export const HistoryView: React.FC = () => {
   const { t } = useTranslation();
@@ -34,14 +35,12 @@ export const HistoryView: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500">Sample payment records for UI review only.</p>
           </div>
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-3 text-slate-400" size={16} />
-            <input
-              type="text"
+          <div className="w-full md:w-72">
+            <AppSearchField
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onClear={() => setSearch('')}
               placeholder="Search ref, challan..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-transparent text-xs"
             />
           </div>
         </div>
