@@ -5,7 +5,7 @@ import { PUBLIC_PREVIEW } from '../../../shared/previewMode';
 import type { PaymentTransaction } from '../../../types/tax';
 import type { HomeAction } from '../model/home.types';
 import { resolveHomeActionTarget } from '../model/routeContract';
-import { isBannerCmsConfigured } from '../services/bannerService';
+import { getRecordVerificationServiceStatus } from '../services/recordVerificationService';
 
 export type LookupOutcome =
   | { kind: 'too_short'; reference: string }
@@ -99,9 +99,10 @@ export function useHomeNavigation() {
 
   const handleSearch = useCallback(
     (reference: string) => {
+      const verificationStatus = getRecordVerificationServiceStatus();
       const outcome = evaluateRecordLookup(reference, transactions, {
         isPreviewMode: PUBLIC_PREVIEW,
-        serviceAvailable: isBannerCmsConfigured(),
+        serviceAvailable: verificationStatus.available,
         signedIn: isAuthenticated,
       });
       if (outcome) {

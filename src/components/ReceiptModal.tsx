@@ -116,14 +116,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
       </DialogContent>
 
       <DialogActions className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 justify-between">
-        <AppButton tone="secondary" size="small" onClick={onClose}>
+        <AppButton actionType="secondary" size="small" onClick={onClose}>
           {t('back')}
         </AppButton>
         <div className="flex gap-2">
-          <AppButton tone="secondary" size="small" onClick={handlePrint} startIcon={<Printer size={16} />}>
+          <AppButton actionType="secondary" size="small" onClick={handlePrint} startIcon={<Printer size={16} />}>
             {t('printChallan')}
           </AppButton>
-          <AppButton tone="primary" size="small" disabled startIcon={<Download size={16} />}>
+          <AppButton actionType="primary" size="small" disabled startIcon={<Download size={16} />}>
             {t('downloadChallan')}
           </AppButton>
         </div>

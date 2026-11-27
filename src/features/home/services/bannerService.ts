@@ -3,31 +3,12 @@ import { readPublicBackendConfig, type PublicBackendConfig } from '../../../conf
 import { SLIDER2_FALLBACK_THEMES, isValidHexColor } from '../model/home.colors';
 import { LAST_VERIFIED_PUBLISHED } from '../model/home.manifest';
 import { findCategoryFallbackImage } from '../model/home.slides';
-import type { BannerPaymentService, BannerSlide } from '../model/home.types';
+import type { BannerSlide } from '../model/home.types';
+import { parseCmsBannerRows, type CmsBannerRow } from './bannerValidation';
 import { noteBrandingResponse } from './brandingCmsHealth';
 
-export interface CmsBannerRow {
-  id: string;
-  service_code?: BannerPaymentService | null;
-  heading_en: string;
-  heading_bn: string;
-  mobile_heading_en: string;
-  mobile_heading_bn: string;
-  description_en: string;
-  description_bn: string;
-  mobile_description_en: string;
-  mobile_description_bn: string;
-  action_en: string;
-  action_bn: string;
-  desktop_image_path?: string | null;
-  mobile_image_path?: string | null;
-  background_color?: string | null;
-  heading_color?: string | null;
-  body_color?: string | null;
-  outline_color?: string | null;
-  published?: boolean;
-  sort_order?: number;
-}
+export type { CmsBannerRow };
+export { parseCmsBannerRows };
 
 export interface BannerEnvConfig {
   supabaseUrl?: string;
@@ -37,13 +18,6 @@ export interface BannerEnvConfig {
   isDev?: boolean;
   baseUrl?: string;
 }
-
-const VALID_SERVICE_CODES = new Set<BannerPaymentService>([
-  'TAX_WITH_RETURN',
-  'ADVANCE_TAX',
-  'SOURCE_TAX_DEPOSIT',
-  'TRAVEL_TAX',
-]);
 
 function toPublicBackendConfig(config?: BannerEnvConfig): PublicBackendConfig {
   if (!config) return readPublicBackendConfig();
@@ -104,72 +78,6 @@ export function publicBannerImage(
   const cleanRoot = resolved.url.replace(/\/+$/, '');
   const cleanPath = path.replace(/^\/+/, '');
   return `${cleanRoot}/storage/v1/object/public/taxpay-banners/${cleanPath}`;
-}
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isOptionalNullableString(value: unknown): value is string | null | undefined {
-  return value === undefined || value === null || typeof value === 'string';
-}
-
-export function parseCmsBannerRows(payload: unknown): CmsBannerRow[] {
-  if (!Array.isArray(payload)) {
-    throw new Error('Invalid CMS banner response: expected an array of banner rows.');
-  }
-
-  return payload.map((item, idx) => {
-    if (!item || typeof item !== 'object') {
-      throw new Error(`Invalid CMS banner row at index ${idx}.`);
-    }
-    const row = item as Record<string, unknown>;
-    const requiredTextKeys = [
-      'id',
-      'heading_en',
-      'heading_bn',
-      'mobile_heading_en',
-      'mobile_heading_bn',
-      'description_en',
-      'description_bn',
-      'mobile_description_en',
-      'mobile_description_bn',
-      'action_en',
-      'action_bn',
-    ] as const;
-
-    for (const key of requiredTextKeys) {
-      if (!isNonEmptyString(row[key])) {
-        throw new Error(`Invalid CMS banner row at index ${idx}: missing string field "${key}".`);
-      }
-    }
-
-    const rawService = row.service_code;
-    if (
-      rawService !== undefined &&
-      rawService !== null &&
-      (typeof rawService !== 'string' || !VALID_SERVICE_CODES.has(rawService as BannerPaymentService))
-    ) {
-      throw new Error(`Invalid CMS banner row at index ${idx}: unrecognized service_code.`);
-    }
-
-    const optionalNullableKeys = [
-      'desktop_image_path',
-      'mobile_image_path',
-      'background_color',
-      'heading_color',
-      'body_color',
-      'outline_color',
-    ] as const;
-
-    for (const key of optionalNullableKeys) {
-      if (!isOptionalNullableString(row[key])) {
-        throw new Error(`Invalid CMS banner row at index ${idx}: invalid field "${key}".`);
-      }
-    }
-
-    return item as CmsBannerRow;
-  });
 }
 
 export function mapCmsBannerRow(row: CmsBannerRow, config?: BannerEnvConfig): BannerSlide {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
 import { FileText, Plus } from 'lucide-react';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { AppTextField, AppSelectField, AppTextArea } from '../../design-system/forms';
 import { AppButton } from '../../design-system/buttons';
 
@@ -17,6 +18,7 @@ export const CorrectionsView: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isRestrictedOperationAllowed('correction_write')) return;
     const nextErrors: { challanNumber?: string; description?: string } = {};
     if (!challanNumber.trim()) {
       nextErrors.challanNumber = t('requiredChallanError');
@@ -54,7 +56,7 @@ export const CorrectionsView: React.FC = () => {
             <p className="text-xs text-slate-500">Apply for challan corrections and track NBR administrative review status.</p>
           </div>
           <AppButton
-            tone="primary"
+            actionType="primary"
             size="small"
             previewRestricted
             startIcon={<Plus size={16} />}
@@ -122,7 +124,7 @@ export const CorrectionsView: React.FC = () => {
             <div className="flex justify-end gap-3">
               <AppButton
                 type="button"
-                tone="secondary"
+                actionType="secondary"
                 size="small"
                 onClick={() => {
                   setErrors({});
@@ -133,7 +135,7 @@ export const CorrectionsView: React.FC = () => {
               </AppButton>
               <AppButton
                 type="submit"
-                tone="primary"
+                actionType="primary"
                 size="small"
                 previewRestricted
               >

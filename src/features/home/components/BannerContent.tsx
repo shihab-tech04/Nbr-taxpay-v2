@@ -57,7 +57,9 @@ export function BannerContent({
         </p>
         <div className="home2-slider2__actions">
           <AppButton
-            tone="hero"
+            actionType="primary"
+            palette="home"
+            geometry="hero"
             size="large"
             data-testid="home2-pay"
             className="home2-slider2__pay home2-press"
@@ -67,7 +69,10 @@ export function BannerContent({
             {hasSlides ? primaryAction : c.payTax}
           </AppButton>
           <AppButton
-            tone="heroSecondary"
+            actionType="secondary"
+            palette="home"
+            surface="outlined"
+            geometry="hero"
             size="large"
             data-testid="home2-other"
             className="home2-slider2__other home2-press"
@@ -79,7 +84,9 @@ export function BannerContent({
         </div>
         {!hasSlides && bannerStatus === 'unavailable' && (
           <AppButton
-            tone="ghost"
+            actionType="secondary"
+            palette="home"
+            surface="ghost"
             size="small"
             className="home2-slider2__retry"
             onClick={onRetry}

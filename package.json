@@ -10,7 +10,8 @@
     "clean": "rm -rf dist server.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/buttons/buttons.test.tsx src/features/home/home.test.tsx"
+    "arch:check": "node scripts/arch-check.mjs",
+    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/buttons/buttons.test.tsx src/design-system/selection/selection.test.tsx src/features/home/home.test.tsx src/features/payments/payments.test.tsx"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

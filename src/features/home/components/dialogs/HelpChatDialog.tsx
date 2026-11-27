@@ -1,4 +1,4 @@
-import React, { useState, type FormEvent } from 'react';
+import React, { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BookOpen, MessageCircle, PhoneCall, Send } from 'lucide-react';
 import { AppButton, AppIconButton } from '../../../../design-system/buttons';
 import { AppTextField } from '../../../../design-system/forms';
@@ -17,17 +17,28 @@ export function HelpChatDialog({
   onClose,
   c,
   onNavigate,
+  disablePortal = false,
 }: {
   open: boolean;
   onClose: () => void;
   c: HomeCopy;
   onNavigate: (path: string) => void;
+  disablePortal?: boolean;
 }) {
   const [question, setQuestion] = useState('');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const logRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedTopic = c.dialogs.helpTopics.find((topic) => topic.id === selectedTopicId);
+
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [messages.length, selectedTopicId]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -40,12 +51,19 @@ export function HelpChatDialog({
       { id: prev.length + 2, from: 'assistant', text: answer },
     ]);
     setQuestion('');
+    inputRef.current?.focus();
+  };
+
+  const handleSelectTopic = (topicId: string) => {
+    setSelectedTopicId(topicId);
+    setQuestion('');
   };
 
   return (
     <HomeDialogShell
       open={open}
       onClose={onClose}
+      disablePortal={disablePortal}
       titleId="home2-help-dialog-title"
       title={
         <>
@@ -58,6 +76,7 @@ export function HelpChatDialog({
       <p className="mb-3 text-[13px] font-medium text-[#5d697e]">{c.dialogs.helpSubtitle}</p>
 
       <div
+        ref={logRef}
         role="log"
         aria-live="polite"
         className="max-h-56 space-y-2.5 overflow-y-auto rounded-xl border border-[#dfe5ee] bg-[#f8fafd] p-3.5"
@@ -100,9 +119,11 @@ export function HelpChatDialog({
         {c.dialogs.helpTopics.map((topic) => (
           <AppButton
             key={topic.id}
-            tone={selectedTopicId === topic.id ? 'homeSoft' : 'homeOutlined'}
+            actionType="secondary"
+            palette="home"
+            surface={selectedTopicId === topic.id ? 'soft' : 'outlined'}
             size="small"
-            onClick={() => setSelectedTopicId(topic.id)}
+            onClick={() => handleSelectTopic(topic.id)}
           >
             {topic.title}
           </AppButton>
@@ -111,7 +132,8 @@ export function HelpChatDialog({
 
       <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2" noValidate>
         <AppTextField
-          allowPublicLookup
+          inputRef={inputRef}
+          publicCapability="public_help_question"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={c.dialogs.helpQuestionPlaceholder}
@@ -124,7 +146,9 @@ export function HelpChatDialog({
         />
         <AppIconButton
           type="submit"
-          tone="homeSubmit"
+          palette="home"
+          surface="submit"
+          publicCapability="public_help_question"
           aria-label={c.dialogs.helpSendLabel}
           disabled={!question.trim()}
         >
@@ -134,7 +158,9 @@ export function HelpChatDialog({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#dfe5ee] pt-3">
         <AppButton
-          tone="ghost"
+          actionType="secondary"
+          palette="home"
+          surface="ghost"
           size="small"
           startIcon={<BookOpen className="size-4" aria-hidden="true" />}
           onClick={() => {

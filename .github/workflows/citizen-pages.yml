@@ -18,7 +18,7 @@ jobs:
       - name: Backup and restore pre-release Main
         run: |
           set -euo pipefail
-          baseline=a86513d38506d13314a912d36c599b1ed52ddd95
+          baseline=04b42261055c8ec7850d9d0de5f9709a2e876bc8
           git branch recovery-baseline "$baseline"
           mkdir -p "$RUNNER_TEMP/recovery"
           cd "$RUNNER_TEMP/recovery"
@@ -31,7 +31,7 @@ jobs:
           sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: pre-release-a86513d-recovery
+          name: pre-release-04b4226-recovery
           path: |
             ${{ runner.temp }}/recovery/pre-release.bundle
             ${{ runner.temp }}/recovery/SHA256SUMS
@@ -45,6 +45,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
+      - name: Architecture check
+        run: bun run arch:check
       - name: Typecheck
         run: bun run typecheck
       - name: Lint

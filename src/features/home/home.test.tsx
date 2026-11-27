@@ -6,7 +6,9 @@ import { ThemeProvider } from '@mui/material/styles';
 import { readPublicBackendConfig } from '../../config/publicBackend';
 import { getTheme } from '../../design-system/theme';
 import { INITIAL_TRANSACTIONS } from '../../shared/mockData';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { BannerContent } from './components/BannerContent';
+import { HelpChatDialog } from './components/dialogs/HelpChatDialog';
 import { OtherTaxDialog } from './components/dialogs/OtherTaxDialog';
 import { RecordLookupDialog } from './components/dialogs/RecordLookupDialog';
 import { HomeDesktopLayout } from './components/HomeDesktopLayout';
@@ -39,6 +41,7 @@ import {
   noteBrandingResponse,
   resetBrandingHealthForTest,
 } from './services/brandingCmsHealth';
+import { getRecordVerificationServiceStatus } from './services/recordVerificationService';
 
 function renderHomeWithTheme(node: React.ReactElement): string {
   return renderToStaticMarkup(<ThemeProvider theme={getTheme('light')}>{node}</ThemeProvider>);
@@ -500,4 +503,59 @@ test('Home 2 desktop and mobile SSR markup matches EN/BN copy and excludes Home 
   );
   assert.match(unavailableLookupHtml, /Verification service unavailable/);
   assert.doesNotMatch(unavailableLookupHtml, /No record for/);
+});
+
+test('Cycle 05 verification decoupling, tightened help matching, HelpChatDialog, and boundary guards', () => {
+  // Record verification availability is independent of banner CMS configuration
+  const status = getRecordVerificationServiceStatus();
+  assert.deepEqual(status, {
+    available: false,
+    mode: 'unavailable',
+    reason: 'payment_verification_unconfigured',
+  });
+  assert.equal(
+    isBannerCmsConfigured({
+      supabaseUrl: 'https://example.supabase.co',
+      supabasePublishableKey: 'sb_publishable_demo',
+    }),
+    true
+  );
+  assert.equal(getRecordVerificationServiceStatus().available, false);
+
+  // 1-char query does not trigger false substring match
+  const singleCharAnswer = matchHelpAnswer(
+    'a',
+    homeCopy.en.dialogs.helpTopics,
+    homeCopy.en.dialogs.helpFallbackAnswer
+  );
+  assert.equal(singleCharAnswer, homeCopy.en.dialogs.helpFallbackAnswer);
+
+  // Real BN 2-char keyword matches cleanly
+  const bnMatchAnswer = matchHelpAnswer(
+    'কর',
+    homeCopy.bn.dialogs.helpTopics,
+    homeCopy.bn.dialogs.helpFallbackAnswer
+  );
+  assert.notEqual(bnMatchAnswer, homeCopy.bn.dialogs.helpFallbackAnswer);
+
+  // HelpChatDialog renders accessible log, topic buttons, and scoped help input
+  const helpDialogHtml = renderHomeWithTheme(
+    React.createElement(HelpChatDialog, {
+      open: true,
+      onClose: () => {},
+      c: homeCopy.en,
+      onNavigate: () => {},
+      disablePortal: true,
+    })
+  );
+  assert.match(helpDialogHtml, /role="log"/);
+  assert.match(helpDialogHtml, /aria-live="polite"/);
+  assert.match(helpDialogHtml, new RegExp(homeCopy.en.dialogs.helpTitle));
+
+  // Boundary guard blocks restricted operations in preview mode
+  assert.equal(isRestrictedOperationAllowed('sign_in', true), false);
+  assert.equal(isRestrictedOperationAllowed('beneficiary_write', true), false);
+  assert.equal(isRestrictedOperationAllowed('correction_write', true), false);
+  assert.equal(isRestrictedOperationAllowed('support_ticket_write', true), false);
+  assert.equal(isRestrictedOperationAllowed('sign_in', false), true);
 });

@@ -1,10 +1,15 @@
 import React from 'react';
 import ButtonBase, { type ButtonBaseProps } from '@mui/material/ButtonBase';
-import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import {
+  isActionBlockedByPreviewPolicy,
+  type PublicCapability,
+} from '../../shared/previewPolicy';
+import { getThemeColors } from '../theme';
 
 export interface AppCardButtonProps extends Omit<ButtonBaseProps, 'component'> {
   selected?: boolean;
   previewRestricted?: boolean;
+  publicCapability?: PublicCapability;
 }
 
 export const AppCardButton = React.forwardRef<HTMLButtonElement, AppCardButtonProps>(
@@ -14,6 +19,7 @@ export const AppCardButton = React.forwardRef<HTMLButtonElement, AppCardButtonPr
       selected = false,
       disabled = false,
       previewRestricted = false,
+      publicCapability,
       onClick,
       className = '',
       sx,
@@ -22,8 +28,11 @@ export const AppCardButton = React.forwardRef<HTMLButtonElement, AppCardButtonPr
     },
     ref
   ) {
-    const isPreviewDisabled = Boolean(previewRestricted && PUBLIC_PREVIEW);
-    const effectiveDisabled = Boolean(disabled || isPreviewDisabled);
+    const blockedByPreview = isActionBlockedByPreviewPolicy({
+      previewRestricted,
+      publicCapability,
+    });
+    const effectiveDisabled = Boolean(disabled || blockedByPreview);
 
     const handleClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
       if (effectiveDisabled) {
@@ -42,16 +51,19 @@ export const AppCardButton = React.forwardRef<HTMLButtonElement, AppCardButtonPr
         onClick={handleClick}
         className={className}
         sx={[
-          {
-            display: 'flex',
-            textAlign: 'left',
-            fontFamily: 'inherit',
-            justifyContent: 'flex-start',
-            alignItems: 'stretch',
-            '&:focus-visible': {
-              outline: '2px solid #2C5EAD',
-              outlineOffset: 3,
-            },
+          (theme) => {
+            const colors = getThemeColors(theme.palette.mode);
+            return {
+              display: 'flex',
+              textAlign: 'left',
+              fontFamily: 'inherit',
+              justifyContent: 'flex-start',
+              alignItems: 'stretch',
+              '&:focus-visible': {
+                outline: `2px solid ${colors.focus.homeOutline}`,
+                outlineOffset: 3,
+              },
+            };
           },
           ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
         ]}

@@ -1,79 +1,21 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import { SLIDER2_TIMING } from '../model/home.manifest';
 import type { BannerSlide } from '../model/home.types';
+import {
+  evaluateSwipeDirection,
+  reconcileActiveBannerIndex,
+  resolveNextSlideIndex,
+  resolvePreviousSlideIndex,
+} from './carouselLogic';
+import { useDocumentVisibility, usePrefersReducedMotion } from './useCarouselMediaState';
 
-export function resolveNextSlideIndex(currentIndex: number, total: number): number {
-  if (total <= 1) return 0;
-  return (currentIndex + 1) % total;
-}
-
-export function resolvePreviousSlideIndex(currentIndex: number, total: number): number {
-  if (total <= 1) return 0;
-  return (currentIndex - 1 + total) % total;
-}
-
-export function reconcileActiveBannerIndex(
-  slides: readonly BannerSlide[],
-  preferredBannerId: string | null,
-  fallbackIndex: number
-): number {
-  if (slides.length === 0) return 0;
-  if (preferredBannerId) {
-    const matchedIndex = slides.findIndex((slide) => slide.id === preferredBannerId);
-    if (matchedIndex !== -1) {
-      return matchedIndex;
-    }
-  }
-  return Math.min(Math.max(fallbackIndex, 0), slides.length - 1);
-}
-
-export function evaluateSwipeDirection(
-  dx: number,
-  dy: number,
-  thresholdPx = SLIDER2_TIMING.swipeThresholdPx,
-  dominanceRatio = SLIDER2_TIMING.swipeDominanceRatio
-): 'next' | 'prev' | null {
-  if (Math.abs(dx) > thresholdPx && Math.abs(dx) > Math.abs(dy) * dominanceRatio) {
-    return dx < 0 ? 'next' : 'prev';
-  }
-  return null;
-}
-
-function usePrefersReducedMotion(): boolean {
-  const subscribe = useCallback((onStoreChange: () => void) => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return () => {};
-    }
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
-    mql.addEventListener('change', onStoreChange);
-    return () => mql.removeEventListener('change', onStoreChange);
-  }, []);
-
-  const getSnapshot = () => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return false;
-    }
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  };
-
-  return useSyncExternalStore(subscribe, getSnapshot, () => false);
-}
-
-function useDocumentVisibility(): boolean {
-  const subscribe = useCallback((onStoreChange: () => void) => {
-    if (typeof document === 'undefined') return () => {};
-    document.addEventListener('visibilitychange', onStoreChange);
-    return () => document.removeEventListener('visibilitychange', onStoreChange);
-  }, []);
-
-  const getSnapshot = () => {
-    if (typeof document === 'undefined') return true;
-    return document.visibilityState === 'visible';
-  };
-
-  return useSyncExternalStore(subscribe, getSnapshot, () => true);
-}
+export {
+  evaluateSwipeDirection,
+  reconcileActiveBannerIndex,
+  resolveNextSlideIndex,
+  resolvePreviousSlideIndex,
+};
 
 interface ActiveBannerCursor {
   bannerId: string | null;
@@ -97,20 +39,13 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
   const carouselRef = useRef<HTMLElement>(null);
   const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
 
-  const activeIndex = reconcileActiveBannerIndex(
-    slides,
-    cursor.bannerId,
-    cursor.fallbackIndex
-  );
+  const activeIndex = reconcileActiveBannerIndex(slides, cursor.bannerId, cursor.fallbackIndex);
 
   const goNext = useCallback(() => {
     setCursor((prev) => {
       const currentIdx = reconcileActiveBannerIndex(slides, prev.bannerId, prev.fallbackIndex);
       const nextIdx = resolveNextSlideIndex(currentIdx, slides.length);
-      return {
-        bannerId: slides[nextIdx]?.id ?? null,
-        fallbackIndex: nextIdx,
-      };
+      return { bannerId: slides[nextIdx]?.id ?? null, fallbackIndex: nextIdx };
     });
   }, [slides]);
 
@@ -118,20 +53,14 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
     setCursor((prev) => {
       const currentIdx = reconcileActiveBannerIndex(slides, prev.bannerId, prev.fallbackIndex);
       const nextIdx = resolvePreviousSlideIndex(currentIdx, slides.length);
-      return {
-        bannerId: slides[nextIdx]?.id ?? null,
-        fallbackIndex: nextIdx,
-      };
+      return { bannerId: slides[nextIdx]?.id ?? null, fallbackIndex: nextIdx };
     });
   }, [slides]);
 
   const goTo = useCallback(
     (index: number) => {
       if (index >= 0 && index < slides.length) {
-        setCursor({
-          bannerId: slides[index]?.id ?? null,
-          fallbackIndex: index,
-        });
+        setCursor({ bannerId: slides[index]?.id ?? null, fallbackIndex: index });
       }
     },
     [slides]
@@ -151,17 +80,7 @@ export function useBannerCarousel(slides: BannerSlide[], paused: boolean) {
     }
     const timer = window.setTimeout(goNext, SLIDER2_TIMING.autoplayIntervalMs);
     return () => window.clearTimeout(timer);
-  }, [
-    activeIndex,
-    slides.length,
-    goNext,
-    hasFocus,
-    isDocumentVisible,
-    isHovered,
-    isSwiping,
-    paused,
-    prefersReducedMotion,
-  ]);
+  }, [activeIndex, slides.length, goNext, hasFocus, isDocumentVisible, isHovered, isSwiping, paused, prefersReducedMotion]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;

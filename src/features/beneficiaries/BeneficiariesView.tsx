@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus, Users } from 'lucide-react';
+import { AppButton } from '../../design-system/buttons';
+import { validateBangladeshPhone, validateTin } from '../../design-system/forms';
 import { useApp } from '../../shared/AppContext';
-import { Users, Plus, Trash2 } from 'lucide-react';
-import {
-  AppTextField,
-  AppNumberField,
-  AppSelectField,
-  validateTin,
-  validateBangladeshPhone,
-} from '../../design-system/forms';
-import { AppButton, AppIconButton } from '../../design-system/buttons';
-import { Beneficiary } from '../../types/tax';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
+import type { Beneficiary } from '../../types/tax';
+import { BeneficiariesTable } from './components/BeneficiariesTable';
+import { BeneficiaryForm } from './components/BeneficiaryForm';
 
 type RelationshipType = Beneficiary['relationship'];
 
@@ -27,17 +24,12 @@ export const BeneficiariesView: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isRestrictedOperationAllowed('beneficiary_write')) return;
     const nextErrors: { name?: string; tin?: string; phone?: string } = {};
 
-    if (!name.trim()) {
-      nextErrors.name = t('requiredNameError');
-    }
-    if (!validateTin(tin).valid) {
-      nextErrors.tin = t('invalidTinError');
-    }
-    if (!validateBangladeshPhone(phone)) {
-      nextErrors.phone = t('invalidPhoneError');
-    }
+    if (!name.trim()) nextErrors.name = t('requiredNameError');
+    if (!validateTin(tin).valid) nextErrors.tin = t('invalidTinError');
+    if (!validateBangladeshPhone(phone)) nextErrors.phone = t('invalidPhoneError');
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -60,10 +52,12 @@ export const BeneficiariesView: React.FC = () => {
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Users className="text-teal-700" size={28} /> {t('beneficiaries')}
             </h1>
-            <p className="text-xs text-slate-500">Manage family members and client TIN mappings for facilitated tax payments.</p>
+            <p className="text-xs text-slate-500">
+              Manage family members and client TIN mappings for facilitated tax payments.
+            </p>
           </div>
           <AppButton
-            tone="primary"
+            actionType="primary"
             size="small"
             previewRestricted
             startIcon={<Plus size={16} />}
@@ -75,145 +69,40 @@ export const BeneficiariesView: React.FC = () => {
         </div>
 
         {showAddModal && (
-          <form onSubmit={handleSubmit} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="text-base font-bold">{t('addBeneficiary')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <AppTextField
-                  label={t('name')}
-                  value={name}
-                  onChange={e => {
-                    setName(e.target.value);
-                    if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
-                  }}
-                  placeholder={t('beneficiaryNamePlaceholder')}
-                  error={Boolean(errors.name)}
-                  helperText={errors.name || t('beneficiaryNameHelper')}
-                  required
-                />
-              </div>
-              <div>
-                <AppNumberField
-                  label={t('twelveDigitTin')}
-                  maxLength={12}
-                  value={tin}
-                  onChange={e => {
-                    setTin(e.target.value);
-                    if (errors.tin) setErrors(prev => ({ ...prev, tin: undefined }));
-                  }}
-                  placeholder={t('tinPlaceholder')}
-                  error={Boolean(errors.tin)}
-                  helperText={errors.tin || t('tinHelperText')}
-                  required
-                />
-              </div>
-              <div>
-                <AppSelectField
-                  label={t('relationship')}
-                  value={relationship}
-                  onChange={e => setRelationship(e.target.value as RelationshipType)}
-                  helperText={t('relationshipHelper')}
-                  options={[
-                    { value: 'Father', label: t('father') },
-                    { value: 'Mother', label: t('mother') },
-                    { value: 'Siblings', label: t('siblings') },
-                    { value: 'Son', label: t('son') },
-                    { value: 'Daughter', label: t('daughter') },
-                    { value: 'Spouse', label: t('spouse') },
-                    { value: 'Friends', label: t('friends') },
-                    { value: 'Clients', label: t('clients') },
-                    { value: 'Others', label: t('others') }
-                  ]}
-                />
-              </div>
-              <div>
-                <AppTextField
-                  label={t('phone')}
-                  value={phone}
-                  onChange={e => {
-                    setPhone(e.target.value);
-                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
-                  }}
-                  placeholder={t('phonePlaceholder')}
-                  error={Boolean(errors.phone)}
-                  helperText={errors.phone || t('phoneHelper')}
-                  slotProps={{
-                    htmlInput: {
-                      inputMode: 'tel',
-                      maxLength: 15,
-                      autoComplete: 'tel'
-                    }
-                  }}
-                  required
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <AppButton
-                type="button"
-                tone="secondary"
-                size="small"
-                onClick={() => {
-                  setErrors({});
-                  setShowAddModal(false);
-                }}
-              >
-                {t('cancel')}
-              </AppButton>
-              <AppButton
-                type="submit"
-                tone="primary"
-                size="small"
-                previewRestricted
-              >
-                {t('save')}
-              </AppButton>
-            </div>
-          </form>
+          <BeneficiaryForm
+            name={name}
+            tin={tin}
+            relationship={relationship}
+            phone={phone}
+            errors={errors}
+            onChangeName={(val) => {
+              setName(val);
+              if (errors.name) setErrors((p) => ({ ...p, name: undefined }));
+            }}
+            onChangeTin={(val) => {
+              setTin(val);
+              if (errors.tin) setErrors((p) => ({ ...p, tin: undefined }));
+            }}
+            onChangeRelationship={setRelationship}
+            onChangePhone={(val) => {
+              setPhone(val);
+              if (errors.phone) setErrors((p) => ({ ...p, phone: undefined }));
+            }}
+            onCancel={() => {
+              setErrors({});
+              setShowAddModal(false);
+            }}
+            onSubmit={handleSubmit}
+          />
         )}
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-              <tr>
-                <th className="p-4">Name & TIN</th>
-                <th className="p-4">Relationship</th>
-                <th className="p-4">Phone Number</th>
-                <th className="p-4">Added Date</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {beneficiaries.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="p-4">
-                    <div className="font-bold text-slate-900 dark:text-white">{b.name}</div>
-                    <div className="text-[11px] text-teal-700 font-mono">TIN: {b.tin}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className="px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800 font-medium">
-                      {b.relationship}
-                    </span>
-                  </td>
-                  <td className="p-4 font-mono">{b.phone}</td>
-                  <td className="p-4 font-mono">{b.createdAt}</td>
-                  <td className="p-4 text-right">
-                    <AppIconButton
-                      tone="danger"
-                      size="small"
-                      previewRestricted
-                      aria-label={`Delete ${b.name}`}
-                      title="Delete"
-                      onClick={() => deleteBeneficiary(b.id)}
-                    >
-                      <Trash2 size={16} />
-                    </AppIconButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <BeneficiariesTable
+          beneficiaries={beneficiaries}
+          onDelete={(id) => {
+            if (!isRestrictedOperationAllowed('beneficiary_write')) return;
+            deleteBeneficiary(id);
+          }}
+        />
       </div>
     </div>
   );

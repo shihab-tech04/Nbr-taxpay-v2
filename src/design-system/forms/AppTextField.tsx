@@ -1,12 +1,16 @@
 import React from 'react';
 import TextField, { OutlinedTextFieldProps } from '@mui/material/TextField';
-import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import {
+  isFieldLockedByPreviewPolicy,
+  type PublicCapability,
+} from '../../shared/previewPolicy';
 import { AppSlotProps, mergeSlotEntry } from './fieldUtils';
 
 export type AppTextFieldProps = Omit<OutlinedTextFieldProps, 'variant'> & {
   variant?: 'outlined';
   readOnly?: boolean;
-  allowPublicLookup?: boolean;
+  publicCapability?: PublicCapability;
+  previewRestricted?: boolean;
 };
 
 export const AppTextField: React.FC<AppTextFieldProps> = ({
@@ -15,12 +19,13 @@ export const AppTextField: React.FC<AppTextFieldProps> = ({
   size = 'small',
   disabled = false,
   readOnly = false,
-  allowPublicLookup = false,
+  publicCapability = 'none',
+  previewRestricted = false,
   slotProps,
   select,
   ...props
 }) => {
-  const previewLocked = Boolean(PUBLIC_PREVIEW && !allowPublicLookup);
+  const previewLocked = isFieldLockedByPreviewPolicy({ publicCapability, previewRestricted });
   const effectiveDisabled = Boolean(disabled || previewLocked);
   const effectiveReadOnly = Boolean(readOnly || previewLocked);
 

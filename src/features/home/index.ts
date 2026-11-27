@@ -7,3 +7,4 @@ export * from './model/home.slides';
 export * from './model/routeContract';
 export * from './services/bannerService';
 export * from './services/brandingCmsHealth';
+export * from './services/recordVerificationService';

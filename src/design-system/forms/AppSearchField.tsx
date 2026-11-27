@@ -2,7 +2,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import InputAdornment from '@mui/material/InputAdornment';
 import { Search, X } from 'lucide-react';
-import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import {
+  isFieldLockedByPreviewPolicy,
+  type PublicCapability,
+} from '../../shared/previewPolicy';
 import { AppIconButton } from '../buttons';
 import { AppTextField, AppTextFieldProps } from './AppTextField';
 import { mergeSlotEntry } from './fieldUtils';
@@ -20,13 +23,13 @@ export const AppSearchField: React.FC<AppSearchFieldProps> = ({
   trailingAction,
   disabled = false,
   readOnly = false,
-  allowPublicLookup = false,
+  publicCapability = 'none' as PublicCapability,
   slotProps,
   ...props
 }) => {
   const { t } = useTranslation();
   const hasValue = value !== undefined && value !== null && String(value).length > 0;
-  const previewLocked = Boolean(PUBLIC_PREVIEW && !allowPublicLookup);
+  const previewLocked = isFieldLockedByPreviewPolicy({ publicCapability });
   const isActionDisabled = Boolean(disabled || readOnly || previewLocked);
 
   const handleClear = () => {
@@ -55,11 +58,13 @@ export const AppSearchField: React.FC<AppSearchFieldProps> = ({
         <InputAdornment position="end" sx={{ gap: 0.75 }}>
           {hasValue && onClear && (
             <AppIconButton
-              tone="homeClear"
+              surface="clear"
+              palette="home"
               aria-label={resolvedClearLabel}
               onClick={handleClear}
               onMouseDown={handleMouseDownClear}
               disabled={isActionDisabled}
+              publicCapability={publicCapability}
               edge={trailingAction ? false : 'end'}
               size="small"
             >
@@ -87,7 +92,7 @@ export const AppSearchField: React.FC<AppSearchFieldProps> = ({
       value={value}
       disabled={disabled}
       readOnly={readOnly}
-      allowPublicLookup={allowPublicLookup}
+      publicCapability={publicCapability}
       slotProps={{
         ...slotProps,
         input: mergedInputSlot,

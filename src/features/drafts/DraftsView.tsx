@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { FileText, Play, Trash2 } from 'lucide-react';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { AppButton, AppIconButton } from '../../design-system/buttons';
 
 export const DraftsView: React.FC = () => {
@@ -34,7 +35,7 @@ export const DraftsView: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <AppButton
-                    tone="primary"
+                    actionType="primary"
                     size="small"
                     previewRestricted
                     startIcon={<Play size={14} />}
@@ -44,11 +45,14 @@ export const DraftsView: React.FC = () => {
                     Resume
                   </AppButton>
                   <AppIconButton
-                    tone="danger"
+                    intent="destructive"
                     size="small"
                     previewRestricted
                     aria-label={`Delete draft ${d.title}`}
-                    onClick={() => deleteDraft(d.id)}
+                    onClick={() => {
+                      if (!isRestrictedOperationAllowed('draft_write')) return;
+                      deleteDraft(d.id);
+                    }}
                   >
                     <Trash2 size={16} />
                   </AppIconButton>

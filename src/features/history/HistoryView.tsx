@@ -75,7 +75,7 @@ export const HistoryView: React.FC = () => {
                   <td className="p-4 text-right">
                     <div className="inline-flex items-center justify-end gap-2">
                       <AppButton
-                        tone="secondary"
+                        actionType="secondary"
                         size="small"
                         startIcon={<Eye size={14} />}
                         onClick={() => setSelectedTx(tx)}
@@ -91,7 +91,8 @@ export const HistoryView: React.FC = () => {
                         Receipt
                       </AppButton>
                       <AppButton
-                        tone="neutral"
+                        actionType="secondary"
+                        surface="soft"
                         size="small"
                         startIcon={<RotateCcw size={14} />}
                         onClick={handlePayAgain}

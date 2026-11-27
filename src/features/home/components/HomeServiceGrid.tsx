@@ -102,7 +102,9 @@ export function HomeServiceGrid({
           {c.section.title}
         </h2>
         <AppButton
-          tone="homeOutlined"
+          actionType="secondary"
+          palette="home"
+          surface="outlined"
           size="medium"
           data-testid="home2-dashboard-action"
           onClick={open('login')}

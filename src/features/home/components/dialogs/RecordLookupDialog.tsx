@@ -100,7 +100,9 @@ export function RecordLookupDialog({
             </div>
           </div>
           <AppButton
-            tone="hero"
+            actionType="primary"
+            palette="home"
+            geometry="hero"
             size="medium"
             endIcon={<ArrowRight className="size-4" aria-hidden="true" />}
             onClick={() => {
@@ -116,7 +118,9 @@ export function RecordLookupDialog({
 
       <div className="mt-5 flex flex-wrap gap-2">
         <AppButton
-          tone="homeSoft"
+          actionType="secondary"
+          palette="home"
+          surface="soft"
           size="small"
           onClick={() => {
             onClose();
@@ -126,7 +130,9 @@ export function RecordLookupDialog({
           {c.dialogs.goToLogin}
         </AppButton>
         <AppButton
-          tone="homeOutlined"
+          actionType="secondary"
+          palette="home"
+          surface="outlined"
           size="small"
           onClick={() => {
             onClose();

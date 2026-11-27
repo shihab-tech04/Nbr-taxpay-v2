@@ -17,7 +17,9 @@ function DesktopNavLink({
 }) {
   return (
     <AppButton
-      tone="ghost"
+      actionType="secondary"
+      palette="home"
+      surface="ghost"
       size="small"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
@@ -64,7 +66,9 @@ export function HomeHeader({
         <HomeLogo />
         <div className="flex items-center gap-1.5">
           <AppButton
-            tone="ghost"
+            actionType="secondary"
+            palette="home"
+            surface="ghost"
             size="small"
             onClick={onToggleLang}
             aria-label={c.langSwitchLabel}
@@ -83,7 +87,9 @@ export function HomeHeader({
             {c.langSwitch}
           </AppButton>
           <AppButton
-            tone="homeOutlined"
+            actionType="secondary"
+            palette="home"
+            surface="outlined"
             size="small"
             onClick={() => onAction('login')}
             endIcon={<ArrowRight className="size-[15px]" aria-hidden="true" />}
@@ -130,7 +136,9 @@ export function HomeHeader({
         </nav>
         <div className="flex items-center gap-2 justify-self-end">
           <AppButton
-            tone="ghost"
+            actionType="secondary"
+            palette="home"
+            surface="ghost"
             size="medium"
             onClick={onToggleLang}
             aria-label={c.langSwitchLabel}
@@ -149,7 +157,9 @@ export function HomeHeader({
             {c.langSwitch}
           </AppButton>
           <AppButton
-            tone="homeOutlined"
+            actionType="secondary"
+            palette="home"
+            surface="outlined"
             size="medium"
             onClick={() => onAction('login')}
             endIcon={<ArrowRight className="size-4" aria-hidden="true" />}

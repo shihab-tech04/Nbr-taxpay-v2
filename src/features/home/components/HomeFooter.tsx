@@ -123,7 +123,9 @@ export function HomeFooter({
             ) : (
               <AppButton
                 key={l.label}
-                tone="ghost"
+                actionType="secondary"
+                palette="home"
+                surface="ghost"
                 size="small"
                 onClick={() => onAction(l.action)}
                 sx={{

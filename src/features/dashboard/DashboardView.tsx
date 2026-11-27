@@ -42,7 +42,7 @@ export const DashboardView: React.FC = () => {
 
           <div className="flex flex-wrap gap-3">
             <AppButton
-              tone="primary"
+              actionType="primary"
               size="small"
               previewRestricted
               startIcon={<Plus size={16} />}
@@ -52,7 +52,8 @@ export const DashboardView: React.FC = () => {
               New Tax Payment
             </AppButton>
             <AppButton
-              tone="neutral"
+              actionType="secondary"
+              surface="soft"
               size="small"
               onClick={() => navigate('/beneficiaries')}
               sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
@@ -114,7 +115,8 @@ export const DashboardView: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold">{t('recentActivity')}</h3>
             <AppButton
-              tone="ghost"
+              actionType="secondary"
+              surface="ghost"
               size="small"
               endIcon={<ArrowRight size={14} />}
               onClick={() => navigate('/history')}
@@ -159,7 +161,7 @@ export const DashboardView: React.FC = () => {
                     </td>
                     <td className="p-3 text-right">
                       <AppButton
-                        tone="secondary"
+                        actionType="secondary"
                         size="small"
                         startIcon={<Eye size={14} />}
                         onClick={() => setSelectedTx(tx)}

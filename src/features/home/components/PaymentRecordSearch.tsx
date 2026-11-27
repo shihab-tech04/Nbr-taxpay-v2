@@ -69,7 +69,7 @@ export function PaymentRecordSearch({
           </label>
           <AppSearchField
             id={id}
-            allowPublicLookup
+            publicCapability="experimental_record_search"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -85,7 +85,9 @@ export function PaymentRecordSearch({
             trailingAction={
               <AppIconButton
                 type="submit"
-                tone="homeSubmit"
+                palette="home"
+                surface="submit"
+                publicCapability="experimental_record_search"
                 disabled={!query.trim()}
                 aria-label={c.find.search}
               >

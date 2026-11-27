@@ -27,7 +27,8 @@ export function BannerControls({
       aria-label={c.carousel.controlsLabel}
     >
       <AppIconButton
-        tone="homeArrow"
+        palette="home"
+        surface="arrow"
         className="home2-slider2__arrow home2-press"
         onClick={onPrev}
         aria-label={c.carousel.prev}
@@ -53,7 +54,8 @@ export function BannerControls({
         ))}
       </div>
       <AppIconButton
-        tone="homeArrow"
+        palette="home"
+        surface="arrow"
         className="home2-slider2__arrow home2-press"
         onClick={onNext}
         aria-label={c.carousel.next}

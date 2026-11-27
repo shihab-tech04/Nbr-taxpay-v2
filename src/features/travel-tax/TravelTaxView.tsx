@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../shared/AppContext';
-import { Plane, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
+import { Plane } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
-import { PaymentTransaction } from '../../types/tax';
+import { useApp } from '../../shared/AppContext';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
+import type { PaymentTransaction } from '../../types/tax';
+import { PaymentStepHeader } from '../../components/payments/PaymentStepHeader';
+import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard';
+import { TravelTaxFormStep } from './components/TravelTaxFormStep';
+import { TravelTaxPreviewStep } from './components/TravelTaxPreviewStep';
 import {
-  AppTextField,
-  AppSelectField,
-  sanitizePassport,
-  validatePassport,
-} from '../../design-system/forms';
-import { AppButton } from '../../design-system/buttons';
+  resolveDestinationBaseTax,
+  validateTravelFormStep,
+  type TravelClass,
+  type TravelFormErrors,
+} from './travelTaxLogic';
 
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -21,32 +25,22 @@ export const TravelTaxView: React.FC = () => {
   const [passportNumber, setPassportNumber] = useState('A06829102');
   const [passengerName, setPassengerName] = useState(user.name);
   const [destination, setDestination] = useState('India (By Air)');
-  const [travelClass, setTravelClass] = useState<'Economy' | 'Business'>('Economy');
+  const [travelClass, setTravelClass] = useState<TravelClass>('Economy');
   const [amount, setAmount] = useState<number>(2000);
   const [step, setStep] = useState<'form' | 'preview' | 'success'>('form');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
-  const [errors, setErrors] = useState<{ passport?: string; passengerName?: string }>({});
-
-  const handleDestinationChange = (dest: string) => {
-    setDestination(dest);
-    if (dest.includes('India')) {
-      setAmount(2000);
-    } else if (dest.includes('SAARC')) {
-      setAmount(3000);
-    } else {
-      setAmount(5000);
-    }
-  };
+  const [errors, setErrors] = useState<TravelFormErrors>({});
 
   const handleProceed = (e: React.FormEvent) => {
     e.preventDefault();
-    const nextErrors: { passport?: string; passengerName?: string } = {};
-    if (!validatePassport(passportNumber)) {
-      nextErrors.passport = t('invalidPassportError');
-    }
-    if (!passengerName.trim()) {
-      nextErrors.passengerName = t('requiredPassengerNameError');
-    }
+    if (!isRestrictedOperationAllowed('payment_submit')) return;
+    const nextErrors = validateTravelFormStep(
+      { passportNumber, passengerName },
+      {
+        invalidPassport: t('invalidPassportError'),
+        requiredPassengerName: t('requiredPassengerNameError'),
+      }
+    );
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -56,6 +50,7 @@ export const TravelTaxView: React.FC = () => {
   };
 
   const handlePay = () => {
+    if (!isRestrictedOperationAllowed('payment_submit')) return;
     const tx = addTransaction({
       taxpayerTin: user.tin,
       taxpayerName: user.name,
@@ -68,12 +63,12 @@ export const TravelTaxView: React.FC = () => {
           headNameBn: `ভ্রমণ কর - ${destination}`,
           assessmentYear: '2025-2026',
           amount,
-          remarks: `Passport: ${passportNumber}, Class: ${travelClass}`
-        }
+          remarks: `Passport: ${passportNumber}, Class: ${travelClass}`,
+        },
       ],
       totalAmount: amount,
       paymentChannel: 'bKash',
-      status: 'Completed'
+      status: 'Completed',
     });
     setCompletedTx(tx);
     setStep('success');
@@ -82,181 +77,59 @@ export const TravelTaxView: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
       <div className="max-w-3xl mx-auto space-y-8">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+        <PaymentStepHeader
+          title={
+            <>
               <Plane className="text-teal-700" size={28} /> {t('travelTax')}
-            </h1>
-            <p className="text-xs text-slate-500">Departure tax assessment for international air, land, and water travel.</p>
-          </div>
-        </div>
+            </>
+          }
+          subtitle="Departure tax assessment for international air, land, and water travel."
+        />
 
         {step === 'form' && (
-          <form onSubmit={handleProceed} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <AppTextField
-                  label={t('passportNumber')}
-                  value={passportNumber}
-                  onChange={e => {
-                    setPassportNumber(sanitizePassport(e.target.value, 12));
-                    if (errors.passport) setErrors(prev => ({ ...prev, passport: undefined }));
-                  }}
-                  placeholder={t('passportPlaceholder')}
-                  error={Boolean(errors.passport)}
-                  helperText={errors.passport || t('passportHelper')}
-                  required
-                  slotProps={{
-                    htmlInput: {
-                      maxLength: 12,
-                      autoCapitalize: 'characters',
-                      className: 'font-mono uppercase'
-                    }
-                  }}
-                />
-              </div>
-
-              <div>
-                <AppTextField
-                  label={t('passengerName')}
-                  value={passengerName}
-                  onChange={e => {
-                    setPassengerName(e.target.value);
-                    if (errors.passengerName) setErrors(prev => ({ ...prev, passengerName: undefined }));
-                  }}
-                  placeholder={t('passengerNamePlaceholder')}
-                  error={Boolean(errors.passengerName)}
-                  helperText={errors.passengerName || t('passengerNameHelper')}
-                  required
-                />
-              </div>
-
-              <div>
-                <AppSelectField
-                  label={t('travelDestination')}
-                  value={destination}
-                  onChange={e => handleDestinationChange(e.target.value)}
-                  helperText={t('travelDestinationHelper')}
-                  options={[
-                    { value: 'India (By Air)', label: t('destIndiaAir') },
-                    { value: 'India (By Land/Water)', label: t('destIndiaLandWater') },
-                    { value: 'SAARC Countries', label: t('destSaarc') },
-                    { value: 'Other International', label: t('destOtherIntl') }
-                  ]}
-                />
-              </div>
-
-              <div>
-                <AppSelectField
-                  label={t('travelClass')}
-                  value={travelClass}
-                  onChange={e => setTravelClass(e.target.value as 'Economy' | 'Business')}
-                  helperText={t('travelClassHelper')}
-                  options={[
-                    { value: 'Economy', label: t('classEconomy') },
-                    { value: 'Business', label: t('classBusiness') }
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div className="p-4 bg-teal-50 dark:bg-teal-950/40 rounded-xl border border-teal-200 dark:border-teal-800 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-teal-800 dark:text-teal-200 font-medium">Calculated Travel Tax</span>
-                <div className="text-2xl font-bold font-mono text-teal-900 dark:text-teal-100">
-                  ৳ {(travelClass === 'Business' ? amount + 1000 : amount).toLocaleString()}
-                </div>
-              </div>
-              <ShieldCheck className="text-teal-600" size={32} />
-            </div>
-
-            <AppButton
-              type="submit"
-              tone="primary"
-              size="large"
-              fullWidth
-              previewRestricted
-              endIcon={<ArrowRight size={16} />}
-              sx={{ fontSize: '0.75rem' }}
-            >
-              Proceed to Preview
-            </AppButton>
-          </form>
+          <TravelTaxFormStep
+            passportNumber={passportNumber}
+            passengerName={passengerName}
+            destination={destination}
+            travelClass={travelClass}
+            baseAmount={amount}
+            errors={errors}
+            onChangePassport={(val) => {
+              setPassportNumber(val);
+              if (errors.passport) setErrors((p) => ({ ...p, passport: undefined }));
+            }}
+            onChangePassengerName={(val) => {
+              setPassengerName(val);
+              if (errors.passengerName) setErrors((p) => ({ ...p, passengerName: undefined }));
+            }}
+            onChangeDestination={(dest) => {
+              setDestination(dest);
+              setAmount(resolveDestinationBaseTax(dest));
+            }}
+            onChangeTravelClass={setTravelClass}
+            onSubmit={handleProceed}
+          />
         )}
 
         {step === 'preview' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
-            <h3 className="text-lg font-bold">Travel Tax Payment Preview</h3>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Passenger Name:</span>
-                <strong>{passengerName}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Passport Number:</span>
-                <strong>{passportNumber}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Destination:</span>
-                <strong>{destination}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Travel Class:</span>
-                <strong>{travelClass}</strong>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                <span className="text-slate-500 font-sans">Total Travel Tax:</span>
-                <strong className="text-teal-700 text-base">৳ {(travelClass === 'Business' ? amount + 1000 : amount).toLocaleString()}</strong>
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <AppButton
-                tone="secondary"
-                onClick={() => setStep('form')}
-                sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
-              >
-                {t('back')}
-              </AppButton>
-              <AppButton
-                tone="confirm"
-                previewRestricted
-                endIcon={<CheckCircle size={16} />}
-                onClick={handlePay}
-                sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
-              >
-                {t('confirmPayment')}
-              </AppButton>
-            </div>
-          </div>
+          <TravelTaxPreviewStep
+            passengerName={passengerName}
+            passportNumber={passportNumber}
+            destination={destination}
+            travelClass={travelClass}
+            baseAmount={amount}
+            onBack={() => setStep('form')}
+            onPay={handlePay}
+          />
         )}
 
         {step === 'success' && completedTx && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-6">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-              <CheckCircle size={36} />
-            </div>
-            <h2 className="text-2xl font-bold">Travel Tax Paid Successfully!</h2>
-            <p className="text-xs text-slate-500">Departure challan generated for passport {passportNumber}.</p>
-
-            <div className="flex justify-center gap-4 pt-4">
-              <AppButton
-                tone="primary"
-                onClick={() => setCompletedTx(completedTx)}
-                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
-              >
-                View Official Receipt
-              </AppButton>
-              <AppButton
-                tone="secondary"
-                onClick={() => navigate('/dashboard')}
-                sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
-              >
-                Return to Dashboard
-              </AppButton>
-            </div>
-          </div>
+          <PaymentSuccessCard
+            title="Travel Tax Paid Successfully!"
+            subtitle={`Departure challan generated for passport ${passportNumber}.`}
+            onViewReceipt={() => setCompletedTx(completedTx)}
+            onReturnDashboard={() => navigate('/dashboard')}
+          />
         )}
       </div>
 

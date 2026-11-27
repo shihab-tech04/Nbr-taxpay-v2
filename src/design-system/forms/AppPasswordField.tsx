@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import InputAdornment from '@mui/material/InputAdornment';
 import { Eye, EyeOff } from 'lucide-react';
-import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import { isFieldLockedByPreviewPolicy } from '../../shared/previewPolicy';
 import { AppIconButton } from '../buttons';
 import { AppTextField, AppTextFieldProps } from './AppTextField';
 import { mergeSlotEntry } from './fieldUtils';
@@ -19,7 +19,9 @@ export const AppPasswordField: React.FC<AppPasswordFieldProps> = ({
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
 
-  const isButtonDisabled = Boolean(disabled || readOnly || PUBLIC_PREVIEW);
+  const isButtonDisabled = Boolean(
+    disabled || readOnly || isFieldLockedByPreviewPolicy({ publicCapability: 'none' })
+  );
 
   const handleClickShowPassword = () => {
     if (isButtonDisabled) return;

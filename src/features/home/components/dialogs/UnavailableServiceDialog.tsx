@@ -30,7 +30,9 @@ export function UnavailableServiceDialog({
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <AppButton
-          tone="homeSoft"
+          actionType="secondary"
+          palette="home"
+          surface="soft"
           size="small"
           onClick={() => {
             onClose();
@@ -39,7 +41,13 @@ export function UnavailableServiceDialog({
         >
           {c.dialogs.viewHistory}
         </AppButton>
-        <AppButton tone="homeOutlined" size="small" onClick={onClose}>
+        <AppButton
+          actionType="secondary"
+          palette="home"
+          surface="outlined"
+          size="small"
+          onClick={onClose}
+        >
           {c.dialogs.close}
         </AppButton>
       </div>

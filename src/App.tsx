@@ -11,7 +11,7 @@ import { AppProvider, useApp } from './shared/AppContext';
 import { getTheme } from './design-system/theme';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
-import { HomePage } from './features/home/HomePage';
+import { HomePage } from './features/home';
 import { LoginView } from './features/account/LoginView';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { AllTaxPaymentsView } from './features/payments/AllTaxPaymentsView';

@@ -5,6 +5,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ThemeProvider } from '@mui/material/styles';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n/i18n';
+import {
+  isFieldLockedByPreviewPolicy,
+  isPublicCapabilityAllowed,
+} from '../../shared/previewPolicy';
 import { getTheme } from '../theme';
 import {
   AppTextField,
@@ -93,6 +97,24 @@ test('Phone and passport utilities validate expected formats', () => {
   assert.equal(sanitizePassport('a06-829102xyz', 12), 'A06829102XYZ');
   assert.equal(validatePassport('A06829102'), true);
   assert.equal(validatePassport('A06'), false);
+});
+
+test('Scoped publicCapability policy replaces broad preview bypasses', () => {
+  assert.equal(isPublicCapabilityAllowed('none', true), false);
+  assert.equal(isPublicCapabilityAllowed('public_help_question', true), true);
+  assert.equal(isPublicCapabilityAllowed('experimental_record_search', true), true);
+  assert.equal(isFieldLockedByPreviewPolicy({ publicCapability: 'none' }, true), true);
+  assert.equal(isFieldLockedByPreviewPolicy({ publicCapability: 'public_help_question' }, true), false);
+  assert.equal(
+    isFieldLockedByPreviewPolicy({ publicCapability: 'public_help_question', previewRestricted: true }, true),
+    true
+  );
+  assert.equal(isFieldLockedByPreviewPolicy({ publicCapability: 'none' }, false), false);
+
+  const restrictedHtml = renderWithProviders(
+    <AppTextField label="Help" publicCapability="public_help_question" previewRestricted value="Hi" />
+  );
+  assert.match(restrictedHtml, /Help/);
 });
 
 test('All seven shared MUI form components render cleanly in light and dark themes', () => {

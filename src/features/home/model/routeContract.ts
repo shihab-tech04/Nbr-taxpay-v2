@@ -89,7 +89,7 @@ export function matchHelpAnswer(
     .replace(/[?!।.,]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  if (!normalized) return fallbackAnswer;
+  if (normalized.length < 2) return fallbackAnswer;
 
   let bestTopic: HelpGuideTopic | undefined;
   let bestScore = 0;
@@ -102,7 +102,7 @@ export function matchHelpAnswer(
         score += needle.length * needle.length;
       }
     }
-    if (topic.title.toLocaleLowerCase().includes(normalized)) {
+    if (normalized.length >= 4 && topic.title.toLocaleLowerCase().includes(normalized)) {
       score += normalized.length * normalized.length;
     }
     if (score > bestScore) {

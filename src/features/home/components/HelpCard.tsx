@@ -44,7 +44,9 @@ export function HelpCard({
       </div>
       <div className={`relative grid grid-cols-2 gap-2 ${isMobile ? 'mt-4' : ''}`}>
         <AppButton
-          tone="ghost"
+          actionType="secondary"
+          palette="home"
+          surface="ghost"
           size="medium"
           data-testid="home2-guide-action"
           onClick={() => onAction('guide')}
@@ -65,7 +67,9 @@ export function HelpCard({
           {c.help.guide}
         </AppButton>
         <AppButton
-          tone="ghost"
+          actionType="secondary"
+          palette="home"
+          surface="ghost"
           size="medium"
           data-testid="home2-chat-action"
           onClick={() => onAction('help')}

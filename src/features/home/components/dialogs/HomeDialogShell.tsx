@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@mui/material';
 import { X } from 'lucide-react';
 import { AppIconButton } from '../../../../design-system/buttons';
@@ -22,6 +22,23 @@ export function HomeDialogShell({
   disablePortal?: boolean;
   children: React.ReactNode;
 }) {
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      previousFocusRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    } else if (!open && wasOpenRef.current) {
+      const prev = previousFocusRef.current;
+      previousFocusRef.current = null;
+      if (prev && prev.isConnected) {
+        window.requestAnimationFrame(() => prev.focus());
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open]);
+
   return (
     <Dialog
       open={open}
@@ -30,6 +47,16 @@ export function HomeDialogShell({
       fullWidth
       disablePortal={disablePortal}
       aria-labelledby={titleId}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: { xs: 'flex-end', sm: 'center' },
+        },
+        '& .MuiDialog-paper': {
+          m: { xs: 1, sm: 2 },
+          width: { xs: 'calc(100% - 16px)', sm: undefined },
+          borderRadius: { xs: '20px', sm: '16px' },
+        },
+      }}
     >
       <DialogTitle
         id={titleId}

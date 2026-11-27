@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { ArrowRight, UserCheck } from 'lucide-react';
+import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { AppNumberField, validateOtp, validateTin } from '../../design-system/forms';
 import { AppButton } from '../../design-system/buttons';
 
@@ -19,6 +20,7 @@ export const LoginView: React.FC = () => {
 
   const handleTinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isRestrictedOperationAllowed('sign_in')) return;
     const validation = validateTin(tin);
     if (!validation.valid) {
       setTinError(t('invalidTinError'));
@@ -30,6 +32,7 @@ export const LoginView: React.FC = () => {
 
   const handleOtpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isRestrictedOperationAllowed('sign_in')) return;
     const validation = validateOtp(otp);
     if (!validation.valid) {
       setOtpError(t('invalidOtpError'));
@@ -85,7 +88,7 @@ export const LoginView: React.FC = () => {
 
             <AppButton
               type="submit"
-              tone="primary"
+              actionType="primary"
               size="large"
               fullWidth
               previewRestricted
@@ -124,7 +127,7 @@ export const LoginView: React.FC = () => {
             <div className="flex gap-3">
               <AppButton
                 type="button"
-                tone="secondary"
+                actionType="secondary"
                 onClick={() => {
                   setOtpError('');
                   setStep('tin');
@@ -135,7 +138,7 @@ export const LoginView: React.FC = () => {
               </AppButton>
               <AppButton
                 type="submit"
-                tone="primary"
+                actionType="primary"
                 previewRestricted
                 endIcon={<UserCheck size={16} />}
                 sx={{ width: '66.667%', borderRadius: '12px', py: 1.5 }}
