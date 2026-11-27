@@ -30,7 +30,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
             <CheckCircle size={24} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Official NBR E-Challan Receipt</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Sample challan — not valid for payment</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">Ref: {transaction.transactionRef}</p>
           </div>
         </div>
@@ -111,7 +111,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
 
         <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">
           <ShieldCheck size={20} className="shrink-0 text-emerald-600" />
-          <span>This is an official digitally verified NBR E-Challan generated securely through Sohojkor Cleanroom Gateway. Valid without physical signature.</span>
+          <span>Illustrative receipt only. No payment or official challan has been issued.</span>
         </div>
       </DialogContent>
 
@@ -123,7 +123,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
           <Button onClick={handlePrint} variant="outlined" startIcon={<Printer size={16} />} size="small">
             {t('printChallan')}
           </Button>
-          <Button onClick={() => alert("Challan PDF downloaded successfully!")} variant="contained" startIcon={<Download size={16} />} size="small">
+          <Button disabled variant="contained" startIcon={<Download size={16} />} size="small">
             {t('downloadChallan')}
           </Button>
         </div>

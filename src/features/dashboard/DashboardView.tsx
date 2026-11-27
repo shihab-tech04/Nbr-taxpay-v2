@@ -33,7 +33,7 @@ export const DashboardView: React.FC = () => {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold">{user.name}</h1>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold">
-                  Verified Taxpayer
+                  Sample taxpayer
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -65,7 +65,7 @@ export const DashboardView: React.FC = () => {
             <div className="text-3xl font-bold font-mono text-teal-700 dark:text-teal-400">
               ৳ {totalPaid.toLocaleString()}
             </div>
-            <p className="text-[11px] text-slate-500">Across {transactions.filter(t => t.status === 'Completed').length} verified NBR challans</p>
+            <p className="text-[11px] text-slate-500">Across {transactions.filter(t => t.status === 'Completed').length} sample challans</p>
           </div>
 
           <div 
@@ -87,7 +87,7 @@ export const DashboardView: React.FC = () => {
             <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white">
               {beneficiaries.length}
             </div>
-            <p className="text-[11px] text-slate-500">Family members & clients mapped securely</p>
+            <p className="text-[11px] text-slate-500">Illustrative family and client records</p>
           </div>
         </div>
 

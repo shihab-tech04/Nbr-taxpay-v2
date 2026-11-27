@@ -1,0 +1,113 @@
+name: Citizen Pages build
+on:
+  push:
+    branches: [main, 'fix/pages-vite-build']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Backup and restore pre-release Main
+        run: |
+          set -euo pipefail
+          baseline=64b76fd47553202d9868cb61c36c1143a22ded78
+          git branch recovery-baseline "$baseline"
+          mkdir -p "$RUNNER_TEMP/recovery"
+          cd "$RUNNER_TEMP/recovery"
+          git -C "$GITHUB_WORKSPACE" bundle create "$RUNNER_TEMP/recovery/pre-release.bundle" recovery-baseline
+          git clone --mirror "$RUNNER_TEMP/recovery/pre-release.bundle" restored.git
+          test "$(git -C restored.git rev-parse refs/heads/recovery-baseline)" = "$baseline"
+          git -C restored.git fsck --full --strict
+          git -C restored.git show "$baseline:package.json" >/dev/null
+          sha256sum pre-release.bundle > SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pre-release-64b76fd-recovery
+          path: |
+            ${{ runner.temp }}/recovery/pre-release.bundle
+            ${{ runner.temp }}/recovery/SHA256SUMS
+          if-no-files-found: error
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run lint
+      - name: Build Pages assets
+        run: |
+          bun run build --base=/Nbr-taxpay-v2/
+          rm -rf dist/assets/aistudio
+          test -f dist/index.html
+          test -f dist/favicon.svg
+          grep -q '/Nbr-taxpay-v2/assets/' dist/index.html
+          ! grep -q '/src/main.tsx' dist/index.html
+          printf '%s\n' "$GITHUB_SHA" > dist/version.txt
+      - name: Install isolated browser verifier
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pages-smoke" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/pages-smoke/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Smoke test compiled application at Pages path
+        run: |
+          mkdir -p "$RUNNER_TEMP/web/Nbr-taxpay-v2"
+          cp -a dist/. "$RUNNER_TEMP/web/Nbr-taxpay-v2/"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$RUNNER_TEMP/web" &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/Nbr-taxpay-v2/ >/dev/null && break; sleep 1; done
+          NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/pages-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: citizen-pages-dist
+          path: dist/
+          if-no-files-found: error
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [build, recovery]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: citizen-pages-dist
+          path: dist
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Deploy compiled Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Check deployed version and built HTML
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            if [ "$(curl -fsS "${PAGE_URL%/}/version.txt?sha=$GITHUB_SHA" || true)" = "$GITHUB_SHA" ]; then
+              curl -fsS "${PAGE_URL%/}/" > /tmp/live.html
+              grep -q '/Nbr-taxpay-v2/assets/' /tmp/live.html
+              ! grep -q '/src/main.tsx' /tmp/live.html
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
