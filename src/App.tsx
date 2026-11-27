@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AppProvider, useApp } from './shared/AppContext';
 import { getTheme } from './design-system/theme';
@@ -22,6 +22,8 @@ import { DraftsView } from './features/drafts/DraftsView';
 import { CorrectionsView } from './features/corrections/CorrectionsView';
 import { SupportView } from './features/support/SupportView';
 import './i18n/i18n';
+
+const Router = import.meta.env.BASE_URL === '/' ? BrowserRouter : HashRouter;
 
 const AppContent: React.FC = () => {
   const { themeMode } = useApp();
