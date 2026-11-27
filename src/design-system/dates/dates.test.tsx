@@ -6,6 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n/i18n';
 import { isFieldLockedByPreviewPolicy } from '../../shared/previewPolicy';
+import type { YmdDateString } from '../../types/tax';
 import { getTheme } from '../theme';
 import {
   AppDateField,
@@ -42,6 +43,25 @@ function renderDateWithProviders(
 }
 
 test('YYYY-MM-DD utilities distinguish empty, invalid, and valid dates without timezone shift', () => {
+  const validLiteral: YmdDateString = '2024-02-29';
+  assert.equal(isValidYmd(validLiteral), true);
+  // @ts-expect-error arbitrary string must not satisfy YmdDateString
+  const badPlain: YmdDateString = 'not-a-date';
+  // @ts-expect-error invalid month literal must not satisfy YmdDateString
+  const badMonth: YmdDateString = '2026-13-01';
+  // @ts-expect-error empty string must not satisfy YmdDateString
+  const badEmpty: YmdDateString = '';
+  assert.equal(isValidYmd(badPlain), false);
+  assert.equal(isValidYmd(badMonth), false);
+  assert.equal(isValidYmd(badEmpty), false);
+
+  const dynamicCandidate: string = '2026-04-10';
+  let narrowedYmd: YmdDateString | null = null;
+  if (isValidYmd(dynamicCandidate)) {
+    narrowedYmd = dynamicCandidate;
+  }
+  assert.equal(narrowedYmd, '2026-04-10');
+
   assert.equal(isValidYmd('2024-02-29'), true);
   assert.equal(isValidYmd('2026-02-29'), false);
   assert.equal(isValidYmd('2026-02-30'), false);

@@ -174,3 +174,22 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **Remaining Outside-Sandbox Steps**:
   - Because `.git` and GitHub credentials are absent in this container: run external `de5a04e` backup/checksum/mirror-restore verification outside GitHub, push Cycle 07 Final Acceptance commits to `main`, confirm green `.github/workflows/citizen-pages.yml` (`recovery`, `build` incl. `pages-smoke.cjs` & `ci-interactive-browser.cjs`, `deploy`), and verify the deployed GitHub Pages `version.txt` SHA before independent acceptance and starting `AppTable` (`F-17`).
 
+## Cycle 07 Close — Real TSX CI Harness, Workflow Gate Hardening, Strict `YmdDateString`, & Full Browser Pass
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); completed Cycle 07 date, TIN, Gift Tax, History, and mobile Navbar fixes preserved; `F-17` (`AppTable`/modals) & `F-19`–`F-24` remain `Pending_UI` until independent acceptance, `F-12` remains `Excluded`, and **only** `F-18` (live SQL/API integration) is `Deferred`.
+- **Real Test-Only CI Browser Harness (`/scripts/ci-harness.html`, `/scripts/ci-harness.tsx`, `scripts/ci-interactive-browser.cjs`, `AppAutocomplete.tsx`)**:
+  - Replaced broken virtual `\0/__ci_harness__.tsx` injection with real Vite test-only TSX entry `/scripts/ci-harness.html` + `/scripts/ci-harness.tsx`, excluded from production `dist/` (verified `dist/scripts/ci-harness.*` absent).
+  - Wired `segmentsTestId="ci-tin-segments"` + `inputTestId="taxpayer-tin-digits"` on `AppTinLookupField` and `inputTestId="ci-plain-tin"` on `AppTinInput` in `ci-harness.tsx`; added `autoHighlight` on `AppAutocomplete` so keyboard `ArrowDown -> ArrowDown -> Enter` selects the second option deterministically; re-focused the Day spinbutton in `ci-interactive-browser.cjs` before `05012026` and targeted MUI X v9's `title="Clear"` button via `getByRole('button', { name: 'Clear' })` with all assertions intact and unskipped.
+- **Strict `YmdDateString` & CI Workflow Gate (`src/types/tax.ts`, `payments.test.tsx`, `.github/workflows/citizen-pages.yml`)**:
+  - Preserved strict `YmdDateString = \`${number}-${YmdMonth}-${YmdDay}\`` union (no `| string`), verified compile-time rejection in `dates.test.tsx`, annotated `syntheticGiftTx: PaymentTransaction` in `payments.test.tsx`, and kept runtime `isValidYmd` validation across `dateUtils.ts`, `GiftTaxView.tsx`, `mockLedgerAdapter.ts`, and `ReceiptModal.tsx`.
+  - Confirmed `.github/workflows/citizen-pages.yml` enforces `set -euo pipefail`, `deploy` gating (`needs: [build, recovery]` and `needs.build.result == 'success' && needs.recovery.result == 'success'`), `de5a04e` SHA backup verification, and multi-timezone `bun run test`.
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`: PASSED (`0` violations across `161` TypeScript files, `155` implementation files all `<=200` lines, `155` production-reachable, `6` test files, `0` test-only, `3` CSS files).
+  - `npm run typecheck` (`tsc --noEmit`): exited `0` with `0` errors across all `1,561` checked files.
+  - `eslint .` (`lint_applet`): `0` errors, `0` warnings.
+  - `compile_applet` & `NODE_ENV=production npx vite build --base=/Nbr-taxpay-v2/`: succeeded cleanly (`dist/scripts/ci-harness.html` and `dist/scripts/ci-harness.tsx` absent).
+  - Multi-timezone `npm test` (`TZ=UTC`, `TZ=Asia/Dhaka`, `TZ=America/Los_Angeles`, `TZ=America/New_York`): `36/36` tests passing in every timezone (`0` skipped, `0` failed).
+  - Full interactive Chromium regression (`playwright-cli` on `http://localhost:3000`, `scripts/ci-interactive-browser.cjs` lines 1–197): `ALL_CI_HARNESS_AND_ROUTE_ASSERTIONS_PASS` (`0` console/page errors).
+  - Compiled Pages `PUBLIC_PREVIEW=true` smoke check (`http://127.0.0.1:4173/Nbr-taxpay-v2/`, `scripts/pages-smoke.cjs`): `PAGES_SMOKE_LOCAL_PASS` (`0` console/page errors).
+- **Remaining Outside-Sandbox Steps**:
+  - Because `.git` and GitHub credentials are absent in this container: verify/bundle/mirror-restore `de5a04e` outside GitHub (`sha256sum`, `git fsck --full --strict`), push Cycle 07 Close commits to `main`, confirm green `.github/workflows/citizen-pages.yml` (`recovery`, `build`, `deploy`), and verify live GitHub Pages `version.txt` SHA before independent Cycle 07 acceptance and starting `AppTable` (`F-17`).
+

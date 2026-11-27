@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Download, Printer, X, ShieldCheck } from 'lucide-react';
 import { AppButton, AppIconButton } from '../design-system/buttons';
+import { isValidYmd } from '../design-system/dates/dateUtils';
 
 interface ReceiptModalProps {
   open: boolean;
@@ -72,7 +73,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <span className="text-slate-500 block">Payment Channel</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm font-semibold text-teal-700">{transaction.paymentChannel}</strong>
           </div>
-          {transaction.giftDate && (
+          {transaction.giftDate && isValidYmd(transaction.giftDate) && (
             <div data-testid="receipt-gift-date">
               <span className="text-slate-500 block">{t('giftDate')}</span>
               <strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.giftDate}</strong>

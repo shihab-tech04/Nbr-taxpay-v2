@@ -57,25 +57,31 @@ jobs:
         run: bun run lint
       - name: Run unit and interaction tests across timezones
         run: |
+          set -euo pipefail
           for tz in UTC Asia/Dhaka America/Los_Angeles America/New_York; do
             echo "Running tests under TZ=$tz"
             TZ="$tz" bun run test
           done
       - name: Build Pages assets
         run: |
+          set -euo pipefail
           bun run build --base=/Nbr-taxpay-v2/
           rm -rf dist/assets/aistudio
           test -f dist/index.html
           test -f dist/favicon.svg
+          test ! -e dist/scripts/ci-harness.html
+          test ! -e dist/scripts/ci-harness.tsx
           grep -q '/Nbr-taxpay-v2/assets/' dist/index.html
           ! grep -q '/src/main.tsx' dist/index.html
           printf '%s\n' "$GITHUB_SHA" > dist/version.txt
       - name: Install isolated browser verifier
         run: |
+          set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/pages-smoke" --no-audit --no-fund playwright@1.56.1
           "$RUNNER_TEMP/pages-smoke/node_modules/.bin/playwright" install --with-deps chromium
       - name: Smoke test compiled application at Pages path
         run: |
+          set -euo pipefail
           mkdir -p "$RUNNER_TEMP/web/Nbr-taxpay-v2"
           cp -a dist/. "$RUNNER_TEMP/web/Nbr-taxpay-v2/"
           python3 -m http.server 4173 --bind 127.0.0.1 --directory "$RUNNER_TEMP/web" &
@@ -84,14 +90,16 @@ jobs:
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/Nbr-taxpay-v2/ >/dev/null && break; sleep 1; done
           NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/pages-smoke.cjs
       - name: Run interactive browser regression suite
-        run: NODE_ENV=development NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/ci-interactive-browser.cjs
+        run: |
+          set -euo pipefail
+          NODE_ENV=development NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/ci-interactive-browser.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: citizen-pages-dist
           path: dist/
           if-no-files-found: error
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: ${{ success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.build.result == 'success' && needs.recovery.result == 'success' }}
     needs: [build, recovery]
     runs-on: ubuntu-24.04
     permissions:
@@ -106,6 +114,13 @@ jobs:
         with:
           name: citizen-pages-dist
           path: dist
+      - name: Verify downloaded Pages artifact matches commit and production HTML
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test "$(cat dist/version.txt)" = "$GITHUB_SHA"
+          grep -q '/Nbr-taxpay-v2/assets/' dist/index.html
+          ! grep -q '/src/main.tsx' dist/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

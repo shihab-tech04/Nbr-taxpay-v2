@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Gift } from 'lucide-react';
-import { getDhakaTodayYmd } from '../../design-system/forms';
+import { getDhakaTodayYmd, isValidYmd } from '../../design-system/forms';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
@@ -78,8 +78,10 @@ export const GiftTaxView: React.FC = () => {
   const handlePay = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
     const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0 || !isValidYmd(giftDate)) {
+      setErrors(
+        isValidYmd(giftDate) ? nextErrors : { ...nextErrors, giftDate: valuationMessages.invalidGiftDate }
+      );
       setStage(2);
       return;
     }

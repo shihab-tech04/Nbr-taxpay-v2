@@ -16,3 +16,10 @@ US-14,F-15,Searchable Autocomplete & Protected Segmented TIN Lookup,Citizen,AC-1
 US-15,F-16,Timezone-Safe EN/BN Date Controls & Mobile Navbar Fit,Citizen,AC-15-01,P1
 US-16,F-17,Shared AppTable & Unified Modal System,Citizen,AC-16-01,P2
 US-17,F-18,Live SQL/API Backend Integration & Hosted Verification,Citizen,AC-17-01,P2
+US-18,F-19,24-Field Taxpayer Profile & Masking/Copy Controls,Citizen,AC-18-01,P1
+US-19,F-20,Payment Certificate & Tax Credit Certificate Views,Citizen,AC-19-01,P1
+US-20,F-21,All Tax Category Matrix & Multiline Challan Remarks,Citizen,AC-20-01,P1
+US-21,F-22,Travel Tax Multi-Passenger Foreign & Medical Review UI,Citizen,AC-21-01,P1
+US-22,F-23,Beneficiary Lists Edit Modal Timeline & Unsolicited Report UI,Citizen,AC-22-01,P2
+US-23,F-24,Recipient Notice Popup Queue Notifications & Guides UI,Citizen,AC-23-01,P2
+

@@ -123,6 +123,7 @@ export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
       closeText={bn ? 'বন্ধ করুন' : 'Close'}
       noOptionsText={resolvedNoOptionsText}
       loadingText={resolvedLoadingText}
+      autoHighlight
       openOnFocus={!effectiveReadOnly}
       onKeyDown={(event) => {
         if (resolvedOpen && event.key === 'Escape') {

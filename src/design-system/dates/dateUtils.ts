@@ -1,4 +1,5 @@
 import dayjs, { type Dayjs } from 'dayjs';
+import type { YmdDateString } from '../../types/tax';
 
 export const DHAKA_TIME_ZONE = 'Asia/Dhaka';
 export const INVALID_YMD_VALUE = '__INVALID_DATE__';
@@ -12,7 +13,7 @@ export interface DateRangeFilterValue {
 
 export type DateValidationReason = 'required' | 'invalid' | 'min' | 'max' | 'past' | 'future';
 
-export function isValidYmd(value: string): boolean {
+export function isValidYmd(value: string): value is YmdDateString {
   const match = YMD_PATTERN.exec(value);
   if (!match) return false;
   const year = Number(match[1]);

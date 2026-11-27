@@ -5,6 +5,7 @@ import {
   PaymentTransaction,
   SupportTicket,
 } from '../types/tax';
+import { isValidYmd } from '../design-system/dates/dateUtils';
 
 // Explicitly isolated experimental mock adapters for offline prototype state.
 // These helpers do NOT connect to official NBR/Sonali/bank verification APIs.
@@ -25,6 +26,9 @@ export function createExperimentalTransaction(
     'id' | 'createdAt' | 'transactionRef' | 'challanNumber' | 'bankRef'
   >
 ): PaymentTransaction {
+  if (txData.giftDate !== undefined && !isValidYmd(txData.giftDate)) {
+    throw new Error(`Invalid giftDate "${String(txData.giftDate)}"; expected valid YYYY-MM-DD.`);
+  }
   return {
     ...txData,
     id: `tx-${Date.now()}`,

@@ -7,7 +7,9 @@ import { I18nextProvider } from 'react-i18next';
 import { getTheme } from '../../design-system/theme';
 import { AppDateLocalizationProvider } from '../../design-system/dates';
 import i18n from '../../i18n/i18n';
+import type { PaymentTransaction } from '../../types/tax';
 import { INITIAL_BENEFICIARIES, INITIAL_TRANSACTIONS, TAX_HEADS } from '../../shared/mockData';
+import { createExperimentalTransaction } from '../../shared/mockLedgerAdapter';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard';
 import { ReceiptModal } from '../../components/ReceiptModal';
@@ -206,7 +208,7 @@ test('Gift Tax preserves typed giftDate outside remarks and fixture UI avoids of
   assert.ok(giftTx);
   assert.equal(giftTx.giftDate, '2026-05-02');
 
-  const syntheticGiftTx = {
+  const syntheticGiftTx: PaymentTransaction = {
     ...giftTx,
     giftDate: '2026-04-10',
     items: [{ ...giftTx.items[0], remarks: 'Residential plot transfer' }],
@@ -217,6 +219,24 @@ test('Gift Tax preserves typed giftDate outside remarks and fixture UI avoids of
   assert.match(receiptHtml, /data-testid="receipt-gift-date"/);
   assert.match(receiptHtml, /2026-04-10/);
   assert.doesNotMatch(receiptHtml, /Total Paid:/);
+
+  assert.throws(
+    () =>
+      createExperimentalTransaction({
+        ...giftTx,
+        giftDate: '2026-02-30',
+      }),
+    /Invalid giftDate/
+  );
+  const corruptReceiptHtml = renderPaymentsWithProviders(
+    <ReceiptModal
+      open
+      disablePortal
+      onClose={() => {}}
+      transaction={{ ...syntheticGiftTx, giftDate: '2026-02-30' }}
+    />
+  );
+  assert.doesNotMatch(corruptReceiptHtml, /data-testid="receipt-gift-date"/);
 
   const valuationHtml = renderPaymentsWithProviders(
     <GiftTaxValuationStep
