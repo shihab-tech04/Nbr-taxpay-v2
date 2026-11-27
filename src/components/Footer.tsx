@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
             <span className="text-white font-bold text-lg">Sohojkor · সহজকর</span>
           </div>
           <p className="text-xs leading-relaxed text-slate-400">
-            Official citizen-centric digital taxation portal aligned with National Board of Revenue (NBR) standards for transparent and frictionless tax payment.
+            Experimental citizen portal UI. Not an official tax service; no real payments or submissions.
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export const Footer: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 pt-6 border-t border-slate-800 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p>© 2026 Sohojkor Cleanroom Citizen Portal. Developed under NBR compliance guidelines.</p>
+        <p>© 2026 Sohojkor Cleanroom Citizen Portal. Prototype for engineering review.</p>
         <div className="flex gap-4">
           <span className="hover:text-slate-400 cursor-pointer">Privacy Policy</span>
           <span>·</span>

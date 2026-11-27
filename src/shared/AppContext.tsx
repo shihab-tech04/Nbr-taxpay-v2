@@ -2,6 +2,18 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, Beneficiary, PaymentTransaction, PaymentDraft, CorrectionRequest, SupportTicket, Language } from '../types/tax';
 import { INITIAL_USER, INITIAL_BENEFICIARIES, INITIAL_TRANSACTIONS, INITIAL_DRAFTS, INITIAL_CORRECTIONS, INITIAL_SUPPORT } from './mockData';
 import { useTranslation } from 'react-i18next';
+import { PUBLIC_PREVIEW } from './previewMode';
+
+// The hosted prototype must not read or persist taxpayer/business records.
+const preferenceKeys = new Set(['sohojkor_lang', 'sohojkor_theme']);
+const readStorage = (key: string) => {
+  if (PUBLIC_PREVIEW && !preferenceKeys.has(key)) return null;
+  try { return window.localStorage.getItem(key); } catch { return null; }
+};
+const writeStorage = (key: string, value: string) => {
+  if (PUBLIC_PREVIEW && !preferenceKeys.has(key)) return;
+  try { window.localStorage.setItem(key, value); } catch { /* Storage unavailable; continue in memory. */ }
+};
 
 interface AppContextType {
   user: UserProfile;
@@ -31,62 +43,62 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { i18n } = useTranslation();
   const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('sohojkor_user');
+    const saved = readStorage('sohojkor_user');
     return saved ? JSON.parse(saved) : INITIAL_USER;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('sohojkor_auth') === 'true';
+    return readStorage('sohojkor_auth') === 'true';
   });
 
   const [language, setLanguageState] = useState<Language>(() => {
-    return (localStorage.getItem('sohojkor_lang') as Language) || 'en';
+    return (readStorage('sohojkor_lang') as Language) || 'en';
   });
 
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('sohojkor_theme') as 'light' | 'dark') || 'light';
+    return (readStorage('sohojkor_theme') as 'light' | 'dark') || 'light';
   });
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(() => {
-    const saved = localStorage.getItem('sohojkor_beneficiaries');
+    const saved = readStorage('sohojkor_beneficiaries');
     return saved ? JSON.parse(saved) : INITIAL_BENEFICIARIES;
   });
 
   const [transactions, setTransactions] = useState<PaymentTransaction[]>(() => {
-    const saved = localStorage.getItem('sohojkor_transactions');
+    const saved = readStorage('sohojkor_transactions');
     return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
   });
 
   const [drafts, setDrafts] = useState<PaymentDraft[]>(() => {
-    const saved = localStorage.getItem('sohojkor_drafts');
+    const saved = readStorage('sohojkor_drafts');
     return saved ? JSON.parse(saved) : INITIAL_DRAFTS;
   });
 
   const [corrections, setCorrections] = useState<CorrectionRequest[]>(() => {
-    const saved = localStorage.getItem('sohojkor_corrections');
+    const saved = readStorage('sohojkor_corrections');
     return saved ? JSON.parse(saved) : INITIAL_CORRECTIONS;
   });
 
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => {
-    const saved = localStorage.getItem('sohojkor_support');
+    const saved = readStorage('sohojkor_support');
     return saved ? JSON.parse(saved) : INITIAL_SUPPORT;
   });
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_user', JSON.stringify(user));
+    writeStorage('sohojkor_user', JSON.stringify(user));
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_auth', String(isAuthenticated));
+    writeStorage('sohojkor_auth', String(isAuthenticated));
   }, [isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_lang', language);
+    writeStorage('sohojkor_lang', language);
     i18n.changeLanguage(language);
   }, [language, i18n]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_theme', themeMode);
+    writeStorage('sohojkor_theme', themeMode);
     if (themeMode === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -95,23 +107,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [themeMode]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_beneficiaries', JSON.stringify(beneficiaries));
+    writeStorage('sohojkor_beneficiaries', JSON.stringify(beneficiaries));
   }, [beneficiaries]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_transactions', JSON.stringify(transactions));
+    writeStorage('sohojkor_transactions', JSON.stringify(transactions));
   }, [transactions]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_drafts', JSON.stringify(drafts));
+    writeStorage('sohojkor_drafts', JSON.stringify(drafts));
   }, [drafts]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_corrections', JSON.stringify(corrections));
+    writeStorage('sohojkor_corrections', JSON.stringify(corrections));
   }, [corrections]);
 
   useEffect(() => {
-    localStorage.setItem('sohojkor_support', JSON.stringify(supportTickets));
+    writeStorage('sohojkor_support', JSON.stringify(supportTickets));
   }, [supportTickets]);
 
   const setLanguage = (lang: Language) => {

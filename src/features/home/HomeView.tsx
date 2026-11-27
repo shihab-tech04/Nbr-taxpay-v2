@@ -19,14 +19,14 @@ export const HomeView: React.FC = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/80 border border-teal-600 text-teal-200 text-xs font-semibold tracking-wide">
-              <ShieldCheck size={14} /> National Board of Revenue (NBR) Standard
+              <ShieldCheck size={14} /> Sohojkor experimental UI
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
               Sohojkor · সহজকর <br />
               <span className="text-teal-300 font-normal text-3xl sm:text-4xl">Smart National Tax Portal</span>
             </h1>
             <p className="text-slate-300 text-base sm:text-lg max-w-xl leading-relaxed">
-              Experience frictionless tax filings, instant E-Challan generation, travel tax assessments, and secure gift tax payments for Bangladeshi citizens.
+              Explore the proposed citizen tax filing, challan, travel tax and gift tax interfaces.
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
               <button
@@ -48,7 +48,7 @@ export const HomeView: React.FC = () => {
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl space-y-6">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <span className="text-xs uppercase tracking-wider text-teal-200 font-semibold">Quick Taxpayer Status</span>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono">VERIFIED NBR</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-mono">SAMPLE DATA</span>
               </div>
               <div className="space-y-4 text-sm">
                 <div className="flex justify-between">
@@ -133,7 +133,7 @@ export const HomeView: React.FC = () => {
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-3xl font-bold mb-4">{t('whySohojkor')}</h2>
           <p className="text-slate-600 dark:text-slate-400 text-sm">
-            Engineered to provide a world-class citizen tax experience with absolute data security and compliance.
+            Illustrative citizen tax workflows for design and engineering review.
           </p>
         </div>
 

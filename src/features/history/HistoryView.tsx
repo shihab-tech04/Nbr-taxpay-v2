@@ -32,7 +32,7 @@ export const HistoryView: React.FC = () => {
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <FileText className="text-teal-700" size={28} /> {t('history')}
             </h1>
-            <p className="text-xs text-slate-500">Complete immutable audit trail of all NBR tax challans and receipts.</p>
+            <p className="text-xs text-slate-500">Sample payment records for UI review only.</p>
           </div>
           <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-3 text-slate-400" size={16} />
