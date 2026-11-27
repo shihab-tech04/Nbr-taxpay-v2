@@ -2,7 +2,16 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
 import { Users, Plus, Trash2 } from 'lucide-react';
-import { AppTextField, AppNumberField, AppSelectField } from '../../design-system/forms';
+import {
+  AppTextField,
+  AppNumberField,
+  AppSelectField,
+  validateTin,
+  validateBangladeshPhone,
+} from '../../design-system/forms';
+import { Beneficiary } from '../../types/tax';
+
+type RelationshipType = Beneficiary['relationship'];
 
 export const BeneficiariesView: React.FC = () => {
   const { t } = useTranslation();
@@ -10,17 +19,32 @@ export const BeneficiariesView: React.FC = () => {
 
   const [name, setName] = useState('');
   const [tin, setTin] = useState('');
-  const [relationship, setRelationship] = useState<'Father' | 'Mother' | 'Siblings' | 'Son' | 'Daughter' | 'Spouse' | 'Friends' | 'Clients' | 'Others'>('Father');
+  const [relationship, setRelationship] = useState<RelationshipType>('Father');
   const [phone, setPhone] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; tin?: string; phone?: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || tin.length !== 12) {
-      alert('Please enter valid name and 12-digit TIN.');
+    const nextErrors: { name?: string; tin?: string; phone?: string } = {};
+
+    if (!name.trim()) {
+      nextErrors.name = t('requiredNameError');
+    }
+    if (!validateTin(tin).valid) {
+      nextErrors.tin = t('invalidTinError');
+    }
+    if (!validateBangladeshPhone(phone)) {
+      nextErrors.phone = t('invalidPhoneError');
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
-    addBeneficiary({ name, tin, relationship, phone });
+
+    setErrors({});
+    addBeneficiary({ name: name.trim(), tin: tin.trim(), relationship, phone: phone.trim() });
     setName('');
     setTin('');
     setPhone('');
@@ -46,23 +70,35 @@ export const BeneficiariesView: React.FC = () => {
         </div>
 
         {showAddModal && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="text-base font-bold">Add New Beneficiary / Recipient</h3>
+          <form onSubmit={handleSubmit} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <h3 className="text-base font-bold">{t('addBeneficiary')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <AppTextField
                   label={t('name')}
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={e => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
+                  }}
+                  placeholder={t('beneficiaryNamePlaceholder')}
+                  error={Boolean(errors.name)}
+                  helperText={errors.name || t('beneficiaryNameHelper')}
                   required
                 />
               </div>
               <div>
                 <AppNumberField
-                  label="12-Digit TIN"
+                  label={t('twelveDigitTin')}
                   maxLength={12}
                   value={tin}
-                  onChange={e => setTin(e.target.value)}
+                  onChange={e => {
+                    setTin(e.target.value);
+                    if (errors.tin) setErrors(prev => ({ ...prev, tin: undefined }));
+                  }}
+                  placeholder={t('tinPlaceholder')}
+                  error={Boolean(errors.tin)}
+                  helperText={errors.tin || t('tinHelperText')}
                   required
                 />
               </div>
@@ -70,7 +106,8 @@ export const BeneficiariesView: React.FC = () => {
                 <AppSelectField
                   label={t('relationship')}
                   value={relationship}
-                  onChange={e => setRelationship(e.target.value as any)}
+                  onChange={e => setRelationship(e.target.value as RelationshipType)}
+                  helperText={t('relationshipHelper')}
                   options={[
                     { value: 'Father', label: t('father') },
                     { value: 'Mother', label: t('mother') },
@@ -88,7 +125,20 @@ export const BeneficiariesView: React.FC = () => {
                 <AppTextField
                   label={t('phone')}
                   value={phone}
-                  onChange={e => setPhone(e.target.value)}
+                  onChange={e => {
+                    setPhone(e.target.value);
+                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
+                  }}
+                  placeholder={t('phonePlaceholder')}
+                  error={Boolean(errors.phone)}
+                  helperText={errors.phone || t('phoneHelper')}
+                  slotProps={{
+                    htmlInput: {
+                      inputMode: 'tel',
+                      maxLength: 15,
+                      autoComplete: 'tel'
+                    }
+                  }}
                   required
                 />
               </div>
@@ -96,7 +146,10 @@ export const BeneficiariesView: React.FC = () => {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={() => {
+                  setErrors({});
+                  setShowAddModal(false);
+                }}
                 className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold"
               >
                 {t('cancel')}

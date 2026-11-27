@@ -35,12 +35,15 @@ export const HistoryView: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500">Sample payment records for UI review only.</p>
           </div>
-          <div className="w-full md:w-72">
+          <div className="w-full md:w-80">
             <AppSearchField
+              label={t('searchHistoryLabel')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               onClear={() => setSearch('')}
-              placeholder="Search ref, challan..."
+              placeholder={t('searchHistoryPlaceholder')}
+              helperText={t('searchHistoryHelper')}
+              clearAriaLabel={t('clearSearch')}
             />
           </div>
         </div>

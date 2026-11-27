@@ -1,6 +1,7 @@
 import React from 'react';
-import TextField, { TextFieldProps } from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import { AppTextField, AppTextFieldProps } from './AppTextField';
+import { mergeSlotEntry } from './fieldUtils';
 
 export interface OptionItem {
   value: string | number;
@@ -8,32 +9,46 @@ export interface OptionItem {
   disabled?: boolean;
 }
 
-export type AppSelectFieldProps = TextFieldProps & {
+export type AppSelectFieldProps = Omit<AppTextFieldProps, 'select'> & {
   options: OptionItem[];
 };
 
 export const AppSelectField: React.FC<AppSelectFieldProps> = ({
-  variant = 'outlined',
-  fullWidth = true,
-  size = 'small',
   options,
   children,
+  slotProps,
   ...props
 }) => {
+  const hasEmptyOption = options.some((option) => option.value === '');
+
+  const mergedSelectSlot = mergeSlotEntry(
+    'select',
+    hasEmptyOption ? { displayEmpty: true } : undefined,
+    slotProps?.select
+  );
+
+  const mergedInputLabelSlot = mergeSlotEntry(
+    'inputLabel',
+    hasEmptyOption ? { shrink: true } : undefined,
+    slotProps?.inputLabel
+  );
+
   return (
-    <TextField
+    <AppTextField
       select
-      variant={variant}
-      fullWidth={fullWidth}
-      size={size}
-      {...(props as any)}
+      slotProps={{
+        ...slotProps,
+        ...(mergedSelectSlot ? { select: mergedSelectSlot } : {}),
+        ...(mergedInputLabelSlot ? { inputLabel: mergedInputLabelSlot } : {}),
+      }}
+      {...props}
     >
       {options.map((option) => (
-        <MenuItem key={option.value} value={option.value} disabled={option.disabled}>
+        <MenuItem key={String(option.value)} value={option.value} disabled={option.disabled}>
           {option.label}
         </MenuItem>
       ))}
       {children}
-    </TextField>
+    </AppTextField>
   );
 };

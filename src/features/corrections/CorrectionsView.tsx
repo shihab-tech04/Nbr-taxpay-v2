@@ -12,19 +12,30 @@ export const CorrectionsView: React.FC = () => {
   const [reason, setReason] = useState('Incorrect Assessment Year');
   const [description, setDescription] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [errors, setErrors] = useState<{ challanNumber?: string; description?: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!challanNumber || !description) {
-      alert('Please fill in challan number and description.');
+    const nextErrors: { challanNumber?: string; description?: string } = {};
+    if (!challanNumber.trim()) {
+      nextErrors.challanNumber = t('requiredChallanError');
+    }
+    if (!description.trim()) {
+      nextErrors.description = t('requiredCorrectionExplanationError');
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
-    const tx = transactions.find(t => t.challanNumber === challanNumber);
+
+    setErrors({});
+    const trimmedChallan = challanNumber.trim();
+    const tx = transactions.find(t => t.challanNumber === trimmedChallan);
     addCorrection({
       transactionId: tx ? tx.id : 'tx-custom',
-      challanNumber,
+      challanNumber: trimmedChallan,
       reason,
-      description
+      description: description.trim()
     });
     setChallanNumber('');
     setDescription('');
@@ -50,18 +61,24 @@ export const CorrectionsView: React.FC = () => {
         </div>
 
         {showModal && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <h3 className="text-base font-bold">New Challan Correction Application</h3>
+          <form onSubmit={handleSubmit} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <h3 className="text-base font-bold">{t('submitCorrection')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <AppTextField
-                  label="Challan Number"
+                  label={t('challanNumberLabel')}
                   value={challanNumber}
-                  onChange={e => setChallanNumber(e.target.value)}
-                  placeholder="e.g., NBR-CHL-2026-881920"
+                  onChange={e => {
+                    setChallanNumber(e.target.value);
+                    if (errors.challanNumber) setErrors(prev => ({ ...prev, challanNumber: undefined }));
+                  }}
+                  placeholder={t('challanPlaceholder')}
+                  error={Boolean(errors.challanNumber)}
+                  helperText={errors.challanNumber || t('challanHelper')}
                   required
                   slotProps={{
                     htmlInput: {
+                      maxLength: 32,
                       className: 'font-mono'
                     }
                   }}
@@ -69,32 +86,41 @@ export const CorrectionsView: React.FC = () => {
               </div>
               <div>
                 <AppSelectField
-                  label="Reason for Correction"
+                  label={t('correctionReasonLabel')}
                   value={reason}
                   onChange={e => setReason(e.target.value)}
+                  helperText={t('correctionReasonHelper')}
                   options={[
-                    { value: 'Incorrect Assessment Year', label: 'Incorrect Assessment Year' },
-                    { value: 'Typo in Taxpayer TIN', label: 'Typo in Taxpayer TIN' },
-                    { value: 'Incorrect Tax Head Allocation', label: 'Incorrect Tax Head Allocation' },
-                    { value: 'Amount Adjustment', label: 'Amount Adjustment' }
+                    { value: 'Incorrect Assessment Year', label: t('reasonIncorrectAy') },
+                    { value: 'Typo in Taxpayer TIN', label: t('reasonTypoTin') },
+                    { value: 'Incorrect Tax Head Allocation', label: t('reasonIncorrectHead') },
+                    { value: 'Amount Adjustment', label: t('reasonAmountAdj') }
                   ]}
                 />
               </div>
             </div>
             <div>
               <AppTextArea
-                label="Detailed Explanation"
+                label={t('correctionExplanationLabel')}
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onChange={e => {
+                  setDescription(e.target.value);
+                  if (errors.description) setErrors(prev => ({ ...prev, description: undefined }));
+                }}
                 rows={3}
-                placeholder="Explain the required correction..."
+                placeholder={t('correctionExplanationPlaceholder')}
+                error={Boolean(errors.description)}
+                helperText={errors.description || t('correctionExplanationHelper')}
                 required
               />
             </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setErrors({});
+                  setShowModal(false);
+                }}
                 className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold"
               >
                 {t('cancel')}

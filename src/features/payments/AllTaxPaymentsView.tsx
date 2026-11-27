@@ -8,10 +8,15 @@ import {
   Plus, Trash2, ArrowRight, ShieldCheck, CheckCircle 
 } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
-import { AppSelectField, AppCurrencyField, AppTextField } from '../../design-system/forms';
+import {
+  AppSelectField,
+  AppCurrencyField,
+  AppTextField,
+  validateCurrencyAmount,
+} from '../../design-system/forms';
 
 export const AllTaxPaymentsView: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, beneficiaries, addTransaction, saveDraft } = useApp();
 
@@ -19,7 +24,10 @@ export const AllTaxPaymentsView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<TaxHeadCategory>('tax_with_return');
   const [assessmentYear, setAssessmentYear] = useState('2025-2026');
   const [selectedHeadId, setSelectedHeadId] = useState(TAX_HEADS[0].id);
-  const [amount, setAmount] = useState<number>(15000);
+  const [amountInput, setAmountInput] = useState<string>('15000');
+  const [amountError, setAmountError] = useState<string>('');
+  const [beneficiaryError, setBeneficiaryError] = useState<string>('');
+  const [formBannerError, setFormBannerError] = useState<string>('');
   const [remarks, setRemarks] = useState('');
   const [isForBeneficiary, setIsForBeneficiary] = useState(false);
   const [beneficiaryTin, setBeneficiaryTin] = useState('');
@@ -41,8 +49,26 @@ export const AllTaxPaymentsView: React.FC = () => {
 
   const handleAddItem = () => {
     const head = TAX_HEADS.find(h => h.id === selectedHeadId);
-    if (!head || amount <= 0) return;
+    const amountCheck = validateCurrencyAmount(amountInput, {
+      minAmount: 100,
+      decimalScale: 2,
+      required: true,
+    });
 
+    if (!amountCheck.valid || amountCheck.numericValue === null) {
+      setAmountError(
+        amountCheck.reason === 'min' || amountCheck.reason === 'required'
+          ? t('amountMinError', { amount: '100' })
+          : t('amountInvalidError')
+      );
+      return;
+    }
+
+    if (!head) return;
+
+    const validatedAmount = amountCheck.numericValue;
+    setAmountError('');
+    setFormBannerError('');
     setItems(prev => [
       ...prev,
       {
@@ -51,11 +77,11 @@ export const AllTaxPaymentsView: React.FC = () => {
         headNameEn: head.nameEn,
         headNameBn: head.nameBn,
         assessmentYear,
-        amount,
+        amount: validatedAmount,
         remarks
       }
     ]);
-    setAmount(10000);
+    setAmountInput('10000');
     setRemarks('');
   };
 
@@ -66,10 +92,16 @@ export const AllTaxPaymentsView: React.FC = () => {
   const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
 
   const handleProceedToPreview = () => {
-    if (items.length === 0) {
-      alert('Please add at least one tax head item.');
+    if (isForBeneficiary && !beneficiaryTin) {
+      setBeneficiaryError(t('selectBeneficiaryError'));
       return;
     }
+    if (items.length === 0) {
+      setFormBannerError(t('noItemsError'));
+      return;
+    }
+    setBeneficiaryError('');
+    setFormBannerError('');
     setStep('preview');
   };
 
@@ -96,7 +128,6 @@ export const AllTaxPaymentsView: React.FC = () => {
       category: selectedCategory,
       items
     });
-    alert('Payment saved as draft successfully!');
     navigate('/dashboard');
   };
 
@@ -155,13 +186,22 @@ export const AllTaxPaymentsView: React.FC = () => {
               </button>
             </div>
 
+            {formBannerError && (
+              <div role="alert" className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300">
+                {formBannerError}
+              </div>
+            )}
+
             {/* Payer vs Beneficiary Selection */}
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
               <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold">
                 <input 
                   type="checkbox" 
                   checked={isForBeneficiary} 
-                  onChange={e => setIsForBeneficiary(e.target.checked)}
+                  onChange={e => {
+                    setIsForBeneficiary(e.target.checked);
+                    if (!e.target.checked) setBeneficiaryError('');
+                  }}
                   className="rounded border-slate-300 text-teal-700 focus:ring-teal-600" 
                 />
                 <span>Facilitate payment on behalf of a beneficiary (Family member / Client)</span>
@@ -170,11 +210,16 @@ export const AllTaxPaymentsView: React.FC = () => {
               {isForBeneficiary && (
                 <div className="pt-2">
                   <AppSelectField
-                    label="Select Beneficiary"
+                    label={t('selectBeneficiary')}
                     value={beneficiaryTin}
-                    onChange={e => setBeneficiaryTin(e.target.value)}
+                    onChange={e => {
+                      setBeneficiaryTin(e.target.value);
+                      if (beneficiaryError) setBeneficiaryError('');
+                    }}
+                    error={Boolean(beneficiaryError)}
+                    helperText={beneficiaryError || t('selectBeneficiaryHelper')}
                     options={[
-                      { value: '', label: '-- Select Beneficiary --' },
+                      { value: '', label: t('selectBeneficiaryOption') },
                       ...beneficiaries.map(b => ({
                         value: b.tin,
                         label: `${b.name} (TIN: ${b.tin} - ${b.relationship})`
@@ -192,6 +237,7 @@ export const AllTaxPaymentsView: React.FC = () => {
                   label={t('assessmentYear')}
                   value={assessmentYear}
                   onChange={e => setAssessmentYear(e.target.value)}
+                  helperText={t('assessmentYearHelper')}
                   options={[
                     { value: '2025-2026', label: '2025-2026' },
                     { value: '2026-2027', label: '2026-2027' },
@@ -202,14 +248,15 @@ export const AllTaxPaymentsView: React.FC = () => {
 
               <div>
                 <AppSelectField
-                  label="Tax Head"
+                  label={t('taxHead')}
                   value={selectedHeadId}
                   onChange={e => setSelectedHeadId(e.target.value)}
+                  helperText={t('taxHeadHelper')}
                   options={TAX_HEADS
                     .filter(h => h.category === selectedCategory || selectedCategory === 'other_tax')
                     .map(h => ({
                       value: h.id,
-                      label: `[${h.code}] ${h.nameEn}`
+                      label: `[${h.code}] ${i18n.language === 'bn' ? h.nameBn : h.nameEn}`
                     }))}
                 />
               </div>
@@ -217,23 +264,32 @@ export const AllTaxPaymentsView: React.FC = () => {
               <div>
                 <AppCurrencyField
                   label={t('amountBdt')}
-                  value={amount}
-                  onChange={e => setAmount(Number(e.target.value))}
-                  inputProps={{ min: 100 }}
+                  value={amountInput}
+                  minAmount={100}
+                  decimalScale={2}
+                  onChange={e => {
+                    setAmountInput(e.target.value);
+                    if (amountError) setAmountError('');
+                  }}
+                  error={Boolean(amountError)}
+                  helperText={amountError || t('amountMinHelper', { amount: '100' })}
+                  required
                 />
               </div>
 
               <div>
                 <AppTextField
-                  label="Remarks / Note (Optional)"
+                  label={t('remarksOptional')}
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
-                  placeholder="e.g., Q2 installment"
+                  placeholder={t('remarksPlaceholder')}
+                  helperText={t('remarksHelper')}
                 />
               </div>
             </div>
 
             <button
+              type="button"
               onClick={handleAddItem}
               className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
             >

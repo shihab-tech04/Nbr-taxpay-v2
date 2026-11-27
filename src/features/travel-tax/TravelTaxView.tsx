@@ -5,7 +5,12 @@ import { useApp } from '../../shared/AppContext';
 import { Plane, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
-import { AppTextField, AppSelectField } from '../../design-system/forms';
+import {
+  AppTextField,
+  AppSelectField,
+  sanitizePassport,
+  validatePassport,
+} from '../../design-system/forms';
 
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -19,6 +24,7 @@ export const TravelTaxView: React.FC = () => {
   const [amount, setAmount] = useState<number>(2000);
   const [step, setStep] = useState<'form' | 'preview' | 'success'>('form');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
+  const [errors, setErrors] = useState<{ passport?: string; passengerName?: string }>({});
 
   const handleDestinationChange = (dest: string) => {
     setDestination(dest);
@@ -33,10 +39,18 @@ export const TravelTaxView: React.FC = () => {
 
   const handleProceed = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passportNumber || !passengerName) {
-      alert('Please fill in passport and passenger details.');
+    const nextErrors: { passport?: string; passengerName?: string } = {};
+    if (!validatePassport(passportNumber)) {
+      nextErrors.passport = t('invalidPassportError');
+    }
+    if (!passengerName.trim()) {
+      nextErrors.passengerName = t('requiredPassengerNameError');
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
+    setErrors({});
     setStep('preview');
   };
 
@@ -77,16 +91,24 @@ export const TravelTaxView: React.FC = () => {
         </div>
 
         {step === 'form' && (
-          <form onSubmit={handleProceed} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
+          <form onSubmit={handleProceed} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <AppTextField
                   label={t('passportNumber')}
                   value={passportNumber}
-                  onChange={e => setPassportNumber(e.target.value)}
+                  onChange={e => {
+                    setPassportNumber(sanitizePassport(e.target.value, 12));
+                    if (errors.passport) setErrors(prev => ({ ...prev, passport: undefined }));
+                  }}
+                  placeholder={t('passportPlaceholder')}
+                  error={Boolean(errors.passport)}
+                  helperText={errors.passport || t('passportHelper')}
                   required
                   slotProps={{
                     htmlInput: {
+                      maxLength: 12,
+                      autoCapitalize: 'characters',
                       className: 'font-mono uppercase'
                     }
                   }}
@@ -95,9 +117,15 @@ export const TravelTaxView: React.FC = () => {
 
               <div>
                 <AppTextField
-                  label={`${t('name')} (Passenger)`}
+                  label={t('passengerName')}
                   value={passengerName}
-                  onChange={e => setPassengerName(e.target.value)}
+                  onChange={e => {
+                    setPassengerName(e.target.value);
+                    if (errors.passengerName) setErrors(prev => ({ ...prev, passengerName: undefined }));
+                  }}
+                  placeholder={t('passengerNamePlaceholder')}
+                  error={Boolean(errors.passengerName)}
+                  helperText={errors.passengerName || t('passengerNameHelper')}
                   required
                 />
               </div>
@@ -107,11 +135,12 @@ export const TravelTaxView: React.FC = () => {
                   label={t('travelDestination')}
                   value={destination}
                   onChange={e => handleDestinationChange(e.target.value)}
+                  helperText={t('travelDestinationHelper')}
                   options={[
-                    { value: 'India (By Air)', label: 'India (By Air) - ৳ 2,000' },
-                    { value: 'India (By Land/Water)', label: 'India (By Land/Water) - ৳ 1,000' },
-                    { value: 'SAARC Countries', label: 'SAARC Countries (Other than India) - ৳ 3,000' },
-                    { value: 'Other International', label: 'Other International Destinations - ৳ 5,000' }
+                    { value: 'India (By Air)', label: t('destIndiaAir') },
+                    { value: 'India (By Land/Water)', label: t('destIndiaLandWater') },
+                    { value: 'SAARC Countries', label: t('destSaarc') },
+                    { value: 'Other International', label: t('destOtherIntl') }
                   ]}
                 />
               </div>
@@ -120,10 +149,11 @@ export const TravelTaxView: React.FC = () => {
                 <AppSelectField
                   label={t('travelClass')}
                   value={travelClass}
-                  onChange={e => setTravelClass(e.target.value as any)}
+                  onChange={e => setTravelClass(e.target.value as 'Economy' | 'Business')}
+                  helperText={t('travelClassHelper')}
                   options={[
-                    { value: 'Economy', label: 'Economy Class' },
-                    { value: 'Business', label: 'Business / First Class (+ ৳ 1,000 surcharge)' }
+                    { value: 'Economy', label: t('classEconomy') },
+                    { value: 'Business', label: t('classBusiness') }
                   ]}
                 />
               </div>

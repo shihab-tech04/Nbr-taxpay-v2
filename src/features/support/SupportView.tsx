@@ -4,22 +4,36 @@ import { useApp } from '../../shared/AppContext';
 import { HelpCircle, PhoneCall, Plus } from 'lucide-react';
 import { AppTextField, AppSelectField, AppTextArea } from '../../design-system/forms';
 
+import { SupportTicket } from '../../types/tax';
+
+type SupportCategory = SupportTicket['category'];
+
 export const SupportView: React.FC = () => {
   const { t } = useTranslation();
   const { addSupportTicket } = useApp();
 
   const [subject, setSubject] = useState('');
-  const [category, setCategory] = useState<'Technical' | 'Tax Assessment' | 'Payment Issue' | 'Other'>('Payment Issue');
+  const [category, setCategory] = useState<SupportCategory>('Payment Issue');
   const [message, setMessage] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [errors, setErrors] = useState<{ subject?: string; message?: string }>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subject || !message) {
-      alert('Please enter subject and message.');
+    const nextErrors: { subject?: string; message?: string } = {};
+    if (!subject.trim()) {
+      nextErrors.subject = t('requiredSubjectError');
+    }
+    if (!message.trim()) {
+      nextErrors.message = t('requiredMessageError');
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
       return;
     }
-    addSupportTicket({ subject, category, message });
+
+    setErrors({});
+    addSupportTicket({ subject: subject.trim(), category, message: message.trim() });
     setSubject('');
     setMessage('');
     setShowModal(false);
@@ -55,46 +69,60 @@ export const SupportView: React.FC = () => {
         </div>
 
         {showModal && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
             <h3 className="text-base font-bold">Create Support Ticket</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <AppTextField
-                  label="Subject"
+                  label={t('supportSubjectLabel')}
                   value={subject}
-                  onChange={e => setSubject(e.target.value)}
-                  placeholder="e.g., Payment gateway timeout"
+                  onChange={e => {
+                    setSubject(e.target.value);
+                    if (errors.subject) setErrors(prev => ({ ...prev, subject: undefined }));
+                  }}
+                  placeholder={t('supportSubjectPlaceholder')}
+                  error={Boolean(errors.subject)}
+                  helperText={errors.subject || t('supportSubjectHelper')}
                   required
                 />
               </div>
               <div>
                 <AppSelectField
-                  label="Category"
+                  label={t('supportCategoryLabel')}
                   value={category}
-                  onChange={e => setCategory(e.target.value as any)}
+                  onChange={e => setCategory(e.target.value as SupportCategory)}
+                  helperText={t('supportCategoryHelper')}
                   options={[
-                    { value: 'Payment Issue', label: 'Payment Issue' },
-                    { value: 'Tax Assessment', label: 'Tax Assessment' },
-                    { value: 'Technical', label: 'Technical' },
-                    { value: 'Other', label: 'Other' }
+                    { value: 'Payment Issue', label: t('catPaymentIssue') },
+                    { value: 'Tax Assessment', label: t('catTaxAssessment') },
+                    { value: 'Technical', label: t('catTechnical') },
+                    { value: 'Other', label: t('catOther') }
                   ]}
                 />
               </div>
             </div>
             <div>
               <AppTextArea
-                label="Message"
+                label={t('supportMessageLabel')}
                 value={message}
-                onChange={e => setMessage(e.target.value)}
+                onChange={e => {
+                  setMessage(e.target.value);
+                  if (errors.message) setErrors(prev => ({ ...prev, message: undefined }));
+                }}
                 rows={3}
-                placeholder="Describe your issue in detail..."
+                placeholder={t('supportMessagePlaceholder')}
+                error={Boolean(errors.message)}
+                helperText={errors.message || t('supportMessageHelper')}
                 required
               />
             </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setErrors({});
+                  setShowModal(false);
+                }}
                 className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold"
               >
                 {t('cancel')}

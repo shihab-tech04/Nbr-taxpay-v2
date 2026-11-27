@@ -5,7 +5,16 @@ import { useApp } from '../../shared/AppContext';
 import { Gift, ShieldCheck, CheckCircle, ArrowRight } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
-import { AppNumberField, AppTextField, AppSelectField, AppCurrencyField, AppTextArea } from '../../design-system/forms';
+import {
+  AppNumberField,
+  AppTextField,
+  AppSelectField,
+  AppCurrencyField,
+  AppTextArea,
+  parseCurrencyAmount,
+  validateCurrencyAmount,
+  validateTin,
+} from '../../design-system/forms';
 
 export const GiftTaxView: React.FC = () => {
   const { t } = useTranslation();
@@ -18,26 +27,65 @@ export const GiftTaxView: React.FC = () => {
   const [doneeTin, setDoneeTin] = useState('992384102938');
   const [doneeName, setDoneeName] = useState('Mrs. Fatema Begum');
   const [relationship, setRelationship] = useState('Mother');
-  
-  const [giftAmount, setGiftAmount] = useState<number>(500000);
+
+  const [giftAmountInput, setGiftAmountInput] = useState<string>('500000');
   const [description, setDescription] = useState('Residential land transfer as family gift');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
+  const [errors, setErrors] = useState<{
+    donorTin?: string;
+    donorName?: string;
+    doneeTin?: string;
+    doneeName?: string;
+    giftAmount?: string;
+    description?: string;
+  }>({});
 
+  const giftAmount = parseCurrencyAmount(giftAmountInput) ?? 0;
   const taxRate = 0.05; // 5% standard gift tax for non-exempt
   const calculatedTax = Math.round(giftAmount * taxRate);
 
   const handleNext = () => {
     if (stage === 1) {
-      if (!donorTin || !doneeTin) {
-        alert('Please enter both Donor and Donee TINs.');
+      const nextErrors: typeof errors = {};
+      if (!validateTin(donorTin).valid) {
+        nextErrors.donorTin = t('invalidTinError');
+      }
+      if (!donorName.trim()) {
+        nextErrors.donorName = t('requiredDonorNameError');
+      }
+      if (!validateTin(doneeTin).valid) {
+        nextErrors.doneeTin = t('invalidTinError');
+      }
+      if (!doneeName.trim()) {
+        nextErrors.doneeName = t('requiredDoneeNameError');
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
         return;
       }
+      setErrors({});
       setStage(2);
     } else if (stage === 2) {
-      if (giftAmount <= 0) {
-        alert('Please enter a valid gift amount.');
+      const nextErrors: typeof errors = {};
+      const amountCheck = validateCurrencyAmount(giftAmountInput, {
+        minAmount: 1000,
+        decimalScale: 2,
+        required: true,
+      });
+      if (!amountCheck.valid) {
+        nextErrors.giftAmount =
+          amountCheck.reason === 'min' || amountCheck.reason === 'required'
+            ? t('amountMinError', { amount: '1,000' })
+            : t('amountInvalidError');
+      }
+      if (!description.trim()) {
+        nextErrors.description = t('requiredGiftDescriptionError');
+      }
+      if (Object.keys(nextErrors).length > 0) {
+        setErrors(nextErrors);
         return;
       }
+      setErrors({});
       setStage(3);
     }
   };
@@ -53,7 +101,7 @@ export const GiftTaxView: React.FC = () => {
         {
           headId: 'h6',
           headCode: '0130',
-          headNameEn: `Gift Tax (दानকর) - Donee: ${doneeName} (${relationship})`,
+          headNameEn: `Gift Tax (দানকর) - Donee: ${doneeName} (${relationship})`,
           headNameBn: `দানকর - ${doneeName}`,
           assessmentYear: '2025-2026',
           amount: calculatedTax,
@@ -96,15 +144,27 @@ export const GiftTaxView: React.FC = () => {
                       label={t('giftDonorTin')}
                       maxLength={12}
                       value={donorTin}
-                      onChange={e => setDonorTin(e.target.value)}
+                      onChange={e => {
+                        setDonorTin(e.target.value);
+                        if (errors.donorTin) setErrors(prev => ({ ...prev, donorTin: undefined }));
+                      }}
+                      placeholder={t('tinPlaceholder')}
+                      error={Boolean(errors.donorTin)}
+                      helperText={errors.donorTin || t('tinHelperText')}
                       required
                     />
                   </div>
                   <div>
                     <AppTextField
-                      label="Donor Name"
+                      label={t('donorName')}
                       value={donorName}
-                      onChange={e => setDonorName(e.target.value)}
+                      onChange={e => {
+                        setDonorName(e.target.value);
+                        if (errors.donorName) setErrors(prev => ({ ...prev, donorName: undefined }));
+                      }}
+                      placeholder={t('donorNamePlaceholder')}
+                      error={Boolean(errors.donorName)}
+                      helperText={errors.donorName || t('donorNameHelper')}
                       required
                     />
                   </div>
@@ -119,15 +179,27 @@ export const GiftTaxView: React.FC = () => {
                       label={t('giftDoneeTin')}
                       maxLength={12}
                       value={doneeTin}
-                      onChange={e => setDoneeTin(e.target.value)}
+                      onChange={e => {
+                        setDoneeTin(e.target.value);
+                        if (errors.doneeTin) setErrors(prev => ({ ...prev, doneeTin: undefined }));
+                      }}
+                      placeholder={t('tinPlaceholder')}
+                      error={Boolean(errors.doneeTin)}
+                      helperText={errors.doneeTin || t('tinHelperText')}
                       required
                     />
                   </div>
                   <div>
                     <AppTextField
-                      label="Donee Name"
+                      label={t('doneeName')}
                       value={doneeName}
-                      onChange={e => setDoneeName(e.target.value)}
+                      onChange={e => {
+                        setDoneeName(e.target.value);
+                        if (errors.doneeName) setErrors(prev => ({ ...prev, doneeName: undefined }));
+                      }}
+                      placeholder={t('doneeNamePlaceholder')}
+                      error={Boolean(errors.doneeName)}
+                      helperText={errors.doneeName || t('doneeNameHelper')}
                       required
                     />
                   </div>
@@ -136,14 +208,15 @@ export const GiftTaxView: React.FC = () => {
                       label={t('relationship')}
                       value={relationship}
                       onChange={e => setRelationship(e.target.value)}
+                      helperText={t('relationshipHelper')}
                       options={[
-                        { value: 'Father', label: 'Father' },
-                        { value: 'Mother', label: 'Mother' },
-                        { value: 'Spouse', label: 'Spouse' },
-                        { value: 'Son', label: 'Son' },
-                        { value: 'Daughter', label: 'Daughter' },
-                        { value: 'Siblings', label: 'Siblings' },
-                        { value: 'Others', label: 'Others' }
+                        { value: 'Father', label: t('father') },
+                        { value: 'Mother', label: t('mother') },
+                        { value: 'Spouse', label: t('spouse') },
+                        { value: 'Son', label: t('son') },
+                        { value: 'Daughter', label: t('daughter') },
+                        { value: 'Siblings', label: t('siblings') },
+                        { value: 'Others', label: t('others') }
                       ]}
                     />
                   </div>
@@ -152,6 +225,7 @@ export const GiftTaxView: React.FC = () => {
             </div>
 
             <button
+              type="button"
               onClick={handleNext}
               className="w-full py-3.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-colors"
             >
@@ -167,10 +241,17 @@ export const GiftTaxView: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <AppCurrencyField
-                  label={`${t('giftAmount')} (BDT)`}
-                  value={giftAmount}
-                  onChange={e => setGiftAmount(Number(e.target.value))}
-                  inputProps={{ min: 1000 }}
+                  label={t('giftAmountBdt')}
+                  value={giftAmountInput}
+                  minAmount={1000}
+                  decimalScale={2}
+                  onChange={e => {
+                    setGiftAmountInput(e.target.value);
+                    if (errors.giftAmount) setErrors(prev => ({ ...prev, giftAmount: undefined }));
+                  }}
+                  error={Boolean(errors.giftAmount)}
+                  helperText={errors.giftAmount || t('amountMinHelper', { amount: '1,000' })}
+                  required
                 />
               </div>
 
@@ -178,8 +259,15 @@ export const GiftTaxView: React.FC = () => {
                 <AppTextArea
                   label={t('giftDescription')}
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onChange={e => {
+                    setDescription(e.target.value);
+                    if (errors.description) setErrors(prev => ({ ...prev, description: undefined }));
+                  }}
+                  placeholder={t('giftDescriptionPlaceholder')}
+                  error={Boolean(errors.description)}
+                  helperText={errors.description || t('giftDescriptionHelper')}
                   rows={3}
+                  required
                 />
               </div>
 
@@ -196,12 +284,14 @@ export const GiftTaxView: React.FC = () => {
 
             <div className="flex gap-4">
               <button
+                type="button"
                 onClick={() => setStage(1)}
                 className="w-1/3 py-3 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold"
               >
                 {t('back')}
               </button>
               <button
+                type="button"
                 onClick={handleNext}
                 className="w-2/3 py-3 bg-teal-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
               >

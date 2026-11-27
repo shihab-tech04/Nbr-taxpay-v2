@@ -88,7 +88,118 @@ const resources = {
       giftDescription: "Gift Description / Reason",
       submitCorrection: "Apply for Correction",
       faqTitle: "Frequently Asked Questions",
-      needHelp: "Need assistance? Contact NBR National Call Center 16555."
+      needHelp: "Need assistance? Contact NBR National Call Center 16555.",
+
+      // Shared form controls & accessibility
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      clearSearch: "Clear search",
+
+      // Common field helpers & validations
+      tinPlaceholder: "e.g., 882349102384",
+      tinHelperText: "Enter exactly 12 numeric digits assigned by NBR.",
+      invalidTinError: "Please enter a valid 12-digit numeric TIN.",
+      twelveDigitTin: "12-Digit TIN",
+
+      // LoginView fields
+      otpLabel: "6-Digit OTP Verification Code",
+      otpPlaceholder: "e.g., 123456",
+      otpHelperText: "Enter the 6-digit numeric verification code.",
+      invalidOtpError: "Please enter a valid 6-digit numeric OTP code.",
+
+      // BeneficiariesView fields
+      beneficiaryNamePlaceholder: "e.g., Mrs. Fatema Begum",
+      beneficiaryNameHelper: "Enter full legal name of the beneficiary.",
+      requiredNameError: "Please enter the beneficiary's full name.",
+      relationshipHelper: "Select your relationship with this recipient.",
+      phonePlaceholder: "e.g., +8801712345678",
+      phoneHelper: "Enter a valid Bangladesh mobile number (01XXXXXXXXX).",
+      invalidPhoneError: "Please enter a valid Bangladesh mobile number.",
+
+      // AllTaxPaymentsView fields
+      selectBeneficiary: "Select Beneficiary",
+      selectBeneficiaryOption: "-- Select Beneficiary --",
+      selectBeneficiaryHelper: "Choose a saved beneficiary for facilitated payment.",
+      selectBeneficiaryError: "Please select a beneficiary before adding or proceeding.",
+      assessmentYearHelper: "Choose the applicable NBR tax assessment year.",
+      taxHead: "Tax Head",
+      taxHeadHelper: "Select the NBR tax head code for this line item.",
+      amountMinHelper: "Minimum payable amount is ৳{{amount}} (up to 2 decimal places).",
+      amountMinError: "Enter a valid amount of at least ৳{{amount}} (max 2 decimal places).",
+      amountInvalidError: "Please enter a valid positive amount (max 2 decimal places).",
+      noItemsError: "Please add at least one tax head item.",
+      draftSavedSuccess: "Payment saved as draft successfully.",
+      remarksOptional: "Remarks / Note (Optional)",
+      remarksPlaceholder: "e.g., Q2 installment",
+      remarksHelper: "Optional note attached to this challan line item.",
+
+      // TravelTaxView fields
+      passportPlaceholder: "e.g., A06829102",
+      passportHelper: "Enter 6–12 alphanumeric characters (uppercase).",
+      invalidPassportError: "Please enter a valid passport number (6–12 alphanumeric characters).",
+      passengerName: "Passenger Name",
+      passengerNamePlaceholder: "e.g., Md. Rafiqul Islam",
+      passengerNameHelper: "Name exactly as printed on the passport.",
+      requiredPassengerNameError: "Please enter the passenger's name.",
+      travelDestinationHelper: "Select departure region and travel mode.",
+      travelClassHelper: "Business/First class includes ৳1,000 surcharge.",
+      destIndiaAir: "India (By Air) - ৳ 2,000",
+      destIndiaLandWater: "India (By Land/Water) - ৳ 1,000",
+      destSaarc: "SAARC Countries (Other than India) - ৳ 3,000",
+      destOtherIntl: "Other International Destinations - ৳ 5,000",
+      classEconomy: "Economy Class",
+      classBusiness: "Business / First Class (+ ৳ 1,000 surcharge)",
+
+      // GiftTaxView fields
+      donorName: "Donor Name",
+      donorNamePlaceholder: "e.g., Md. Rafiqul Islam",
+      donorNameHelper: "Full name of the taxpayer making the gift.",
+      requiredDonorNameError: "Please enter the donor's name.",
+      doneeName: "Donee Name",
+      doneeNamePlaceholder: "e.g., Mrs. Fatema Begum",
+      doneeNameHelper: "Full name of the recipient.",
+      requiredDoneeNameError: "Please enter the donee's name.",
+      giftAmountBdt: "Gift Amount (BDT)",
+      giftDescriptionPlaceholder: "Describe the asset, property, or reason for the gift...",
+      giftDescriptionHelper: "Provide clear particulars of the gift for challan records.",
+      requiredGiftDescriptionError: "Please enter a description for the gift.",
+
+      // HistoryView search field
+      searchHistoryLabel: "Search Payments",
+      searchHistoryPlaceholder: "Search ref, challan...",
+      searchHistoryHelper: "Filter by transaction reference, challan number, or category.",
+
+      // CorrectionsView fields
+      challanNumberLabel: "Challan Number",
+      challanPlaceholder: "e.g., NBR-CHL-2026-881920",
+      challanHelper: "Enter the exact E-Challan number requiring correction.",
+      requiredChallanError: "Please enter a valid challan number.",
+      correctionReasonLabel: "Reason for Correction",
+      correctionReasonHelper: "Select the primary category of correction requested.",
+      reasonIncorrectAy: "Incorrect Assessment Year",
+      reasonTypoTin: "Typo in Taxpayer TIN",
+      reasonIncorrectHead: "Incorrect Tax Head Allocation",
+      reasonAmountAdj: "Amount Adjustment",
+      correctionExplanationLabel: "Detailed Explanation",
+      correctionExplanationPlaceholder: "Explain the required correction...",
+      correctionExplanationHelper: "Describe the discrepancy and the requested correction clearly.",
+      requiredCorrectionExplanationError: "Please explain the required correction.",
+
+      // SupportView fields
+      supportSubjectLabel: "Subject",
+      supportSubjectPlaceholder: "e.g., Payment gateway timeout",
+      supportSubjectHelper: "Brief summary of your issue or inquiry.",
+      requiredSubjectError: "Please enter a support ticket subject.",
+      supportCategoryLabel: "Category",
+      supportCategoryHelper: "Select the department or topic for faster routing.",
+      catPaymentIssue: "Payment Issue",
+      catTaxAssessment: "Tax Assessment",
+      catTechnical: "Technical",
+      catOther: "Other",
+      supportMessageLabel: "Message",
+      supportMessagePlaceholder: "Describe your issue in detail...",
+      supportMessageHelper: "Include transaction references or challan numbers if applicable.",
+      requiredMessageError: "Please describe your issue in detail."
     }
   },
   bn: {
@@ -177,7 +288,118 @@ const resources = {
       giftDescription: "দানের বিবরণ / কারণ",
       submitCorrection: "সংশোধনের আবেদন করুন",
       faqTitle: "সচরাচর জিজ্ঞাসিত প্রশ্নাবলী",
-      needHelp: "সহায়তা প্রয়োজন? এনবিআর জাতীয় কল সেন্টার ১৬৫৫৫ এ যোগাযোগ করুন।"
+      needHelp: "সহায়তা প্রয়োজন? এনবিআর জাতীয় কল সেন্টার ১৬৫৫৫ এ যোগাযোগ করুন।",
+
+      // Shared form controls & accessibility
+      showPassword: "পাসওয়ার্ড দেখুন",
+      hidePassword: "পাসওয়ার্ড লুকান",
+      clearSearch: "অনুসন্ধান মুছুন",
+
+      // Common field helpers & validations
+      tinPlaceholder: "যেমন: 882349102384",
+      tinHelperText: "এনবিআর প্রদত্ত ঠিক ১২ ডিজিটের সংখ্যা লিখুন।",
+      invalidTinError: "অনুগ্রহ করে ১২ ডিজিটের সঠিক টিআইএন লিখুন।",
+      twelveDigitTin: "১২ ডিজিটের টিআইএন",
+
+      // LoginView fields
+      otpLabel: "৬ ডিজিটের ওটিপি যাচাইকরণ কোড",
+      otpPlaceholder: "যেমন: 123456",
+      otpHelperText: "৬ ডিজিটের সংখ্যাসূচক যাচাইকরণ কোডটি লিখুন।",
+      invalidOtpError: "অনুগ্রহ করে ৬ ডিজিটের সঠিক ওটিপি কোড লিখুন।",
+
+      // BeneficiariesView fields
+      beneficiaryNamePlaceholder: "যেমন: মিসেস ফাতেমা বেগম",
+      beneficiaryNameHelper: "প্রাপকের পূর্ণ আইনি নাম লিখুন।",
+      requiredNameError: "অনুগ্রহ করে প্রাপকের নাম লিখুন।",
+      relationshipHelper: "এই প্রাপকের সাথে আপনার সম্পর্ক নির্বাচন করুন।",
+      phonePlaceholder: "যেমন: +8801712345678",
+      phoneHelper: "সঠিক বাংলাদেশী মোবাইল নম্বর লিখুন (01XXXXXXXXX)।",
+      invalidPhoneError: "অনুগ্রহ করে সঠিক বাংলাদেশী মোবাইল নম্বর লিখুন।",
+
+      // AllTaxPaymentsView fields
+      selectBeneficiary: "বেনিফিশিয়ারি নির্বাচন করুন",
+      selectBeneficiaryOption: "-- বেনিফিশিয়ারি নির্বাচন করুন --",
+      selectBeneficiaryHelper: "সহায়তাপ্রাপ্ত কর প্রদানের জন্য সংরক্ষিত প্রাপক নির্বাচন করুন।",
+      selectBeneficiaryError: "অনুগ্রহ করে একজন বেনিফিশিয়ারি নির্বাচন করুন।",
+      assessmentYearHelper: "প্রযোজ্য এনবিআর কর বর্ষ নির্বাচন করুন।",
+      taxHead: "কর খাত",
+      taxHeadHelper: "এই আইটেমের জন্য এনবিআর কর খাত কোড নির্বাচন করুন।",
+      amountMinHelper: "সর্বনিম্ন প্রদেয় পরিমাণ ৳{{amount}} (সর্বোচ্চ ২ দশমিক স্থান)।",
+      amountMinError: "সর্বনিম্ন ৳{{amount}} প্রদেয় পরিমাণ লিখুন (সর্বোচ্চ ২ দশমিক স্থান)।",
+      amountInvalidError: "অনুগ্রহ করে সঠিক ধনাত্মক পরিমাণ লিখুন (সর্বোচ্চ ২ দশমিক স্থান)।",
+      noItemsError: "অনুগ্রহ করে অন্তত একটি কর খাত যোগ করুন।",
+      draftSavedSuccess: "পেমেন্ট সফলভাবে খসড়া হিসেবে সংরক্ষণ করা হয়েছে।",
+      remarksOptional: "মন্তব্য / নোট (ঐচ্ছিক)",
+      remarksPlaceholder: "যেমন: ২য় কিস্তি",
+      remarksHelper: "চালানের এই আইটেমের সাথে সংযুক্ত ঐচ্ছিক মন্তব্য।",
+
+      // TravelTaxView fields
+      passportPlaceholder: "যেমন: A06829102",
+      passportHelper: "৬–১২ অক্ষর ও সংখ্যার পাসপোর্ট নম্বর লিখুন (বড় হাতের অক্ষর)।",
+      invalidPassportError: "অনুগ্রহ করে সঠিক পাসপোর্ট নম্বর লিখুন (৬–১২ অক্ষর/সংখ্যা)।",
+      passengerName: "যাত্রীর নাম",
+      passengerNamePlaceholder: "যেমন: মো. রফিকুল ইসলাম",
+      passengerNameHelper: "পাসপোর্টে উল্লেখিত হুবহু নাম লিখুন।",
+      requiredPassengerNameError: "অনুগ্রহ করে যাত্রীর নাম লিখুন।",
+      travelDestinationHelper: "ভ্রমণের গন্তব্য অঞ্চল ও মাধ্যম নির্বাচন করুন।",
+      travelClassHelper: "বিজনেস/ফার্স্ট শ্রেণীতে ৳১,০০০ অতিরিক্ত চার্জ প্রযোজ্য।",
+      destIndiaAir: "ভারত (আকাশপথে) - ৳ ২,০০০",
+      destIndiaLandWater: "ভারত (স্থল/জলপথে) - ৳ ১,০০০",
+      destSaarc: "সার্কভুক্ত দেশ (ভারত ব্যতীত) - ৳ ৩,০০০",
+      destOtherIntl: "অন্যান্য আন্তর্জাতিক গন্তব্য - ৳ ৫,০০০",
+      classEconomy: "ইকোনমি শ্রেণী (Economy)",
+      classBusiness: "বিজনেস / ফার্স্ট শ্রেণী (+ ৳ ১,০০০ চার্জ)",
+
+      // GiftTaxView fields
+      donorName: "দাতার নাম",
+      donorNamePlaceholder: "যেমন: মো. রফিকুল ইসলাম",
+      donorNameHelper: "দানকারী করদাতার পূর্ণ নাম।",
+      requiredDonorNameError: "অনুগ্রহ করে দাতার নাম লিখুন।",
+      doneeName: "গ্রহীতার নাম",
+      doneeNamePlaceholder: "যেমন: মিসেস ফাতেমা বেগম",
+      doneeNameHelper: "দান গ্রহীতার পূর্ণ নাম।",
+      requiredDoneeNameError: "অনুগ্রহ করে গ্রহীতার নাম লিখুন।",
+      giftAmountBdt: "দানের পরিমাণ (টাকা)",
+      giftDescriptionPlaceholder: "দানের সম্পত্তি বা কারণ বিস্তারিত লিখুন...",
+      giftDescriptionHelper: "চালানের রেকর্ডের জন্য দানের স্পষ্ট বিবরণ দিন।",
+      requiredGiftDescriptionError: "অনুগ্রহ করে দানের বিবরণ লিখুন।",
+
+      // HistoryView search field
+      searchHistoryLabel: "পেমেন্ট অনুসন্ধান",
+      searchHistoryPlaceholder: "রেফারেন্স বা চালান নম্বর লিখুন...",
+      searchHistoryHelper: "লেনদেন রেফারেন্স, চালান নম্বর বা ধরন দিয়ে খুঁজুন।",
+
+      // CorrectionsView fields
+      challanNumberLabel: "চালান নম্বর",
+      challanPlaceholder: "যেমন: NBR-CHL-2026-881920",
+      challanHelper: "সংশোধনের জন্য সঠিক ই-চালান নম্বর লিখুন।",
+      requiredChallanError: "অনুগ্রহ করে সঠিক চালান নম্বর লিখুন।",
+      correctionReasonLabel: "সংশোধনের কারণ",
+      correctionReasonHelper: "সংশোধনের মূল কারণ নির্বাচন করুন।",
+      reasonIncorrectAy: "ভুল কর বর্ষ (Incorrect Assessment Year)",
+      reasonTypoTin: "টিআইএন নম্বরে ভুল (Typo in Taxpayer TIN)",
+      reasonIncorrectHead: "ভুল কর খাত নির্বাচন (Incorrect Tax Head)",
+      reasonAmountAdj: "টাকার পরিমাণ সমন্বয় (Amount Adjustment)",
+      correctionExplanationLabel: "বিস্তারিত বিবরণ",
+      correctionExplanationPlaceholder: "প্রয়োজনীয় সংশোধনের কারণ লিখুন...",
+      correctionExplanationHelper: "ত্রুটি এবং কাঙ্ক্ষিত সংশোধনের বিবরণ স্পষ্টভাবে লিখুন।",
+      requiredCorrectionExplanationError: "অনুগ্রহ করে প্রয়োজনীয় সংশোধনের বিবরণ লিখুন।",
+
+      // SupportView fields
+      supportSubjectLabel: "বিষয়",
+      supportSubjectPlaceholder: "যেমন: পেমেন্ট গেটওয়ে সময়সীমা শেষ",
+      supportSubjectHelper: "আপনার সমস্যা বা প্রশ্নের সংক্ষিপ্ত শিরোনাম।",
+      requiredSubjectError: "অনুগ্রহ করে সহায়তার বিষয় লিখুন।",
+      supportCategoryLabel: "বিভাগ",
+      supportCategoryHelper: "দ্রুত সমাধানের জন্য প্রযোজ্য বিভাগ নির্বাচন করুন।",
+      catPaymentIssue: "পেমেন্ট সমস্যা",
+      catTaxAssessment: "কর নির্ধারণ",
+      catTechnical: "কারিগরি সহায়তা",
+      catOther: "অন্যান্য",
+      supportMessageLabel: "বার্তা / বিস্তারিত বিবরণ",
+      supportMessagePlaceholder: "আপনার সমস্যাটি বিস্তারিত লিখুন...",
+      supportMessageHelper: "প্রযোজ্য হলে লেনদেন রেফারেন্স বা চালান নম্বর উল্লেখ করুন।",
+      requiredMessageError: "অনুগ্রহ করে আপনার সমস্যাটি বিস্তারিত লিখুন।"
     }
   }
 };

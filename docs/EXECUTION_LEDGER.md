@@ -17,3 +17,21 @@
 
 ## Resume From Here
 All citizen features, design tokens, bilingual translations, and production-grade validation are fully verified and ready for owner review.
+
+## STEP 01.1 — MUI Form Quality Corrections (Verified)
+- **Shared Form Components (`src/design-system/forms/`)**:
+  - Removed all `any` types across `AppTextField`, `AppSelectField`, `AppNumberField`, `AppCurrencyField`, `AppPasswordField`, `AppSearchField`, and `AppTextArea`.
+  - Migrated to MUI v9 `slotProps.input`, `slotProps.htmlInput`, and `slotProps.select` APIs via strictly typed `mergeSlotEntry` helper in `src/design-system/forms/fieldUtils.ts`.
+  - Made `AppSelectField` reuse `AppTextField` (`select` mode) and fixed single-line option ellipsis truncation before dropdown chevrons.
+  - Enforced numeric keypad (`inputMode="numeric"`, `pattern="[0-9]*"`), `maxLength`, leading-zero TIN string preservation (`12` digits), and digits-only OTP input (`6` digits) via `AppNumberField`.
+  - Preserved currency validation, `2`-decimal precision, and minimum amounts (`৳100` in `AllTaxPaymentsView`, `৳1,000` in `GiftTaxView`) via `AppCurrencyField` and `validateCurrencyAmount`.
+  - Centralized form heights (`40px` small / `48px` medium), typography, spacing, borders, hover, focus rings, error, disabled, read-only, adornment alignment, and select menu styles in `src/design-system/theme.ts`.
+  - Localized EN/BN labels, placeholders, helper text, dropdown options, adornment `aria-label`s (`showPassword`/`hidePassword`, `clearSearch`), and inline validation messages across `src/i18n/i18n.ts` and all 8 screens (29 migrated fields).
+  - Enforced `PUBLIC_PREVIEW` read-only restriction across all inputs, non-native MUI `<Select>` comboboxes (`aria-disabled="true"`), and adornment `<IconButton>` controls.
+- **Actual Test Evidence**:
+  - **Unit & SSR Component Tests (`npx --yes tsx --test src/design-system/forms/forms.test.tsx`)**: `5/5` passing — verified TIN leading-zero string handling, OTP 6-digit restriction, currency 2-decimal precision & `minAmount` (`100` / `1000`), phone/passport validators, and SSR rendering of all 7 shared form components across `light`/`dark` themes, `en`/`bn` locales, and `disabled`/`readOnly` states.
+  - **Build & Type Check**: `compile_applet` (`vite build`) succeeded with zero errors; `lint_applet` (`tsc --noEmit`) exited `0` with zero type errors.
+  - **Playwright Browser Verification (`playwright-cli` + headless Chromium)**:
+    - Verified all 8 screens and all 29 fields interactively in dev mode (`http://localhost:3000`) across desktop (`1440x900`) and mobile (`390x844`), `light` and `dark` themes, and `EN`/`BN` locales with zero console/page errors and zero horizontal overflow on mobile.
+    - Verified compiled production preview (`vite preview` at `http://127.0.0.1:4173`, `PUBLIC_PREVIEW = true`): confirmed read-only warning banner, disabled `<input>` elements, disabled non-native `[role="combobox"]` dropdowns (`aria-disabled="true"`, zero `[role="listbox"]` opening on click), and mobile BN select ellipsis rendering.
+

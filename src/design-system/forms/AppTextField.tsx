@@ -1,23 +1,83 @@
 import React from 'react';
-import TextField, { TextFieldProps } from '@mui/material/TextField';
+import TextField, { OutlinedTextFieldProps } from '@mui/material/TextField';
+import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import { AppSlotProps, mergeSlotEntry } from './fieldUtils';
 
-export type AppTextFieldProps = TextFieldProps & {
-  inputProps?: any;
-  slotProps?: any;
+export type AppTextFieldProps = Omit<OutlinedTextFieldProps, 'variant'> & {
+  variant?: 'outlined';
+  readOnly?: boolean;
 };
 
 export const AppTextField: React.FC<AppTextFieldProps> = ({
   variant = 'outlined',
   fullWidth = true,
   size = 'small',
+  disabled = false,
+  readOnly = false,
+  slotProps,
+  select,
   ...props
 }) => {
+  const effectiveDisabled = Boolean(disabled || PUBLIC_PREVIEW);
+  const effectiveReadOnly = Boolean(readOnly || PUBLIC_PREVIEW);
+
+  const readOnlyClass =
+    effectiveReadOnly && !effectiveDisabled ? 'Mui-readOnly' : undefined;
+
+  const baseInputSlot: AppSlotProps['input'] = effectiveReadOnly
+    ? {
+        readOnly: true,
+        className: readOnlyClass,
+      }
+    : undefined;
+
+  const mergedInputSlot = (() => {
+    const combined = mergeSlotEntry('input', baseInputSlot, slotProps?.input);
+    if (!readOnlyClass || !slotProps?.input || typeof slotProps.input === 'function') {
+      return combined;
+    }
+    const existingClassName =
+      typeof slotProps.input.className === 'string' ? slotProps.input.className : '';
+    return {
+      ...slotProps.input,
+      readOnly: effectiveReadOnly || Boolean(slotProps.input.readOnly),
+      className: existingClassName ? `${readOnlyClass} ${existingClassName}` : readOnlyClass,
+    };
+  })();
+
+  const mergedHtmlInputSlot = mergeSlotEntry(
+    'htmlInput',
+    effectiveReadOnly ? { readOnly: true } : undefined,
+    slotProps?.htmlInput
+  );
+
+  const mergedSelectSlot = select
+    ? mergeSlotEntry(
+        'select',
+        {
+          readOnly: effectiveReadOnly,
+          disabled: effectiveDisabled,
+        },
+        slotProps?.select
+      )
+    : slotProps?.select;
+
+  const mergedSlotProps: AppSlotProps = {
+    ...slotProps,
+    ...(mergedInputSlot ? { input: mergedInputSlot } : {}),
+    ...(mergedHtmlInputSlot ? { htmlInput: mergedHtmlInputSlot } : {}),
+    ...(mergedSelectSlot ? { select: mergedSelectSlot } : {}),
+  };
+
   return (
     <TextField
       variant={variant}
       fullWidth={fullWidth}
       size={size}
-      {...(props as any)}
+      disabled={effectiveDisabled}
+      select={select}
+      slotProps={mergedSlotProps}
+      {...props}
     />
   );
 };
