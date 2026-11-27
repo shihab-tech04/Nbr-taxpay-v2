@@ -190,18 +190,18 @@ All citizen features, design tokens, bilingual translations, and production-grad
   - Multi-timezone `npm test` (`TZ=UTC`, `TZ=Asia/Dhaka`, `TZ=America/Los_Angeles`, `TZ=America/New_York`): `36/36` tests passing in every timezone (`0` skipped, `0` failed).
   - Full interactive Chromium regression (`playwright-cli` on `http://localhost:3000`, `scripts/ci-interactive-browser.cjs` lines 1–197): `ALL_CI_HARNESS_AND_ROUTE_ASSERTIONS_PASS` (`0` console/page errors).
   - Compiled Pages `PUBLIC_PREVIEW=true` smoke check (`http://127.0.0.1:4173/Nbr-taxpay-v2/`, `scripts/pages-smoke.cjs`): `PAGES_SMOKE_LOCAL_PASS` (`0` console/page errors).
-## Cycle 08 — Unified AppTable Design System Component (`F-17`)
-- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); Cycle 07 close and verification preserved; `F-17` (`AppTable` & table utilities) successfully implemented and verified under design system rules.
-- **Unified AppTable (`src/design-system/tables/`)**:
-  - Implemented `AppTable.tsx` supporting typed columns (`AppColumn<T>`), sorting state (`TableSortState`), pagination state (`TablePaginationState`), loading (`Loader2` spinner), error state, empty state (`No records found`), responsive horizontal scrolling (`overflow-x-auto`), accessibility (`scope="col"`, `aria-sort`), and customizable row rendering.
-  - Implemented pure deterministic sorting (`sortTableData`) and slicing (`paginateTableData`) utilities in `tableUtils.ts`.
-  - Added thorough unit tests (`tables.test.tsx`) covering sorting, pagination, loading, error, empty, and data rendering states, wired into `npm test` (`38/38` tests passing across all 4 timezones).
+## Accelerated Cycle 08 — MUI Table Migration, Modal Foundations, & .nojekyll Pages Fix
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); completed Cycle 07 and Cycle 08 AppTable work preserved; migrated `AppTable` to use Material UI Table components (`Table`, `TableContainer`, `TableHead`, `TableBody`, `TableRow`, `TableCell`, `TableSortLabel`, `TablePagination`) while maintaining strict adherence to architectural rules.
+- **Shared Modal, Drawer, & Bottom-Sheet Foundations (`src/design-system/modals/`)**:
+  - Implemented `AppDialog.tsx`, `AppDrawer.tsx`, and `AppBottomSheet.tsx` providing exact approved geometry, accessibility (`role="dialog"`, `aria-modal`), backdrop blur, and dismissal controls.
+  - Added unit test suite (`modals.test.tsx`), raising total test suite count to **39/39** passing tests across all 4 timezones.
+- **GitHub Pages Deployment Fix (.nojekyll)**:
+  - Added `/public/.nojekyll` so Vite copies it to `dist/.nojekyll` on build, preventing GitHub Pages from bypassing custom builds or running Jekyll processing on files with underscores.
+  - Updated `citizen-pages.yml` build step to verify `dist/.nojekyll`.
 - **Verification Evidence (Sandbox)**:
-  - `npm run arch:check`: PASSED (`0` violations across `165` TypeScript files, `158` implementation files all `<=200` lines, `155` production-reachable, `7` test files, `3` test-only, `3` CSS files).
+  - `npm run arch:check`: PASSED (`0` violations across `170` TypeScript files, `162` implementation files all `<=200` lines, `8` test files, `3` CSS files).
   - `npm run typecheck` (`tsc --noEmit`): `0` errors.
   - `lint_applet` (`eslint .`): `0` errors, `0` warnings.
   - `compile_applet`: succeeded.
-  - Multi-timezone `npm test`: `38/38` tests passing across `UTC`, `Asia/Dhaka`, `America/Los_Angeles`, and `America/New_York`.
-- **Next Steps**:
-  - Continue mapping remaining Master v1.3 UI/UX backlog items (`F-19`–`F-24`) while preserving absolute backend freeze (`F-18` SQL/API integration deferred).
+  - Multi-timezone `npm test`: `39/39` tests passing across `UTC`, `Asia/Dhaka`, `America/Los_Angeles`, and `America/New_York`.
 

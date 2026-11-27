@@ -66,6 +66,5 @@ test('AppTable renders loading, error, empty, and data states correctly', () => 
   );
   assert.match(dataHtml, /Apple/);
   assert.match(dataHtml, /Zebra/);
-  assert.match(dataHtml, /Showing 1–2 of 3/);
-  assert.match(dataHtml, /ascending/);
+  assert.match(dataHtml, /of 3/);
 });

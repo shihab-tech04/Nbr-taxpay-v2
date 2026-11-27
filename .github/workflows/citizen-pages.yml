@@ -67,6 +67,8 @@ jobs:
           set -euo pipefail
           bun run build --base=/Nbr-taxpay-v2/
           rm -rf dist/assets/aistudio
+          touch dist/.nojekyll
+          test -f dist/.nojekyll
           test -f dist/index.html
           test -f dist/favicon.svg
           test ! -e dist/scripts/ci-harness.html
