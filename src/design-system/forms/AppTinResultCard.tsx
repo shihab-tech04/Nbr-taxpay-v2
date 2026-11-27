@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { Eye, EyeOff, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
   classificationError,
   onAdd,
   canAdd = false,
-  allowRevealTin = true,
+  allowRevealTin = false,
   addLabel,
   disabledAddLabel,
   testId,
@@ -47,12 +47,16 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
   const theme = useTheme();
   const colors = getThemeColors(theme.palette.mode);
 
-  const [revealed, setRevealed] = useState(false);
-  useEffect(() => {
-    setRevealed(false);
-  }, [tin]);
+  const identityKey = `${tin}\u0000${name}`;
+  const [revealState, setRevealState] = useState<{ key: string; open: boolean }>({
+    key: identityKey,
+    open: false,
+  });
+  const revealed = Boolean(
+    allowRevealTin && revealState.key === identityKey && revealState.open
+  );
 
-  const displayedTin = allowRevealTin && revealed ? tin : maskTinForDisplay(tin);
+  const displayedTin = revealed ? tin : maskTinForDisplay(tin);
 
   return (
     <div
@@ -105,7 +109,12 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
                       ? 'টিআইএন দেখুন'
                       : 'Reveal TIN'
                 }
-                onClick={() => setRevealed((prev) => !prev)}
+                onClick={() =>
+                  setRevealState((prev) => ({
+                    key: identityKey,
+                    open: !(prev.key === identityKey && prev.open),
+                  }))
+                }
                 sx={{ width: 29, height: 29 }}
               >
                 {revealed ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}

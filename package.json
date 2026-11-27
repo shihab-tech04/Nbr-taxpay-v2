@@ -11,14 +11,16 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "arch:check": "node scripts/arch-check.mjs",
-    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/buttons/buttons.test.tsx src/design-system/selection/selection.test.tsx src/features/home/home.test.tsx src/features/payments/payments.test.tsx"
+    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/dates/dates.test.tsx src/design-system/buttons/buttons.test.tsx src/design-system/selection/selection.test.tsx src/features/home/home.test.tsx src/features/payments/payments.test.tsx"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.6.0",
+    "@mui/x-date-pickers": "^9.18.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
+    "dayjs": "^1.11.23",
     "i18next": "^27.2.9",
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",

@@ -2,15 +2,22 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { AppButton } from '../../../design-system/buttons';
-import { AppCurrencyField, AppTextArea } from '../../../design-system/forms';
+import {
+  AppCurrencyField,
+  AppDatePicker,
+  AppTextArea,
+  getDhakaTodayYmd,
+} from '../../../design-system/forms';
 import type { GiftFormErrors } from '../giftTaxLogic';
 
 interface GiftTaxValuationStepProps {
   giftAmountInput: string;
+  giftDate: string;
   description: string;
   calculatedTax: number;
   errors: GiftFormErrors;
   onChangeAmount: (val: string) => void;
+  onChangeGiftDate: (val: string) => void;
   onChangeDescription: (val: string) => void;
   onBack: () => void;
   onNext: () => void;
@@ -18,10 +25,12 @@ interface GiftTaxValuationStepProps {
 
 export const GiftTaxValuationStep: React.FC<GiftTaxValuationStepProps> = ({
   giftAmountInput,
+  giftDate,
   description,
   calculatedTax,
   errors,
   onChangeAmount,
+  onChangeGiftDate,
   onChangeDescription,
   onBack,
   onNext,
@@ -33,16 +42,30 @@ export const GiftTaxValuationStep: React.FC<GiftTaxValuationStepProps> = ({
       <h3 className="text-lg font-bold">Stage 2: Gift & Valuation Information</h3>
 
       <div className="space-y-4">
-        <AppCurrencyField
-          label={t('giftAmountBdt')}
-          value={giftAmountInput}
-          minAmount={1000}
-          decimalScale={2}
-          onChange={(e) => onChangeAmount(e.target.value)}
-          error={Boolean(errors.giftAmount)}
-          helperText={errors.giftAmount || t('amountMinHelper', { amount: '1,000' })}
-          required
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          <AppCurrencyField
+            label={t('giftAmountBdt')}
+            value={giftAmountInput}
+            minAmount={1000}
+            decimalScale={2}
+            onChange={(e) => onChangeAmount(e.target.value)}
+            error={Boolean(errors.giftAmount)}
+            helperText={errors.giftAmount || t('amountMinHelper', { amount: '1,000' })}
+            required
+          />
+
+          <AppDatePicker
+            label={t('giftDate')}
+            value={giftDate}
+            onChange={onChangeGiftDate}
+            maxDate={getDhakaTodayYmd()}
+            disableFuture
+            error={Boolean(errors.giftDate)}
+            helperText={errors.giftDate || t('giftDateHelper')}
+            required
+            testId="gift-date-input"
+          />
+        </div>
 
         <AppTextArea
           label={t('giftDescription')}

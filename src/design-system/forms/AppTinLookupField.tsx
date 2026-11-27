@@ -48,6 +48,7 @@ export const AppTinLookupField: React.FC<AppTinLookupFieldProps> = ({
   const generatedId = useId();
   const fieldId = id ?? `${generatedId}-tin-lookup`;
   const suggestionsId = `${fieldId}-suggestions`;
+  const helperId = helperText ? `${fieldId}-helper` : undefined;
 
   const { i18n } = useTranslation();
   const bn = i18n.language === 'bn';
@@ -130,6 +131,7 @@ export const AppTinLookupField: React.FC<AppTinLookupFieldProps> = ({
           placeholder={placeholder}
           inputTestId={inputTestId}
           segmentsTestId={segmentsTestId}
+          ariaDescribedBy={helperId}
           publicCapability={publicCapability}
           previewRestricted={previewRestricted}
           ariaRole={popper.validSuggestions.length ? 'combobox' : undefined}
@@ -177,6 +179,8 @@ export const AppTinLookupField: React.FC<AppTinLookupFieldProps> = ({
 
       {helperText && (
         <p
+          id={helperId}
+          role={error ? 'alert' : undefined}
           className="m-0 text-xs leading-snug"
           style={{ color: error ? colors.error.main : colors.text.secondary }}
         >

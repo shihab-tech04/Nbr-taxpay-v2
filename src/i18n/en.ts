@@ -177,4 +177,12 @@ export const enTranslation = {
   supportMessagePlaceholder: 'Describe your issue in detail...',
   supportMessageHelper: 'Include transaction references or challan numbers if applicable.',
   requiredMessageError: 'Please describe your issue in detail.',
+  giftDate: 'Date of Gift',
+  giftDateHelper: 'Select the date the gift was made (up to Dhaka today).',
+  giftDateFutureError: 'Gift date cannot be later than today (Asia/Dhaka).',
+  giftDateInvalidError: 'Please enter a valid date (DD/MM/YYYY).',
+  dateFromLabel: 'From Date',
+  dateToLabel: 'To Date',
+  dateRangeClear: 'Clear Dates',
+  dateRangeInvalidError: 'End date cannot be earlier than start date.',
 };

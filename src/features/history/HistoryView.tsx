@@ -5,7 +5,12 @@ import { useApp } from '../../shared/AppContext';
 import { FileText, Eye, RotateCcw } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
-import { AppSearchField } from '../../design-system/forms';
+import {
+  AppDateRangeFilter,
+  AppSearchField,
+  isDateWithinInclusiveRange,
+  type DateRangeFilterValue,
+} from '../../design-system/forms';
 import { AppButton } from '../../design-system/buttons';
 
 export const HistoryView: React.FC = () => {
@@ -14,13 +19,18 @@ export const HistoryView: React.FC = () => {
   const { transactions } = useApp();
 
   const [search, setSearch] = useState('');
+  const [dateRange, setDateRange] = useState<DateRangeFilterValue>({ from: '', to: '' });
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
 
-  const filtered = transactions.filter(tx => 
-    tx.transactionRef.toLowerCase().includes(search.toLowerCase()) ||
-    tx.challanNumber.toLowerCase().includes(search.toLowerCase()) ||
-    tx.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const normalizedQuery = search.trim().toLowerCase();
+  const filtered = transactions.filter((tx) => {
+    const matchesSearch =
+      !normalizedQuery ||
+      tx.transactionRef.toLowerCase().includes(normalizedQuery) ||
+      tx.challanNumber.toLowerCase().includes(normalizedQuery) ||
+      tx.category.toLowerCase().includes(normalizedQuery);
+    return matchesSearch && isDateWithinInclusiveRange(tx.createdAt, dateRange);
+  });
 
   const handlePayAgain = () => {
     navigate('/all-taxes');
@@ -28,7 +38,7 @@ export const HistoryView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -40,13 +50,17 @@ export const HistoryView: React.FC = () => {
             <AppSearchField
               label={t('searchHistoryLabel')}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               onClear={() => setSearch('')}
               placeholder={t('searchHistoryPlaceholder')}
               helperText={t('searchHistoryHelper')}
               clearAriaLabel={t('clearSearch')}
             />
           </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+          <AppDateRangeFilter value={dateRange} onChange={setDateRange} />
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">

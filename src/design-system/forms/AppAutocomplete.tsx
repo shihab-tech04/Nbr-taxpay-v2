@@ -99,7 +99,7 @@ export const AppAutocomplete: React.FC<AppAutocompleteProps> = ({
       }}
       onClose={() => setPopupOpen(false)}
       options={groupedOptions}
-      value={selectedOption as AppAutocompleteOption}
+      value={selectedOption}
       onChange={(_event, nextValue) => {
         if (effectiveDisabled || effectiveReadOnly) return;
         if (!nextValue) {

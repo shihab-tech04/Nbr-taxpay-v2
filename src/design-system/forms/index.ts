@@ -29,9 +29,11 @@ export {
   DEFAULT_TIN_LENGTH,
   filterMatchingTinSuggestions,
   insertDigitsAtRange,
+  isValidNumericSuggestion,
   maskTinForDisplay,
   parsePastedIdentifierDigits,
   replaceDigitAtFullLength,
+  resolveTinPasteUpdate,
   sanitizeIdentifierDigits,
   validateIdentifierLength,
 } from './tinInputUtils';
@@ -46,4 +48,28 @@ export {
   sanitizePassport,
   validatePassport,
 } from './fieldUtils';
+export {
+  AppDateField,
+  AppDateLocalizationProvider,
+  AppDatePicker,
+  AppDateRangeFilter,
+  DHAKA_TIME_ZONE,
+  formatDayjsToYmd,
+  formatIsoToDhakaYmd,
+  formatYmdDisplay,
+  getDhakaTodayYmd,
+  isDateWithinInclusiveRange,
+  isValidYmd,
+  parseYmdToDayjs,
+  validateDateRangeFilter,
+  validateGiftDate,
+  validateYmdDate,
+} from '../dates';
+export type {
+  AppDateFieldProps,
+  AppDateLocalizationProviderProps,
+  AppDatePickerProps,
+  AppDateRangeFilterProps,
+  DateRangeFilterValue,
+} from '../dates';
 

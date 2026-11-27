@@ -15,7 +15,8 @@ export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
   isAuthenticated,
   onSignOut,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const bn = i18n.language === 'bn';
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -28,9 +29,10 @@ export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
         geometry="compact"
         size="small"
         to="/login"
-        sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.75rem', px: 2 }}
+        sx={{ whiteSpace: 'nowrap', flexShrink: 0, fontSize: '0.75rem', px: { xs: 1.25, sm: 2 } }}
       >
-        {t('signIn')}
+        <span className="sm:hidden">{bn ? 'লগইন' : 'Sign In'}</span>
+        <span className="hidden sm:inline">{t('signIn')}</span>
       </AppButton>
     );
   }

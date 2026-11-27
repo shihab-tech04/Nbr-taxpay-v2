@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Gift } from 'lucide-react';
+import { getDhakaTodayYmd } from '../../design-system/forms';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
@@ -30,6 +31,7 @@ export const GiftTaxView: React.FC = () => {
   const [doneeName, setDoneeName] = useState('Mrs. Fatema Begum');
   const [relationship, setRelationship] = useState('Mother');
   const [giftAmountInput, setGiftAmountInput] = useState<string>('500000');
+  const [giftDate, setGiftDate] = useState<string>(() => getDhakaTodayYmd());
   const [description, setDescription] = useState('Residential land transfer as family gift');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [errors, setErrors] = useState<GiftFormErrors>({});
@@ -55,11 +57,13 @@ export const GiftTaxView: React.FC = () => {
       setStage(2);
     } else if (stage === 2) {
       const nextErrors = validateGiftValuationStep(
-        { giftAmountInput, description },
+        { giftAmountInput, description, giftDate },
         {
           amountMin: t('amountMinError', { amount: '1,000' }),
           amountInvalid: t('amountInvalidError'),
           requiredDescription: t('requiredGiftDescriptionError'),
+          invalidGiftDate: t('giftDateInvalidError'),
+          futureGiftDate: t('giftDateFutureError'),
         }
       );
       if (Object.keys(nextErrors).length > 0) {
@@ -87,7 +91,7 @@ export const GiftTaxView: React.FC = () => {
           headNameBn: `দানকর - ${doneeName}`,
           assessmentYear: '2025-2026',
           amount: calculatedTax,
-          remarks: description,
+          remarks: `${description} (${giftDate})`,
         },
       ],
       totalAmount: calculatedTax,
@@ -102,11 +106,7 @@ export const GiftTaxView: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
       <div className="max-w-3xl mx-auto space-y-8">
         <PaymentStepHeader
-          title={
-            <>
-              <Gift className="text-teal-700" size={28} /> {t('giftTax')}
-            </>
-          }
+          title={<><Gift className="text-teal-700" size={28} /> {t('giftTax')}</>}
           subtitle="4-Stage structured gift tax declaration and payment with donor/donee mapping."
           stepIndicator={`Stage ${stage} of 4`}
         />
@@ -143,12 +143,17 @@ export const GiftTaxView: React.FC = () => {
         {stage === 2 && (
           <GiftTaxValuationStep
             giftAmountInput={giftAmountInput}
+            giftDate={giftDate}
             description={description}
             calculatedTax={calculatedTax}
             errors={errors}
             onChangeAmount={(val) => {
               setGiftAmountInput(val);
               if (errors.giftAmount) setErrors((p) => ({ ...p, giftAmount: undefined }));
+            }}
+            onChangeGiftDate={(val) => {
+              setGiftDate(val);
+              if (errors.giftDate) setErrors((p) => ({ ...p, giftDate: undefined }));
             }}
             onChangeDescription={(val) => {
               setDescription(val);
@@ -167,6 +172,7 @@ export const GiftTaxView: React.FC = () => {
             doneeTin={doneeTin}
             relationship={relationship}
             giftAmount={giftAmount}
+            giftDate={giftDate}
             calculatedTax={calculatedTax}
             onBack={() => setStage(2)}
             onPay={handlePay}

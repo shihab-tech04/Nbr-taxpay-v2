@@ -2,39 +2,15 @@ import React, { useRef, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors, TIN_TOKENS } from '../theme';
 import { AppTinDigitCell } from './AppTinDigitCell';
+import type { AppTinDigitGridProps } from './tinInputTypes';
 import {
   findDigitCellIndexAtPoint,
-  replaceDigitAtFullLength,
+  resolveTinDigitKeyAction,
   resolveTinPasteUpdate,
   sanitizeIdentifierDigits,
 } from './tinInputUtils';
 
-export interface AppTinDigitGridProps {
-  fieldId: string;
-  name?: string;
-  value: string;
-  onChange: (nextValue: string) => void;
-  maxLength: number;
-  directDigitEdit: boolean;
-  masked: boolean;
-  required: boolean;
-  autoFocus: boolean;
-  disabled: boolean;
-  readOnly: boolean;
-  error: boolean;
-  placeholder: string;
-  inputTestId?: string;
-  segmentsTestId?: string;
-  describedBy?: string;
-  ariaRole?: React.AriaRole;
-  ariaAutocomplete?: 'none' | 'list' | 'inline' | 'both';
-  ariaControls?: string;
-  ariaExpanded?: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-  onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
-  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
-  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
-}
+export type { AppTinDigitGridProps };
 
 export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
   fieldId,
@@ -169,19 +145,26 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
           if (!result) return;
           onChange(result.nextValue);
           setActiveDigit(result.activeDigit);
+          queueMicrotask(() => el.setSelectionRange(result.nextCaretIndex, result.nextCaretIndex));
         }}
         onKeyDown={(event) => {
           const el = event.currentTarget;
-          const start = el.selectionStart ?? value.length;
-          const end = el.selectionEnd ?? start;
-          if (directDigitEdit && !locked && !event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(event.key) && start === end && value.length >= maxLength && start < maxLength) {
-            const replaced = replaceDigitAtFullLength(value, start, event.key, maxLength);
-            if (replaced) {
-              event.preventDefault();
-              onChange(replaced.nextValue);
-              setActiveDigit(Math.min(replaced.nextCaretIndex, maxLength - 1));
-              queueMicrotask(() => el.setSelectionRange(replaced.nextCaretIndex, replaced.nextCaretIndex));
-            }
+          const action = resolveTinDigitKeyAction({
+            key: event.key,
+            hasModifier: event.ctrlKey || event.metaKey || event.altKey,
+            locked,
+            directDigitEdit,
+            value,
+            selectionStart: el.selectionStart,
+            selectionEnd: el.selectionEnd,
+            maxLength,
+          });
+          if (action.preventDefault) event.preventDefault();
+          if (action.replacement) {
+            const { nextValue, nextCaretIndex } = action.replacement;
+            onChange(nextValue);
+            setActiveDigit(Math.min(nextCaretIndex, maxLength - 1));
+            queueMicrotask(() => el.setSelectionRange(nextCaretIndex, nextCaretIndex));
           }
           onKeyDown?.(event);
         }}

@@ -26,11 +26,13 @@ import {
   findSelectedAutocompleteOption,
   groupAutocompleteOptionsPreserveOrder,
   insertDigitsAtRange,
+  isValidNumericSuggestion,
   maskTinForDisplay,
   matchAutocompleteOptions,
   parseCurrencyAmount,
   parsePastedIdentifierDigits,
   replaceDigitAtFullLength,
+  resolveTinPasteUpdate,
   sanitizeCurrencyInput,
   sanitizeDigits,
   sanitizeIdentifierDigits,
@@ -208,7 +210,7 @@ test('AppAutocomplete renders combobox, validation, loading, readOnly, disabled,
   }
 });
 
-test('Segmented TIN helpers preserve leading zeros, configurable length, masking, range insertion, and safe suggestions', () => {
+test('Segmented TIN helpers preserve leading zeros, configurable length, masking, paste caret, and numeric-only suggestions', () => {
   assert.equal(sanitizeIdentifierDigits('0123-4567-8901-99', 12), '012345678901');
   assert.equal(sanitizeIdentifierDigits('001234567890199', 13), '0012345678901');
   assert.equal(parsePastedIdentifierDigits(' 0123 4567 8901 ', 12), '012345678901');
@@ -216,6 +218,16 @@ test('Segmented TIN helpers preserve leading zeros, configurable length, masking
   assert.deepEqual(insertDigitsAtRange('01299567', 3, 5, '34', 12), {
     nextValue: '01234567',
     nextCaretIndex: 5,
+  });
+  assert.deepEqual(resolveTinPasteUpdate('01299567', '34', 3, 5, 12), {
+    nextValue: '01234567',
+    nextCaretIndex: 5,
+    activeDigit: 5,
+  });
+  assert.deepEqual(resolveTinPasteUpdate('012', '0123-4567-8901', 1, 1, 12), {
+    nextValue: '012345678901',
+    nextCaretIndex: 12,
+    activeDigit: 11,
   });
   assert.deepEqual(replaceDigitAtFullLength('012345678901', 0, '9', 12), {
     nextValue: '912345678901',
@@ -228,8 +240,12 @@ test('Segmented TIN helpers preserve leading zeros, configurable length, masking
   assert.equal(replaceDigitAtFullLength('012345678901', 12, '7', 12), null);
   assert.equal(replaceDigitAtFullLength('012345678901', 3, 'a', 12), null);
 
-  const mixedSuggestions = ['012345678901', '882349102384', '0123456789012'];
-  assert.deepEqual(filterMatchingTinSuggestions(mixedSuggestions, '0123', 12), ['012345678901']);
+  assert.equal(isValidNumericSuggestion('012345678901', 12), true);
+  assert.equal(isValidNumericSuggestion('01234567890a', 12), false);
+  assert.equal(isValidNumericSuggestion('012345', 12), false);
+
+  const mixedSuggestions = ['012345678901', '01234567890a', '882349102384', '0123456789012'];
+  assert.deepEqual(filterMatchingTinSuggestions(mixedSuggestions, '01-23', 12), ['012345678901']);
   assert.deepEqual(filterMatchingTinSuggestions(mixedSuggestions, '0123', 13), ['0123456789012']);
   assert.deepEqual(filterMatchingTinSuggestions(mixedSuggestions, '', 12), []);
 
@@ -242,7 +258,7 @@ test('Segmented TIN helpers preserve leading zeros, configurable length, masking
   assert.deepEqual(validateIdentifierLength('', 12), { valid: false, reason: 'required' });
 });
 
-test('AppTinInput, AppTinLookupField, and AppTinResultCard render cleanly in light/dark and EN/BN', () => {
+test('AppTinInput, AppTinLookupField, and AppTinResultCard enforce Cycle 07 masking, reveal defaults, and helper associations', () => {
   for (const mode of ['light', 'dark'] as const) {
     for (const lang of ['en', 'bn'] as const) {
       const segmented12Html = renderWithProviders(
@@ -261,6 +277,22 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard render cleanly in lig
       assert.match(segmented12Html, /value="012345"/);
       assert.match(segmented12Html, /Enter 12 digits/);
 
+      const plainMaskedReadOnlyHtml = renderWithProviders(
+        <AppTinInput
+          segmented={false}
+          masked
+          readOnly
+          value="012345678901"
+          onChange={() => {}}
+          publicCapability="public_help_question"
+        />,
+        mode,
+        lang
+      );
+      assert.match(plainMaskedReadOnlyHtml, /type="password"/);
+      assert.match(plainMaskedReadOnlyHtml, /Mui-readOnly/);
+      assert.match(plainMaskedReadOnlyHtml, /readonly=""/i);
+
       const segmented13Html = renderWithProviders(
         <AppTinInput value="00123" onChange={() => {}} maxLength={13} readOnly error />,
         mode,
@@ -272,11 +304,14 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard render cleanly in lig
 
       const lookupHtml = renderWithProviders(
         <AppTinLookupField
+          id="tin-lookup-test"
           heading="Verify TIN"
           value="012345678901"
           onChange={() => {}}
           onSearch={() => {}}
           canSearch
+          error
+          helperText="TIN lookup error"
           suggestedTins={['012345678901']}
           card
           publicCapability="public_help_question"
@@ -285,10 +320,13 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard render cleanly in lig
         lang
       );
       assert.match(lookupHtml, /data-testid="shared-taxpayer-tin-lookup"/);
+      assert.match(lookupHtml, /aria-describedby="tin-lookup-test-helper"/);
+      assert.match(lookupHtml, /id="tin-lookup-test-helper"/);
+      assert.match(lookupHtml, /role="alert"/);
       assert.match(lookupHtml, new RegExp(lang === 'bn' ? 'খুঁজুন' : 'Search'));
       assert.match(lookupHtml, /role="combobox"/);
 
-      const resultHtml = renderWithProviders(
+      const defaultLockedResultHtml = renderWithProviders(
         <AppTinResultCard
           tin="012345678901"
           name="Sample Record"
@@ -301,12 +339,23 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard render cleanly in lig
         mode,
         lang
       );
-      assert.match(resultHtml, /data-testid="taxpayer-tin-result"/);
-      assert.match(resultHtml, /012\*{9}/);
-      assert.match(resultHtml, /Sample Record/);
-      assert.match(resultHtml, /Individual/);
-      assert.match(resultHtml, new RegExp(lang === 'bn' ? 'টিআইএন দেখুন' : 'Reveal TIN'));
-      assert.match(resultHtml, new RegExp(lang === 'bn' ? 'করদাতা যোগ করুন' : 'Add taxpayer'));
+      assert.match(defaultLockedResultHtml, /data-testid="taxpayer-tin-result"/);
+      assert.match(defaultLockedResultHtml, /012\*{9}/);
+      assert.doesNotMatch(defaultLockedResultHtml, /টিআইএন দেখুন|Reveal TIN/);
+      assert.match(defaultLockedResultHtml, new RegExp(lang === 'bn' ? 'করদাতা যোগ করুন' : 'Add taxpayer'));
+
+      const authorizedResultHtml = renderWithProviders(
+        <AppTinResultCard
+          tin="012345678901"
+          name="Sample Record"
+          allowRevealTin
+          testId="taxpayer-tin-result-auth"
+          publicCapability="public_help_question"
+        />,
+        mode,
+        lang
+      );
+      assert.match(authorizedResultHtml, new RegExp(lang === 'bn' ? 'টিআইএন দেখুন' : 'Reveal TIN'));
     }
   }
 });

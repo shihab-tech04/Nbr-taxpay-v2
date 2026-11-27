@@ -37,14 +37,23 @@ export function insertDigitsAtRange(
   return { nextValue, nextCaretIndex };
 }
 
+export function isValidNumericSuggestion(
+  option: string,
+  maxLength = DEFAULT_TIN_LENGTH
+): boolean {
+  if (maxLength <= 0) return false;
+  return new RegExp(`^\\d{${maxLength}}$`).test(option);
+}
+
 export function filterMatchingTinSuggestions(
   suggestions: readonly string[] | undefined,
   query: string,
   maxLength = DEFAULT_TIN_LENGTH
 ): string[] {
-  if (!suggestions?.length || !query) return [];
-  const valid = suggestions.filter((option) => option.length === maxLength);
-  return valid.filter((option) => option.includes(query));
+  const cleanedQuery = sanitizeIdentifierDigits(query, maxLength);
+  if (!suggestions?.length || !cleanedQuery) return [];
+  const valid = suggestions.filter((option) => isValidNumericSuggestion(option, maxLength));
+  return valid.filter((option) => option.includes(cleanedQuery));
 }
 
 export function maskTinForDisplay(tin: string | null | undefined): string {
@@ -112,14 +121,36 @@ export function resolveTinPasteUpdate(
   selectionStart: number | null,
   selectionEnd: number | null,
   maxLength: number
-): { nextValue: string; activeDigit: number } | null {
+): { nextValue: string; nextCaretIndex: number; activeDigit: number } | null {
   const pasted = parsePastedIdentifierDigits(clipboardText, maxLength);
   if (!pasted) return null;
   if (pasted.length === maxLength) {
-    return { nextValue: pasted, activeDigit: maxLength - 1 };
+    return { nextValue: pasted, nextCaretIndex: maxLength, activeDigit: maxLength - 1 };
   }
   const start = selectionStart ?? currentValue.length;
   const end = selectionEnd ?? start;
   const { nextValue, nextCaretIndex } = insertDigitsAtRange(currentValue, start, end, pasted, maxLength);
-  return { nextValue, activeDigit: Math.min(nextCaretIndex, maxLength - 1) };
+  return { nextValue, nextCaretIndex, activeDigit: Math.min(nextCaretIndex, maxLength - 1) };
+}
+
+export function resolveTinDigitKeyAction(params: {
+  key: string;
+  hasModifier: boolean;
+  locked: boolean;
+  directDigitEdit: boolean;
+  value: string;
+  selectionStart: number | null;
+  selectionEnd: number | null;
+  maxLength: number;
+}): { preventDefault: boolean; replacement?: { nextValue: string; nextCaretIndex: number } } {
+  const { key, hasModifier, locked, directDigitEdit, value, selectionStart, selectionEnd, maxLength } = params;
+  if (locked || hasModifier || key.length !== 1) return { preventDefault: false };
+  if (!/^[0-9]$/.test(key)) return { preventDefault: true };
+  const start = selectionStart ?? value.length;
+  const end = selectionEnd ?? start;
+  if (directDigitEdit && start === end && value.length >= maxLength && start < maxLength) {
+    const replacement = replaceDigitAtFullLength(value, start, key, maxLength);
+    if (replacement) return { preventDefault: true, replacement };
+  }
+  return { preventDefault: false };
 }

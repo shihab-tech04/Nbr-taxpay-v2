@@ -31,20 +31,20 @@ export const Navbar: React.FC = () => {
         color: 'text.primary',
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', gap: 4, px: { xs: 2, md: 6 }, py: 1.5 }}>
+      <Toolbar sx={{ justifyContent: 'space-between', gap: { xs: 1, sm: 2, md: 4 }, px: { xs: 1.5, sm: 2, md: 6 }, py: 1.5, minWidth: 0 }}>
         <Link
           to="/"
           style={{ textDecoration: 'none', color: 'inherit' }}
-          className="flex items-center gap-2 whitespace-nowrap shrink-0 group"
+          className="flex items-center gap-2 min-w-0 shrink group"
         >
-          <div className="w-9 h-9 rounded-lg bg-teal-700 flex items-center justify-center text-white font-bold shadow-sm transition-transform group-hover:scale-105">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-lg bg-teal-700 flex items-center justify-center text-white font-bold shadow-sm transition-transform group-hover:scale-105">
             সহ
           </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white leading-tight truncate">
               Sohojkor · সহজকর
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase">
+            <span className="hidden sm:block text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide uppercase truncate">
               NBR Citizen Tax Portal
             </span>
           </div>
@@ -52,14 +52,14 @@ export const Navbar: React.FC = () => {
 
         <NavbarDesktopLinks currentPath={location.pathname} isAuthenticated={isAuthenticated} />
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <AppButton
             actionType="secondary"
             geometry="compact"
             size="small"
             onClick={() => setLanguage(language === 'en' ? 'bn' : 'en')}
             title="Switch Language (EN/BN)"
-            sx={{ minHeight: 30, minWidth: 0, px: 1.5, py: 0.5, borderRadius: '6px', fontSize: '0.75rem' }}
+            sx={{ minHeight: 30, minWidth: 0, px: { xs: 1, sm: 1.5 }, py: 0.5, borderRadius: '6px', fontSize: '0.75rem' }}
           >
             {language === 'en' ? 'বাংলা' : 'EN'}
           </AppButton>

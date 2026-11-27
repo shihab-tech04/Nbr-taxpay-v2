@@ -73,7 +73,8 @@ export const AppTinPlainField: React.FC<AppTinPlainFieldProps> = ({
     name={name}
     inputRef={inputRef}
     label={label}
-    value={masked && readOnly ? value.replace(/\d/g, '•') : value}
+    type={masked ? 'password' : 'text'}
+    value={value}
     onChange={(e) => {
       if (!locked) onChange(sanitizeIdentifierDigits(e.target.value, maxLength));
     }}

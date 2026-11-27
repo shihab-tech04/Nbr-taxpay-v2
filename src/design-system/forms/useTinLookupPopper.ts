@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { filterMatchingTinSuggestions } from './tinInputUtils';
+import { filterMatchingTinSuggestions, isValidNumericSuggestion } from './tinInputUtils';
 
 interface UseTinLookupPopperArgs {
   value: string;
@@ -28,7 +28,7 @@ export function useTinLookupPopper({
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const validSuggestions = useMemo(
-    () => (suggestedTins ?? []).filter((option) => option.length === maxLength),
+    () => (suggestedTins ?? []).filter((option) => isValidNumericSuggestion(option, maxLength)),
     [suggestedTins, maxLength]
   );
 

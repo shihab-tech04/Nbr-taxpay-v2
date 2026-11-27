@@ -1,6 +1,7 @@
 import { createTheme } from '@mui/material/styles';
 import { getAutocompleteComponents } from './autocompleteComponents';
 import { getButtonComponents } from './buttonComponents';
+import { getDatePickerComponents } from './datePickerComponents';
 import { getFormComponents } from './formComponents';
 import { getThemeColors } from './palette';
 import { getSelectionComponents } from './selectionComponents';
@@ -45,6 +46,7 @@ export const getTheme = (mode: 'light' | 'dark') => {
     components: {
       ...getButtonComponents(colors),
       ...getFormComponents(colors),
+      ...getDatePickerComponents(colors),
       ...getSelectMenuComponents(colors),
       ...getAutocompleteComponents(colors),
       ...getSelectionComponents(colors),

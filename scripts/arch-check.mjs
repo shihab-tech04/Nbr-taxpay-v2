@@ -29,6 +29,14 @@ const PROHIBITED_MUI_PRIMITIVES = new Set([
   'FormHelperText',
   'InputLabel',
 ]);
+const PROHIBITED_MUIX_DATE_PRIMITIVES = new Set([
+  'DatePicker',
+  'DateField',
+  'DesktopDatePicker',
+  'MobileDatePicker',
+  'DateCalendar',
+  'LocalizationProvider',
+]);
 const NATIVE_CONTROLS = new Set(['button', 'input', 'select', 'textarea']);
 const DUPLICATE_THEME_HEX = /#(?:0f766e|0d9488|115e59|14b8a6|dc2626|ef4444|f43f5e|2f55a4|1c3d70)\b/i;
 
@@ -225,6 +233,24 @@ for (const file of tsFiles) {
           if (PROHIBITED_MUI_PRIMITIVES.has(sub)) {
             violations.push(`Prohibited direct MUI primitive '${sub}' outside design-system: ${fileRel}`);
           }
+        } else if (spec === '@mui/x-date-pickers') {
+          if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+            for (const el of clause.namedBindings.elements) {
+              if (el.isTypeOnly) continue;
+              const importedName = el.propertyName?.text ?? el.name.text;
+              if (PROHIBITED_MUIX_DATE_PRIMITIVES.has(importedName)) {
+                const aliasNote = el.propertyName ? ` (aliased as '${el.name.text}')` : '';
+                violations.push(
+                  `Prohibited direct MUI X primitive '${importedName}'${aliasNote} outside design-system: ${fileRel}`
+                );
+              }
+            }
+          }
+        } else if (spec.startsWith('@mui/x-date-pickers/')) {
+          const sub = spec.slice('@mui/x-date-pickers/'.length).split('/')[0];
+          if (PROHIBITED_MUIX_DATE_PRIMITIVES.has(sub)) {
+            violations.push(`Prohibited direct MUI X primitive '${sub}' outside design-system: ${fileRel}`);
+          }
         }
       }
     } else if (
@@ -250,6 +276,11 @@ for (const file of tsFiles) {
           const sub = spec.slice('@mui/material/'.length).split('/')[0];
           if (PROHIBITED_MUI_PRIMITIVES.has(sub)) {
             violations.push(`Prohibited direct MUI primitive re-export '${sub}' outside design-system: ${fileRel}`);
+          }
+        } else if (spec.startsWith('@mui/x-date-pickers/')) {
+          const sub = spec.slice('@mui/x-date-pickers/'.length).split('/')[0];
+          if (PROHIBITED_MUIX_DATE_PRIMITIVES.has(sub)) {
+            violations.push(`Prohibited direct MUI X primitive re-export '${sub}' outside design-system: ${fileRel}`);
           }
         }
       }

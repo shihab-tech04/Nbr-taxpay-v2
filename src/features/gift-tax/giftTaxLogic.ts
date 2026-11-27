@@ -1,4 +1,9 @@
-import { parseCurrencyAmount, validateCurrencyAmount, validateTin } from '../../design-system/forms';
+import {
+  parseCurrencyAmount,
+  validateCurrencyAmount,
+  validateGiftDate,
+  validateTin,
+} from '../../design-system/forms';
 
 export const GIFT_TAX_RATE = 0.05;
 
@@ -8,6 +13,7 @@ export interface GiftFormErrors {
   doneeTin?: string;
   doneeName?: string;
   giftAmount?: string;
+  giftDate?: string;
   description?: string;
 }
 
@@ -35,8 +41,14 @@ export function validateGiftPartiesStep(
 }
 
 export function validateGiftValuationStep(
-  input: { giftAmountInput: string; description: string },
-  messages: { amountMin: string; amountInvalid: string; requiredDescription: string }
+  input: { giftAmountInput: string; description: string; giftDate?: string },
+  messages: {
+    amountMin: string;
+    amountInvalid: string;
+    requiredDescription: string;
+    invalidGiftDate?: string;
+    futureGiftDate?: string;
+  }
 ): GiftFormErrors {
   const errors: GiftFormErrors = {};
   const amountCheck = validateCurrencyAmount(input.giftAmountInput, {
@@ -49,6 +61,15 @@ export function validateGiftValuationStep(
       amountCheck.reason === 'min' || amountCheck.reason === 'required'
         ? messages.amountMin
         : messages.amountInvalid;
+  }
+  if (input.giftDate !== undefined) {
+    const dateCheck = validateGiftDate(input.giftDate);
+    if (!dateCheck.valid) {
+      errors.giftDate =
+        dateCheck.reason === 'future'
+          ? messages.futureGiftDate ?? 'Gift date cannot exceed today.'
+          : messages.invalidGiftDate ?? 'Please enter a valid date.';
+    }
   }
   if (!input.description.trim()) {
     errors.description = messages.requiredDescription;

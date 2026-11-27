@@ -72,3 +72,30 @@ export interface AppTinLookupFieldProps extends SharedTinProps {
   submitOnEnter?: boolean;
   card?: boolean;
 }
+
+export interface AppTinDigitGridProps {
+  fieldId: string;
+  name?: string;
+  value: string;
+  onChange: (nextValue: string) => void;
+  maxLength: number;
+  directDigitEdit: boolean;
+  masked: boolean;
+  required: boolean;
+  autoFocus: boolean;
+  disabled: boolean;
+  readOnly: boolean;
+  error: boolean;
+  placeholder: string;
+  inputTestId?: string;
+  segmentsTestId?: string;
+  describedBy?: string;
+  ariaRole?: React.AriaRole;
+  ariaAutocomplete?: 'none' | 'list' | 'inline' | 'both';
+  ariaControls?: string;
+  ariaExpanded?: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onFocus?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+}

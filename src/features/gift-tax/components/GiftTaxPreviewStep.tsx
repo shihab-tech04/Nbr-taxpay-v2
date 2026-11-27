@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle } from 'lucide-react';
 import { AppButton } from '../../../design-system/buttons';
+import { formatYmdDisplay } from '../../../design-system/forms';
 
 interface GiftTaxPreviewStepProps {
   donorName: string;
@@ -10,6 +11,7 @@ interface GiftTaxPreviewStepProps {
   doneeTin: string;
   relationship: string;
   giftAmount: number;
+  giftDate: string;
   calculatedTax: number;
   onBack: () => void;
   onPay: () => void;
@@ -22,11 +24,13 @@ export const GiftTaxPreviewStep: React.FC<GiftTaxPreviewStepProps> = ({
   doneeTin,
   relationship,
   giftAmount,
+  giftDate,
   calculatedTax,
   onBack,
   onPay,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith('bn') ? 'bn' : 'en';
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 space-y-6">
@@ -44,6 +48,10 @@ export const GiftTaxPreviewStep: React.FC<GiftTaxPreviewStepProps> = ({
           <strong>
             {doneeName} (TIN: {doneeTin} - {relationship})
           </strong>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-500 font-sans">{t('giftDate')}:</span>
+          <strong>{formatYmdDisplay(giftDate, lang)}</strong>
         </div>
         <div className="flex justify-between">
           <span className="text-slate-500 font-sans">Gift Amount:</span>

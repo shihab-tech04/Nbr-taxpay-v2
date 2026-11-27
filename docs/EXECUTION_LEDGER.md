@@ -100,3 +100,31 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **Remaining Outside-Sandbox Steps**:
   - This container workspace has no `.git` directory or GitHub credentials; verifying the `01f150d6ec5855227bddfd6c3e044a7d17c25a1d` backup/restore bundle, pushing Cycle 06 commits to `main`, and confirming live `.github/workflows/citizen-pages.yml` deployment URL and `version.txt` SHA must be executed in a git-connected environment / GitHub Actions runner.
 
+## Cycle 07 — TIN & Autocomplete Corrections, Unified MUI X Date Components, and Mobile Navbar Overflow Fix
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); Cycle 05 and Cycle 06 architecture preserved; `AppTable` deferred as instructed; no SQL or backend changes.
+- **TIN & Autocomplete Corrections (`src/design-system/forms/`)**:
+  - Defaulted `allowRevealTin` to `false` on `AppTinResultCard` and replaced effect-based reveal resets with synchronous derived identity state keyed on `tin` and `name`.
+  - Standardized `AppTinPlainField` masking (`type={masked ? 'password' : 'text'}`) across editable, `readOnly`, and `disabled` states.
+  - Added strict numeric length validation (`isValidNumericSuggestion`) in `tinInputUtils.ts` and `useTinLookupPopper.ts`, sanitized suggestion queries, and associated helper/error descriptions on `AppTinLookupField` (`aria-describedby` + `role="alert"`).
+  - Extracted `resolveTinDigitKeyAction` and enforced microtask caret restoration (`setSelectionRange`) on `AppTinDigitGrid` paste and full-length digit replacement; removed unsafe non-null cast in `AppAutocomplete.tsx`.
+- **Unified Date Components (`src/design-system/dates/`, `src/design-system/theme/datePickerComponents.ts`)**:
+  - Added `@mui/x-date-pickers` (`9.18.0`) and `dayjs` (`1.11.23`) with EN (`enUS` / `'en'`) and BN (`bnBD` / `'bn-bd'`) localization via `AppDateLocalizationProvider`.
+  - Implemented `AppDateField`, `AppDatePicker`, and `AppDateRangeFilter` matching `FORM_TOKENS` (`40px`/`48px`, `8px` radius, focus rings, dashed read-only borders, light/dark themes, responsive desktop popper / mobile modal, clearable, min/max, disabled/`PUBLIC_PREVIEW`, keyboard navigation) while emitting strict `YYYY-MM-DD` strings without timezone shifts.
+  - Added timezone-safe calendar parsing and `Asia/Dhaka` helpers (`getDhakaTodayYmd`, `validateGiftDate`, `validateDateRangeFilter`, `isDateWithinInclusiveRange`) in `dateUtils.ts`.
+  - Wired `AppDatePicker` (`disableFuture`, `maxDate={getDhakaTodayYmd()}`) into `GiftTaxView` / `GiftTaxValuationStep` / `GiftTaxPreviewStep` / `giftTaxLogic.ts`, and `AppDateRangeFilter` (independent optional inclusive bounds) into `HistoryView`.
+  - Added `@mui/x-date-pickers` direct primitive enforcement to `scripts/arch-check.mjs`.
+- **Mobile Navbar Overflow Fix (`src/components/Navbar.tsx`, `NavbarAccountMenu.tsx`)**:
+  - Made toolbar padding/gaps responsive (`px: { xs: 1.5, sm: 2, md: 6 }`), truncated mobile brand label (`min-w-0`), hid subtitle on `xs`, and rendered compact `Sign In` / `লগইন` on `<sm` viewports so mobile headers fit cleanly at `390px` and `320px`.
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`: PASSED with 0 violations (`159` TypeScript files, `153` implementation files all `<=200` lines, `153` production-reachable, `6` test files, `0` test-only, `3` CSS files).
+  - `npm run typecheck` (`tsc --noEmit`): 0 errors.
+  - `npm run lint` (`eslint .` / `lint_applet`): 0 errors, 0 warnings.
+  - `npm test`: `35/35` tests passing across `forms.test.tsx`, `dates.test.tsx`, `buttons.test.tsx`, `selection.test.tsx`, `home.test.tsx`, and `payments.test.tsx`.
+  - `compile_applet` & `NODE_ENV=production npx vite build --base=/Nbr-taxpay-v2/`: succeeded cleanly.
+  - Browser verification (`playwright-cli` + headless Chromium):
+    - Mobile Navbar fix verified at `390x844` and `320x568` on `/all-taxes` and `/history` (`overflowX: false`, zero clipping, 0 console errors).
+    - `/gift-tax` verified segmented TIN typing, Stage 2 `AppDatePicker` calendar popper (`zIndex: 1310`, `opacity: 1`, disabled future days), and future-date rejection (`"Gift date cannot exceed today (Asia/Dhaka)."`).
+    - `/history` verified `AppDateRangeFilter` inclusive filtering (`10/04/2026` -> `1` matching row `SOHO-2026-98124`), future range `0` rows, `Clear Dates` restore (`2` rows), inverted range inline error (`"End date cannot be earlier than start date."`), and EN/BN + light/dark mode rendering.
+    - Compiled Pages `PUBLIC_PREVIEW=true` preview (`/Nbr-taxpay-v2/` on `127.0.0.1:4174`) verified warning banner, disabled date inputs across `#/history`, `#/gift-tax`, `#/travel-tax`, mobile `overflowX: false`, and `0` console/page errors.
+- **Remaining Outside-Sandbox Steps**:
+  - This container workspace has no `.git` directory or GitHub credentials; committing Cycle 07 changes on top of `8615954`, pushing to GitHub `main`, and confirming live `.github/workflows/citizen-pages.yml` deployment & recovery tags must be run in a git-connected environment.

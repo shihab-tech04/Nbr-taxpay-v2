@@ -83,10 +83,16 @@ test('giftTaxLogic and travelTaxLogic preserve 1:1 original calculations and val
   assert.equal(giftPartiesErrors.doneeTin, undefined);
 
   const giftValuationErrors = validateGiftValuationStep(
-    { giftAmountInput: '500', description: '' },
-    { amountMin: 'Min 1000', amountInvalid: 'Invalid', requiredDescription: 'Desc required' }
+    { giftAmountInput: '500', description: '', giftDate: '2099-01-01' },
+    {
+      amountMin: 'Min 1000',
+      amountInvalid: 'Invalid',
+      requiredDescription: 'Desc required',
+      futureGiftDate: 'Future date blocked',
+    }
   );
   assert.equal(giftValuationErrors.giftAmount, 'Min 1000');
+  assert.equal(giftValuationErrors.giftDate, 'Future date blocked');
   assert.equal(giftValuationErrors.description, 'Desc required');
 
   assert.equal(resolveDestinationBaseTax('India (By Air)'), 2000);

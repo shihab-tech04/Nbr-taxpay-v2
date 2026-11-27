@@ -177,4 +177,12 @@ export const bnTranslation = {
   supportMessagePlaceholder: 'আপনার সমস্যাটি বিস্তারিত লিখুন...',
   supportMessageHelper: 'প্রযোজ্য হলে লেনদেন রেফারেন্স বা চালান নম্বর উল্লেখ করুন।',
   requiredMessageError: 'অনুগ্রহ করে আপনার সমস্যাটি বিস্তারিত লিখুন।',
+  giftDate: 'দানের তারিখ',
+  giftDateHelper: 'দান সম্পাদনের তারিখ নির্বাচন করুন (ঢাকা সময় অনুযায়ী আজকের মধ্যে)।',
+  giftDateFutureError: 'দানের তারিখ আজকের (ঢাকা সময়) পরবর্তী হতে পারবে না।',
+  giftDateInvalidError: 'অনুগ্রহ করে সঠিক তারিখ লিখুন (DD/MM/YYYY)।',
+  dateFromLabel: 'শুরুর তারিখ',
+  dateToLabel: 'শেষের তারিখ',
+  dateRangeClear: 'তারিখ মুছুন',
+  dateRangeInvalidError: 'শেষের তারিখ শুরুর তারিখের আগে হতে পারবে না।',
 };
