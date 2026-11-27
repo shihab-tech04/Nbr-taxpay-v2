@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   recovery:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,8 +22,8 @@ jobs:
           git branch recovery-baseline "$baseline"
           mkdir -p "$RUNNER_TEMP/recovery"
           cd "$RUNNER_TEMP/recovery"
-          git -C "$GITHUB_WORKSPACE" bundle create pre-release.bundle recovery-baseline
-          git clone --mirror pre-release.bundle restored.git
+          git -C "$GITHUB_WORKSPACE" bundle create "$RUNNER_TEMP/recovery/pre-release.bundle" recovery-baseline
+          git clone --mirror "$RUNNER_TEMP/recovery/pre-release.bundle" restored.git
           test "$(git -C restored.git rev-parse refs/heads/recovery-baseline)" = "$baseline"
           git -C restored.git fsck --full --strict
           git -C restored.git show "$baseline:package.json" >/dev/null
@@ -37,7 +37,7 @@ jobs:
             ${{ runner.temp }}/recovery/SHA256SUMS
           if-no-files-found: error
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,7 +77,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [build, recovery]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: write
