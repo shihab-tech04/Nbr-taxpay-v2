@@ -65,6 +65,22 @@ export interface ThemeColorTokens {
   selectedItemHoverBg: string;
   switchTrackOff: string;
   switchThumbDisabled: string;
+  tin: {
+    cellBg: string;
+    cellBorder: string;
+    cellFilledBorder: string;
+    cellActiveBorder: string;
+    cellActiveBg: string;
+    cellActiveText: string;
+    cellText: string;
+    focusOutline: string;
+    cardBorder: string;
+    heading: string;
+    label: string;
+    divider: string;
+    suggestionBorder: string;
+    suggestionHoverBg: string;
+  };
 }
 
 export function getThemeColors(mode: 'light' | 'dark'): ThemeColorTokens {
@@ -136,5 +152,21 @@ export function getThemeColors(mode: 'light' | 'dark'): ThemeColorTokens {
     selectedItemHoverBg: isLight ? 'rgba(15, 118, 110, 0.16)' : 'rgba(20, 184, 166, 0.26)',
     switchTrackOff: isLight ? '#94A3B8' : '#475569',
     switchThumbDisabled: isLight ? '#CBD5E1' : '#475569',
+    tin: {
+      cellBg: isLight ? '#FFFFFF' : '#0F172A',
+      cellBorder: isLight ? '#D0D9E3' : '#334155',
+      cellFilledBorder: isLight ? '#BFCBD8' : '#475569',
+      cellActiveBorder: isLight ? '#2C5EAD' : '#60A5FA',
+      cellActiveBg: isLight ? '#EAF2FF' : 'rgba(44, 94, 173, 0.25)',
+      cellActiveText: isLight ? '#143C79' : '#DBEAFE',
+      cellText: isLight ? '#17345A' : '#F8FAFC',
+      focusOutline: isLight ? '#085587' : '#60A5FA',
+      cardBorder: isLight ? '#DCE5F0' : '#334155',
+      heading: isLight ? '#172B4D' : '#F1F5F9',
+      label: isLight ? '#334B6C' : '#CBD5E1',
+      divider: isLight ? '#ECF0F5' : '#334155',
+      suggestionBorder: isLight ? '#C7D4E7' : '#334155',
+      suggestionHoverBg: isLight ? '#EDF4FF' : 'rgba(44, 94, 173, 0.22)',
+    },
   };
 }

@@ -12,6 +12,7 @@ const ALLOWED_CSS = new Set([
   'src/features/home/slider2.css',
 ]);
 const PROHIBITED_MUI_PRIMITIVES = new Set([
+  'Autocomplete',
   'Button',
   'IconButton',
   'ButtonBase',
@@ -31,6 +32,20 @@ const PROHIBITED_MUI_PRIMITIVES = new Set([
 const NATIVE_CONTROLS = new Set(['button', 'input', 'select', 'textarea']);
 const DUPLICATE_THEME_HEX = /#(?:0f766e|0d9488|115e59|14b8a6|dc2626|ef4444|f43f5e|2f55a4|1c3d70)\b/i;
 
+function loadTsPathAliases() {
+  const tsconfigPath = path.join(ROOT, 'tsconfig.json');
+  if (!fs.existsSync(tsconfigPath)) return [];
+  const raw = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
+  const paths = raw?.compilerOptions?.paths ?? {};
+  return Object.entries(paths).flatMap(([pattern, targets]) => {
+    if (!Array.isArray(targets) || targets.length === 0) return [];
+    const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
+    return [{ prefix, exact: !pattern.endsWith('*'), targets }];
+  });
+}
+
+const TS_ALIASES = loadTsPathAliases();
+
 function walk(dir) {
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -46,9 +61,7 @@ function rel(filePath) {
   return path.relative(ROOT, filePath).split(path.sep).join('/');
 }
 
-function resolveImport(fromFile, specifier) {
-  if (!specifier.startsWith('.')) return null;
-  const base = path.resolve(path.dirname(fromFile), specifier);
+function resolveCandidateFile(base) {
   const candidates = [
     base,
     `${base}.ts`,
@@ -59,11 +72,48 @@ function resolveImport(fromFile, specifier) {
     path.join(base, 'index.tsx'),
   ];
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+    if (
+      /\.(ts|tsx|js|jsx)$/.test(candidate) &&
+      fs.existsSync(candidate) &&
+      fs.statSync(candidate).isFile()
+    ) {
       return candidate;
     }
   }
   return null;
+}
+
+function matchPathAlias(specifier) {
+  for (const alias of TS_ALIASES) {
+    if (alias.exact && specifier === alias.prefix) {
+      return { alias, rest: '' };
+    }
+    if (!alias.exact && specifier.startsWith(alias.prefix)) {
+      return { alias, rest: specifier.slice(alias.prefix.length) };
+    }
+  }
+  return null;
+}
+
+function resolveImport(fromFile, specifier) {
+  if (specifier.startsWith('.')) {
+    return { resolved: resolveCandidateFile(path.resolve(path.dirname(fromFile), specifier)), isAlias: false };
+  }
+  const aliasMatch = matchPathAlias(specifier);
+  if (!aliasMatch) return { resolved: null, isAlias: false };
+  for (const target of aliasMatch.alias.targets) {
+    const cleanTarget = target.endsWith('*') ? target.slice(0, -1) : target;
+    const base = path.resolve(ROOT, cleanTarget, aliasMatch.rest);
+    const hit = resolveCandidateFile(base);
+    if (hit) return { resolved: hit, isAlias: true };
+  }
+  return { resolved: null, isAlias: true };
+}
+
+function extractPkgName(specifier) {
+  return specifier.startsWith('@')
+    ? specifier.split('/').slice(0, 2).join('/')
+    : specifier.split('/')[0];
 }
 
 const allSrcFiles = walk(SRC_DIR);
@@ -73,7 +123,9 @@ const cssFiles = allSrcFiles.filter((f) => f.endsWith('.css')).map(rel);
 const violations = [];
 const warnings = [];
 const graph = new Map();
-const externalImports = new Set();
+const prodExternalImports = new Set();
+const testExternalImports = new Set();
+const toolingExternalImports = new Set();
 
 for (const cssRel of cssFiles) {
   if (!ALLOWED_CSS.has(cssRel)) {
@@ -102,13 +154,16 @@ for (const file of tsFiles) {
   const kind = file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
   const sf = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, kind);
   const deps = [];
+  const muiNamespaceAliases = new Set();
 
   function recordEdge(spec) {
-    if (!spec.startsWith('.')) {
-      const pkg = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
-      externalImports.add(pkg);
+    const { resolved, isAlias } = resolveImport(file, spec);
+    if (!spec.startsWith('.') && !isAlias) {
+      const pkg = extractPkgName(spec);
+      (isTest ? testExternalImports : prodExternalImports).add(pkg);
+    } else if (isAlias && !resolved) {
+      violations.push(`Unresolved path-alias import '${spec}': ${fileRel}`);
     }
-    const resolved = resolveImport(file, spec);
     if (resolved) {
       const targetRel = rel(resolved);
       deps.push(resolved);
@@ -147,12 +202,23 @@ for (const file of tsFiles) {
       const spec = node.moduleSpecifier.text;
       recordEdge(spec);
 
-      if (!isTest && !fileRel.startsWith('src/design-system/')) {
-        if (spec === '@mui/material' && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) {
-          for (const el of node.importClause.namedBindings.elements) {
-            if (PROHIBITED_MUI_PRIMITIVES.has(el.name.text)) {
-              violations.push(`Prohibited direct MUI primitive '${el.name.text}' outside design-system: ${fileRel}`);
+      const clause = node.importClause;
+      const isWholeTypeImport = Boolean(clause?.isTypeOnly);
+      if (!isTest && !isWholeTypeImport && !fileRel.startsWith('src/design-system/')) {
+        if (spec === '@mui/material') {
+          if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+            for (const el of clause.namedBindings.elements) {
+              if (el.isTypeOnly) continue;
+              const importedName = el.propertyName?.text ?? el.name.text;
+              if (PROHIBITED_MUI_PRIMITIVES.has(importedName)) {
+                const aliasNote = el.propertyName ? ` (aliased as '${el.name.text}')` : '';
+                violations.push(
+                  `Prohibited direct MUI primitive '${importedName}'${aliasNote} outside design-system: ${fileRel}`
+                );
+              }
             }
+          } else if (clause?.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
+            muiNamespaceAliases.add(clause.namedBindings.name.text);
           }
         } else if (spec.startsWith('@mui/material/')) {
           const sub = spec.slice('@mui/material/'.length).split('/')[0];
@@ -174,6 +240,17 @@ for (const file of tsFiles) {
       ts.isStringLiteral(node.arguments[0])
     ) {
       recordEdge(node.arguments[0].text);
+    } else if (
+      !isTest &&
+      !fileRel.startsWith('src/design-system/') &&
+      ts.isPropertyAccessExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      muiNamespaceAliases.has(node.expression.text) &&
+      PROHIBITED_MUI_PRIMITIVES.has(node.name.text)
+    ) {
+      violations.push(
+        `Prohibited direct MUI primitive '${node.expression.text}.${node.name.text}' outside design-system: ${fileRel}`
+      );
     }
 
     if (
@@ -194,6 +271,23 @@ for (const file of tsFiles) {
 
   visit(sf);
   graph.set(file, deps);
+}
+
+// Scan build & lint config files so dev/build tooling imports stay accounted for
+for (const toolRel of ['vite.config.ts', 'eslint.config.js', 'scripts/arch-check.mjs']) {
+  const full = path.join(ROOT, toolRel);
+  if (!fs.existsSync(full)) continue;
+  const code = fs.readFileSync(full, 'utf8');
+  const sf = ts.createSourceFile(full, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  ts.forEachChild(sf, function collectTool(node) {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const spec = node.moduleSpecifier.text;
+      if (!spec.startsWith('.') && !spec.startsWith('node:')) {
+        toolingExternalImports.add(extractPkgName(spec));
+      }
+    }
+    ts.forEachChild(node, collectTool);
+  });
 }
 
 // Cycle detection (DFS)
@@ -219,35 +313,60 @@ for (const file of tsFiles) {
   if ((state.get(file) ?? 0) === 0) dfsCycle(file);
 }
 
-// Reachability from main.tsx and tests
-const reachable = new Set();
-const roots = tsFiles.filter(
-  (f) => rel(f) === 'src/main.tsx' || rel(f) === 'src/vite-env.d.ts' || /\.test\.(ts|tsx)$/.test(rel(f))
-);
-const queue = [...roots];
-while (queue.length > 0) {
-  const cur = queue.shift();
-  if (reachable.has(cur)) continue;
-  reachable.add(cur);
-  for (const next of graph.get(cur) ?? []) {
-    if (!reachable.has(next)) queue.push(next);
+function collectReachable(rootFiles) {
+  const visited = new Set();
+  const queue = [...rootFiles];
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    if (visited.has(cur)) continue;
+    visited.add(cur);
+    for (const next of graph.get(cur) ?? []) {
+      if (!visited.has(next)) queue.push(next);
+    }
   }
+  return visited;
 }
+
+const prodRoots = tsFiles.filter((f) => rel(f) === 'src/main.tsx' || rel(f) === 'src/vite-env.d.ts');
+const testRoots = tsFiles.filter((f) => /\.test\.(ts|tsx)$/.test(rel(f)));
+
+const prodReachable = collectReachable(prodRoots);
+const testReachable = collectReachable(testRoots);
+const testOnlyImplFiles = [];
+
 for (const file of tsFiles) {
-  if (!reachable.has(file)) {
-    violations.push(`Orphaned/unreachable source file: ${rel(file)}`);
+  const fileRel = rel(file);
+  const isTest = /\.test\.(ts|tsx)$/.test(fileRel);
+  const inProd = prodReachable.has(file);
+  const inTest = testReachable.has(file);
+  if (!inProd && !inTest) {
+    violations.push(`Orphaned/unreachable source file: ${fileRel}`);
+  } else if (!isTest && !inProd && inTest) {
+    testOnlyImplFiles.push(fileRel);
+    warnings.push(`Implementation module reachable only from tests (not production entry): ${fileRel}`);
   }
 }
 
-// Informational check for template runtime dependencies not imported in src/
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+const RUNTIME_PEER_DEPS = new Set(['react-dom', '@emotion/react', '@emotion/styled']);
 for (const dep of Object.keys(pkg.dependencies ?? {})) {
-  if (!externalImports.has(dep) && !['react-dom', '@emotion/react', '@emotion/styled', '@tailwindcss/vite', '@vitejs/plugin-react', 'vite'].includes(dep)) {
-    warnings.push(`Unused dependency in package.json (retained for lockfile compatibility): ${dep}`);
+  if (
+    !prodExternalImports.has(dep) &&
+    !toolingExternalImports.has(dep) &&
+    !RUNTIME_PEER_DEPS.has(dep)
+  ) {
+    if (testExternalImports.has(dep)) {
+      warnings.push(`Dependency used only in tests belongs in devDependencies: ${dep}`);
+    } else {
+      warnings.push(`Unused dependency in package.json: ${dep}`);
+    }
   }
 }
 
-console.log(`Checked ${tsFiles.length} TypeScript files (${tsFiles.filter((f) => !/\.test\./.test(f)).length} implementation files) and ${cssFiles.length} CSS files.`);
+const implCount = tsFiles.filter((f) => !/\.test\.(ts|tsx)$/.test(rel(f))).length;
+console.log(
+  `Checked ${tsFiles.length} TypeScript files (${implCount} implementation files, ${prodReachable.size} production-reachable, ${testRoots.length} test files, ${testOnlyImplFiles.length} test-only) and ${cssFiles.length} CSS files.`
+);
 for (const w of warnings) console.log(`WARN: ${w}`);
 if (violations.length > 0) {
   console.error(`\nArchitecture check FAILED with ${violations.length} violation(s):`);

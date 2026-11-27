@@ -1,28 +1,23 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import FormLabel from '@mui/material/FormLabel';
-import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import {
   isFieldLockedByPreviewPolicy,
   type PublicCapability,
 } from '../../shared/previewPolicy';
-import { SELECTION_TOKENS } from '../theme';
+import { AppRadioOptionItem, type AppRadioOption } from './AppRadioOptionItem';
 import { RADIO_GROUP_COLUMN_SX } from './radioCardStyle';
 import {
   AppRadioGroupContext,
+  createBlockedSelectionHandlers,
+  isSelectionInteractionBlocked,
   type SelectionPalette,
   type SelectionSize,
 } from './selectionContext';
 
-export interface AppRadioOption {
-  value: string;
-  label: React.ReactNode;
-  description?: React.ReactNode;
-  disabled?: boolean;
-}
+export type { AppRadioOption };
 
 export interface AppRadioGroupProps {
   id?: string;
@@ -47,6 +42,8 @@ export interface AppRadioGroupProps {
   className?: string;
   groupClassName?: string;
 }
+
+const RADIO_BLOCKED_KEYS = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'] as const;
 
 export const AppRadioGroup: React.FC<AppRadioGroupProps> = ({
   id,
@@ -76,18 +73,22 @@ export const AppRadioGroup: React.FC<AppRadioGroupProps> = ({
   const labelId = label ? `${groupId}-label` : undefined;
   const helperId = helperText ? `${groupId}-helper` : undefined;
 
-  const previewLocked = isFieldLockedByPreviewPolicy({
-    publicCapability,
-    previewRestricted,
-  });
+  const previewLocked = isFieldLockedByPreviewPolicy({ publicCapability, previewRestricted });
   const effectiveDisabled = Boolean(disabled || previewLocked);
   const effectiveReadOnly = Boolean(readOnly && !effectiveDisabled);
+  const isBlocked = isSelectionInteractionBlocked(effectiveDisabled, effectiveReadOnly);
+  const { handleClick, handleKeyDown } = createBlockedSelectionHandlers(isBlocked, RADIO_BLOCKED_KEYS);
+
+  const isControlled = value !== undefined;
+  const [uncontrolledValue, setUncontrolledValue] = useState<string>(defaultValue ?? '');
+  const resolvedValue = isControlled ? value : uncontrolledValue;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>, nextValue: string) => {
-    if (effectiveDisabled || effectiveReadOnly) {
+    if (isBlocked) {
       event.preventDefault();
       return;
     }
+    if (!isControlled) setUncontrolledValue(nextValue);
     onChange?.(event, nextValue);
   };
 
@@ -124,9 +125,10 @@ export const AppRadioGroup: React.FC<AppRadioGroupProps> = ({
         <RadioGroup
           id={groupId}
           name={name}
-          value={value}
-          defaultValue={defaultValue}
+          value={resolvedValue}
           onChange={handleChange}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
           row={!columns && orientation === 'horizontal'}
           aria-labelledby={labelId}
           aria-describedby={helperId}
@@ -135,61 +137,18 @@ export const AppRadioGroup: React.FC<AppRadioGroupProps> = ({
           sx={columns ? RADIO_GROUP_COLUMN_SX[columns] : undefined}
         >
           {children ??
-            options?.map((option) => {
-              const optionDisabled = effectiveDisabled || Boolean(option.disabled);
-              return (
-                <FormControlLabel
-                  key={option.value}
-                  value={option.value}
-                  disabled={optionDisabled}
-                  className={effectiveReadOnly ? 'Mui-readOnly' : undefined}
-                  label={
-                    option.description ? (
-                      <span className="grid gap-0.5 min-w-0">
-                        <span
-                          className="font-semibold leading-snug"
-                          style={{
-                            fontSize:
-                              size === 'small'
-                                ? SELECTION_TOKENS.labelFontSizeSmall
-                                : SELECTION_TOKENS.labelFontSizeMedium,
-                          }}
-                        >
-                          {option.label}
-                        </span>
-                        <span
-                          className="text-slate-600 dark:text-slate-400 leading-snug"
-                          style={{ fontSize: SELECTION_TOKENS.descriptionFontSize }}
-                        >
-                          {option.description}
-                        </span>
-                      </span>
-                    ) : (
-                      option.label
-                    )
-                  }
-                  control={
-                    <Radio
-                      size={size}
-                      disabled={optionDisabled}
-                      className={[
-                        effectiveReadOnly ? 'Mui-readOnly' : '',
-                        error ? 'Mui-error' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ') || undefined}
-                      slotProps={{
-                        input: {
-                          readOnly: effectiveReadOnly,
-                          'aria-readonly': effectiveReadOnly || undefined,
-                          'aria-invalid': error || undefined,
-                        },
-                      }}
-                    />
-                  }
-                />
-              );
-            })}
+            options?.map((option) => (
+              <AppRadioOptionItem
+                key={option.value}
+                option={option}
+                groupDisabled={effectiveDisabled}
+                readOnly={effectiveReadOnly}
+                error={error}
+                size={size}
+                onBlockedClick={handleClick}
+                onBlockedKeyDown={handleKeyDown}
+              />
+            ))}
         </RadioGroup>
       </AppRadioGroupContext.Provider>
       {helperText && <FormHelperText id={helperId}>{helperText}</FormHelperText>}

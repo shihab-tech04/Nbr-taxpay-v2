@@ -4,4 +4,6 @@ export {
   BUTTON_TOKENS,
   FORM_TOKENS,
   SELECTION_TOKENS,
+  TIN_TOKENS,
 } from './theme/spacingAndShape';
+

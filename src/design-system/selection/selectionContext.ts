@@ -21,3 +21,31 @@ export const AppRadioGroupContext = React.createContext<AppRadioGroupContextValu
 export function useAppRadioGroupContext(): AppRadioGroupContextValue | null {
   return React.useContext(AppRadioGroupContext);
 }
+
+export function isSelectionInteractionBlocked(disabled: boolean, readOnly: boolean): boolean {
+  return Boolean(disabled || readOnly);
+}
+
+export function createBlockedSelectionHandlers(
+  blocked: boolean,
+  blockedKeys: readonly string[] = [' ', 'Enter']
+) {
+  return {
+    handleClick(event: { preventDefault: () => void; stopPropagation: () => void }): void {
+      if (!blocked) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    handleKeyDown(event: {
+      key: string;
+      preventDefault: () => void;
+      stopPropagation: () => void;
+    }): void {
+      if (!blocked) return;
+      if (blockedKeys.includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+  };
+}

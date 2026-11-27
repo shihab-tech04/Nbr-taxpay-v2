@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: pages
+  cancel-in-progress: false
 jobs:
   recovery:
     runs-on: ubuntu-24.04
@@ -18,7 +21,7 @@ jobs:
       - name: Backup and restore pre-release Main
         run: |
           set -euo pipefail
-          baseline=04b42261055c8ec7850d9d0de5f9709a2e876bc8
+          baseline=01f150d6ec5855227bddfd6c3e044a7d17c25a1d
           git branch recovery-baseline "$baseline"
           mkdir -p "$RUNNER_TEMP/recovery"
           cd "$RUNNER_TEMP/recovery"
@@ -31,7 +34,7 @@ jobs:
           sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: pre-release-04b4226-recovery
+          name: pre-release-01f150d-recovery
           path: |
             ${{ runner.temp }}/recovery/pre-release.bundle
             ${{ runner.temp }}/recovery/SHA256SUMS

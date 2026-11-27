@@ -6,4 +6,10 @@ export {
 } from './AppRadioGroup';
 export { AppRadioCard, type AppRadioCardProps } from './AppRadioCard';
 export { AppSwitch, type AppSwitchProps } from './AppSwitch';
-export type { SelectionPalette, SelectionSize } from './selectionContext';
+export {
+  createBlockedSelectionHandlers,
+  isSelectionInteractionBlocked,
+  type SelectionPalette,
+  type SelectionSize,
+} from './selectionContext';
+

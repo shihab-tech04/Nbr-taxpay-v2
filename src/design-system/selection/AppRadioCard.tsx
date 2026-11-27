@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Radio from '@mui/material/Radio';
 import { useRadioGroup } from '@mui/material/RadioGroup';
@@ -9,6 +9,8 @@ import {
 import { getThemeColors } from '../theme';
 import { resolveRadioCardSx } from './radioCardStyle';
 import {
+  createBlockedSelectionHandlers,
+  isSelectionInteractionBlocked,
   useAppRadioGroupContext,
   type SelectionPalette,
   type SelectionSize,
@@ -21,6 +23,7 @@ export interface AppRadioCardProps {
   title: React.ReactNode;
   description?: React.ReactNode;
   checked?: boolean;
+  defaultChecked?: boolean;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>, checked: boolean) => void;
   disabled?: boolean;
   readOnly?: boolean;
@@ -40,6 +43,7 @@ export const AppRadioCard: React.FC<AppRadioCardProps> = ({
   title,
   description,
   checked,
+  defaultChecked,
   onChange,
   disabled = false,
   readOnly = false,
@@ -66,15 +70,22 @@ export const AppRadioCard: React.FC<AppRadioCardProps> = ({
   });
   const effectiveDisabled = Boolean(disabled || groupCtx?.disabled || previewLocked);
   const effectiveReadOnly = Boolean((readOnly || groupCtx?.readOnly) && !effectiveDisabled);
+  const isBlocked = isSelectionInteractionBlocked(effectiveDisabled, effectiveReadOnly);
+  const { handleClick, handleKeyDown } = createBlockedSelectionHandlers(isBlocked);
 
+  const isStandalone = !muiGroup;
+  const isControlled = checked !== undefined;
+  const [uncontrolledChecked, setUncontrolledChecked] = useState<boolean>(Boolean(defaultChecked));
+  const resolvedChecked = isControlled ? checked : isStandalone ? uncontrolledChecked : undefined;
   const isSelected =
-    checked !== undefined ? checked : muiGroup ? muiGroup.value === value : false;
+    resolvedChecked !== undefined ? resolvedChecked : muiGroup ? muiGroup.value === value : false;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>, nextChecked: boolean) => {
-    if (effectiveDisabled || effectiveReadOnly) {
+    if (isBlocked) {
       event.preventDefault();
       return;
     }
+    if (isStandalone && !isControlled) setUncontrolledChecked(nextChecked);
     onChange?.(event, nextChecked);
   };
 
@@ -82,6 +93,7 @@ export const AppRadioCard: React.FC<AppRadioCardProps> = ({
     <FormControlLabel
       value={value}
       disabled={effectiveDisabled}
+      onClick={handleClick}
       className={[effectiveReadOnly ? 'Mui-readOnly' : '', className].filter(Boolean).join(' ') || undefined}
       sx={resolveRadioCardSx({
         palette: resolvedPalette,
@@ -107,8 +119,10 @@ export const AppRadioCard: React.FC<AppRadioCardProps> = ({
           id={id}
           name={resolvedName}
           value={value}
-          checked={checked !== undefined ? checked : undefined}
+          checked={resolvedChecked}
           onChange={handleChange}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
           disabled={effectiveDisabled}
           size={resolvedSize}
           className={[
@@ -123,9 +137,7 @@ export const AppRadioCard: React.FC<AppRadioCardProps> = ({
             return {
               p: 0,
               mt: 0,
-              '&.Mui-checked': {
-                color: colors.home.radioSelectedBorder,
-              },
+              '&.Mui-checked': { color: colors.home.radioSelectedBorder },
             };
           }}
           slotProps={{

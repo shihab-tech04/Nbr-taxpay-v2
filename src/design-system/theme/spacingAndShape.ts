@@ -47,3 +47,17 @@ export const SELECTION_TOKENS = {
   descriptionFontSize: '0.8125rem',
   groupGap: 12,
 } as const;
+
+export const TIN_TOKENS = {
+  defaultLength: 12,
+  heightDesktop: 46,
+  heightMobile: 44,
+  cellGapDesktop: 4,
+  cellGapMobile: 3,
+  cellRadiusDesktop: 7,
+  cellRadiusMobile: 5,
+  cardRadius: 10,
+  resultCardRadius: 12,
+  suggestionsMaxHeight: 190,
+} as const;
+

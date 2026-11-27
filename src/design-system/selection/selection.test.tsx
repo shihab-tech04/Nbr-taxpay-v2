@@ -7,7 +7,14 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n/i18n';
 import { isFieldLockedByPreviewPolicy } from '../../shared/previewPolicy';
 import { getTheme } from '../theme';
-import { AppCheckbox, AppRadioCard, AppRadioGroup, AppSwitch } from './index';
+import {
+  AppCheckbox,
+  AppRadioCard,
+  AppRadioGroup,
+  AppSwitch,
+  createBlockedSelectionHandlers,
+  isSelectionInteractionBlocked,
+} from './index';
 
 function renderWithProviders(
   node: React.ReactElement,
@@ -52,6 +59,14 @@ test('AppCheckbox supports checked, indeterminate, readOnly, error, description,
       assert.match(indeterminateHtml, /aria-readonly="true"/);
       assert.match(indeterminateHtml, /aria-invalid="true"/);
       assert.match(indeterminateHtml, /Selection invalid/);
+
+      const uncontrolledReadOnlyHtml = renderWithProviders(
+        <AppCheckbox label="Uncontrolled locked" defaultChecked readOnly />,
+        mode,
+        lang
+      );
+      assert.match(uncontrolledReadOnlyHtml, /checked=""/);
+      assert.match(uncontrolledReadOnlyHtml, /aria-readonly="true"/);
     }
   }
 });
@@ -79,7 +94,6 @@ test('AppRadioGroup and AppRadioCard render accessible radio options, columns, p
     const radioMatches = groupHtml.match(/type="radio"/g) ?? [];
     assert.equal(radioMatches.length, 3);
     assert.match(groupHtml, /checked=""/);
-    // Single wrapping <label> without nested buttons inside it
     const labelMatches = groupHtml.match(/<label\b/g) ?? [];
     assert.equal(labelMatches.length, 3);
     assert.doesNotMatch(groupHtml, /<button\b/);
@@ -88,7 +102,7 @@ test('AppRadioGroup and AppRadioCard render accessible radio options, columns, p
       <AppRadioGroup
         label="Mode"
         orientation="horizontal"
-        value="a"
+        defaultValue="a"
         readOnly
         error
         helperText="Choose mode"
@@ -100,6 +114,8 @@ test('AppRadioGroup and AppRadioCard render accessible radio options, columns, p
       mode
     );
     assert.match(optionsGroupHtml, /Mui-readOnly/);
+    assert.match(optionsGroupHtml, /aria-readonly="true"/);
+    assert.match(optionsGroupHtml, /checked=""/);
     assert.match(optionsGroupHtml, /aria-invalid="true"/);
     assert.match(optionsGroupHtml, /Option A/);
     assert.match(optionsGroupHtml, /Option B/);
@@ -108,20 +124,32 @@ test('AppRadioGroup and AppRadioCard render accessible radio options, columns, p
 
 test('AppSwitch renders switch role, label placements, readOnly, disabled, and preview policy lock', () => {
   for (const mode of ['light', 'dark'] as const) {
-    const switchHtml = renderWithProviders(
-      <AppSwitch
-        label="Dark Mode"
-        description="Use high-contrast dark theme"
-        checked
-        labelPlacement="start"
-        onChange={() => {}}
-      />,
+    for (const lang of ['en', 'bn'] as const) {
+      const labelText = lang === 'bn' ? 'ডার্ক মোড' : 'Dark Mode';
+      const switchHtml = renderWithProviders(
+        <AppSwitch
+          label={labelText}
+          description="Use high-contrast dark theme"
+          checked
+          labelPlacement="start"
+          onChange={() => {}}
+        />,
+        mode,
+        lang
+      );
+      assert.match(switchHtml, /role="switch"/);
+      assert.match(switchHtml, /checked=""/);
+      assert.match(switchHtml, /MuiFormControlLabel-labelPlacementStart/);
+      assert.match(switchHtml, new RegExp(labelText));
+    }
+
+    const uncontrolledReadOnlyHtml = renderWithProviders(
+      <AppSwitch label="Uncontrolled switch" defaultChecked readOnly helperText="Protected" />,
       mode
     );
-    assert.match(switchHtml, /role="switch"/);
-    assert.match(switchHtml, /checked=""/);
-    assert.match(switchHtml, /MuiFormControlLabel-labelPlacementStart/);
-    assert.match(switchHtml, /Dark Mode/);
+    assert.match(uncontrolledReadOnlyHtml, /checked=""/);
+    assert.match(uncontrolledReadOnlyHtml, /Mui-readOnly/);
+    assert.match(uncontrolledReadOnlyHtml, /aria-readonly="true"/);
 
     const lockedHtml = renderWithProviders(
       <AppSwitch label="Locked Switch" readOnly disabled helperText="Locked" />,
@@ -133,4 +161,57 @@ test('AppSwitch renders switch role, label placements, readOnly, disabled, and p
 
   assert.equal(isFieldLockedByPreviewPolicy({ publicCapability: 'none' }, true), true);
   assert.equal(isFieldLockedByPreviewPolicy({ publicCapability: 'none' }, false), false);
+});
+
+test('Selection guards block mouse clicks and Space/Enter/Arrow keys when disabled or readOnly without blocking Tab', () => {
+  assert.equal(isSelectionInteractionBlocked(false, false), false);
+  assert.equal(isSelectionInteractionBlocked(true, false), true);
+  assert.equal(isSelectionInteractionBlocked(false, true), true);
+
+  const radioKeys = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  const blocked = createBlockedSelectionHandlers(true, radioKeys);
+
+  let prevented = 0;
+  let stopped = 0;
+  blocked.handleClick({
+    preventDefault: () => { prevented += 1; },
+    stopPropagation: () => { stopped += 1; },
+  });
+  assert.equal(prevented, 1);
+  assert.equal(stopped, 1);
+
+  for (const key of radioKeys) {
+    prevented = 0;
+    stopped = 0;
+    blocked.handleKeyDown({
+      key,
+      preventDefault: () => { prevented += 1; },
+      stopPropagation: () => { stopped += 1; },
+    });
+    assert.equal(prevented, 1, `Expected key '${key}' to be prevented when blocked`);
+    assert.equal(stopped, 1, `Expected key '${key}' propagation to stop when blocked`);
+  }
+
+  prevented = 0;
+  stopped = 0;
+  blocked.handleKeyDown({
+    key: 'Tab',
+    preventDefault: () => { prevented += 1; },
+    stopPropagation: () => { stopped += 1; },
+  });
+  assert.equal(prevented, 0);
+  assert.equal(stopped, 0);
+
+  const unblocked = createBlockedSelectionHandlers(false, radioKeys);
+  unblocked.handleClick({
+    preventDefault: () => { prevented += 1; },
+    stopPropagation: () => { stopped += 1; },
+  });
+  unblocked.handleKeyDown({
+    key: ' ',
+    preventDefault: () => { prevented += 1; },
+    stopPropagation: () => { stopped += 1; },
+  });
+  assert.equal(prevented, 0);
+  assert.equal(stopped, 0);
 });
