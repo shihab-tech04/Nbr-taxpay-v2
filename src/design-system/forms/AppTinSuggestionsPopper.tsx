@@ -41,7 +41,7 @@ export const AppTinSuggestionsPopper: React.FC<AppTinSuggestionsPopperProps> = (
       anchorEl={anchorEl}
       placement="bottom-start"
       modifiers={[
-        { name: 'flip', enabled: false },
+        { name: 'flip', enabled: true },
         { name: 'preventOverflow', enabled: true, options: { boundary: 'viewport', padding: 8 } },
       ]}
       sx={{
@@ -54,7 +54,6 @@ export const AppTinSuggestionsPopper: React.FC<AppTinSuggestionsPopperProps> = (
         ref={listRef}
         id={id}
         role="listbox"
-        data-placement="below"
         aria-label={
           bn ? 'নমুনা টিআইএন — সরকারি যাচাইকৃত নয়' : 'Sample TIN suggestions — not NBR verified'
         }

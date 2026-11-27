@@ -1,6 +1,7 @@
 export interface AppAutocompleteOption {
   value: string;
   label: string;
+  code?: string;
   group?: string;
   secondary?: string;
   disabled?: boolean;
@@ -14,7 +15,7 @@ export function matchAutocompleteOptions(
   return options.filter((option) => {
     if (option.value === '') return false;
     if (!term) return true;
-    return [option.label, option.secondary, option.group, option.value].some((field) =>
+    return [option.label, option.secondary, option.group, option.value, option.code].some((field) =>
       field?.toLocaleLowerCase().includes(term)
     );
   });

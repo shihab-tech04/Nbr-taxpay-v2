@@ -30,6 +30,7 @@ import {
   matchAutocompleteOptions,
   parseCurrencyAmount,
   parsePastedIdentifierDigits,
+  replaceDigitAtFullLength,
   sanitizeCurrencyInput,
   sanitizeDigits,
   sanitizeIdentifierDigits,
@@ -140,9 +141,9 @@ test('All seven base MUI form components render cleanly in light and dark themes
 test('AppAutocomplete helpers search labels, codes, groups, and EN/BN secondary text while preserving stable values', () => {
   const options: AppAutocompleteOption[] = [
     { value: '', label: 'Select zone' },
-    { value: '12345', label: 'Tax Zone 01, Dhaka', group: 'Dhaka Division', secondary: 'কর অঞ্চল ০১, ঢাকা · Circle 04' },
-    { value: '22901', label: 'Tax Zone 02, Chattogram', group: 'Chattogram Division', secondary: 'কর অঞ্চল ০২, চট্টগ্রাম' },
-    { value: '12399', label: 'LTU Dhaka', group: 'Dhaka Division', secondary: 'বৃহৎ করদাতা ইউনিট', disabled: true },
+    { value: '12345', code: 'ZONE-01', label: 'Tax Zone 01, Dhaka', group: 'Dhaka Division', secondary: 'কর অঞ্চল ০১, ঢাকা · Circle 04' },
+    { value: '22901', code: 'ZONE-02', label: 'Tax Zone 02, Chattogram', group: 'Chattogram Division', secondary: 'কর অঞ্চল ০২, চট্টগ্রাম' },
+    { value: '12399', code: 'LTU-DHK', label: 'LTU Dhaka', group: 'Dhaka Division', secondary: 'বৃহৎ করদাতা ইউনিট', disabled: true },
   ];
 
   const grouped = groupAutocompleteOptionsPreserveOrder(options);
@@ -150,6 +151,7 @@ test('AppAutocomplete helpers search labels, codes, groups, and EN/BN secondary 
 
   assert.deepEqual(matchAutocompleteOptions(grouped, '').map((o) => o.value), ['12345', '12399', '22901']);
   assert.deepEqual(matchAutocompleteOptions(grouped, '22901').map((o) => o.value), ['22901']);
+  assert.deepEqual(matchAutocompleteOptions(grouped, 'zone-02').map((o) => o.value), ['22901']);
   assert.deepEqual(matchAutocompleteOptions(grouped, 'চট্টগ্রাম').map((o) => o.value), ['22901']);
   assert.deepEqual(matchAutocompleteOptions(grouped, 'Dhaka Division').map((o) => o.value), ['12345', '12399']);
   assert.deepEqual(matchAutocompleteOptions(grouped, '   circle 04  ').map((o) => o.value), ['12345']);
@@ -215,6 +217,16 @@ test('Segmented TIN helpers preserve leading zeros, configurable length, masking
     nextValue: '01234567',
     nextCaretIndex: 5,
   });
+  assert.deepEqual(replaceDigitAtFullLength('012345678901', 0, '9', 12), {
+    nextValue: '912345678901',
+    nextCaretIndex: 1,
+  });
+  assert.deepEqual(replaceDigitAtFullLength('012345678901', 11, '7', 12), {
+    nextValue: '012345678907',
+    nextCaretIndex: 12,
+  });
+  assert.equal(replaceDigitAtFullLength('012345678901', 12, '7', 12), null);
+  assert.equal(replaceDigitAtFullLength('012345678901', 3, 'a', 12), null);
 
   const mixedSuggestions = ['012345678901', '882349102384', '0123456789012'];
   assert.deepEqual(filterMatchingTinSuggestions(mixedSuggestions, '0123', 12), ['012345678901']);

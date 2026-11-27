@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { getThemeColors, TIN_TOKENS } from '../theme';
-import { AppTinDigitCell, findDigitCellIndexAtPoint } from './AppTinDigitCell';
+import { AppTinDigitCell } from './AppTinDigitCell';
 import {
-  insertDigitsAtRange,
-  parsePastedIdentifierDigits,
+  findDigitCellIndexAtPoint,
+  replaceDigitAtFullLength,
+  resolveTinPasteUpdate,
   sanitizeIdentifierDigits,
 } from './tinInputUtils';
 
@@ -162,21 +163,28 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
         }}
         onPaste={(event) => {
           if (locked) return;
-          const pasted = parsePastedIdentifierDigits(event.clipboardData.getData('text'), maxLength);
-          if (!pasted) return;
           event.preventDefault();
-          if (pasted.length === maxLength) {
-            onChange(pasted);
-            setActiveDigit(maxLength - 1);
-            return;
-          }
-          const start = event.currentTarget.selectionStart ?? value.length;
-          const end = event.currentTarget.selectionEnd ?? start;
-          const { nextValue, nextCaretIndex } = insertDigitsAtRange(value, start, end, pasted, maxLength);
-          onChange(nextValue);
-          setActiveDigit(Math.min(nextCaretIndex, maxLength - 1));
+          const el = event.currentTarget;
+          const result = resolveTinPasteUpdate(value, event.clipboardData.getData('text'), el.selectionStart, el.selectionEnd, maxLength);
+          if (!result) return;
+          onChange(result.nextValue);
+          setActiveDigit(result.activeDigit);
         }}
-        onKeyDown={onKeyDown}
+        onKeyDown={(event) => {
+          const el = event.currentTarget;
+          const start = el.selectionStart ?? value.length;
+          const end = el.selectionEnd ?? start;
+          if (directDigitEdit && !locked && !event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(event.key) && start === end && value.length >= maxLength && start < maxLength) {
+            const replaced = replaceDigitAtFullLength(value, start, event.key, maxLength);
+            if (replaced) {
+              event.preventDefault();
+              onChange(replaced.nextValue);
+              setActiveDigit(Math.min(replaced.nextCaretIndex, maxLength - 1));
+              queueMicrotask(() => el.setSelectionRange(replaced.nextCaretIndex, replaced.nextCaretIndex));
+            }
+          }
+          onKeyDown?.(event);
+        }}
         onChange={(event) => {
           if (locked) return;
           const next = sanitizeIdentifierDigits(event.target.value, maxLength);

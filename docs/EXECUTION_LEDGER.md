@@ -76,3 +76,27 @@ All citizen features, design tokens, bilingual translations, and production-grad
   - Browser verification (`playwright-cli` + headless Chromium): verified dev mode (`http://localhost:3000`) desktop & mobile (0 overflow, `AppCheckbox` toggle, `AppRadioGroup` arrow-key channel selection, `ReceiptModal` submission, `HelpChatDialog` topic click / submit / `Escape` focus restore) and compiled Pages `PUBLIC_PREVIEW=true` preview (`/Nbr-taxpay-v2/` on `127.0.0.1:4174`: warning banner, `PRIVATE_SENTINEL` isolation, honest verification unavailable state, disabled inputs/cards across `#/travel-tax`, `#/login`, `#/all-taxes`, 0 console/page errors).
 - **Remaining Outside-Sandbox Steps**:
   - This container environment has no `.git` directory or GitHub credentials; creating the local git backup bundle from `04b42261055c8ec7850d9d0de5f9709a2e876bc8`, pushing Cycle 05 commits to `main`, and confirming live GitHub Pages CI deployment must be executed from a git-connected workstation / GitHub Actions runner.
+
+## Cycle 06 — Shared Searchable Controls, Segmented TIN Input Foundation, and Architecture Refinement
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); completed Cycle 05 architecture improvements preserved; no actual login, taxpayer lookup backend integration, or complete payment journey wired yet.
+- **Outstanding Corrections Completed**:
+  - Verified `SelectionBooleanField.tsx` extracting duplicated label, description, helper-text, accessibility (`aria-describedby`, `aria-readonly`, `aria-invalid`), and controlled/uncontrolled read-only & disabled guards shared by `AppCheckbox` and `AppSwitch`.
+  - Preserved the two semantic button types (`'primary' | 'secondary'`) and all approved appearances.
+  - Enhanced `scripts/arch-check.mjs` to also detect prohibited MUI primitive re-exports (`ExportDeclaration`) in addition to aliased/namespace/subpath `ImportDeclaration` checks, path-alias resolution (`tsconfig.json`), production-reachable vs test-only graph analysis, and build/lint tooling dependency accounting.
+  - Eliminated the `react-refresh/only-export-components` ESLint warning by moving `findDigitCellIndexAtPoint` from `AppTinDigitCell.tsx` into `tinInputUtils.ts`.
+- **Shared MUI Autocomplete (`src/design-system/forms/AppAutocomplete.tsx`, `autocompleteUtils.ts`, `autocompleteRenderers.tsx`)**:
+  - Supports typed options (`value`, `label`, optional `code`, `group`, `secondary`, `disabled`), stable option identifiers (`getOptionKey` / `isOptionEqualToValue` keyed on `value`), and search across labels, values, codes, group headings, and EN/BN secondary text.
+  - Supports controlled selection, empty/no-options states, loading indicator, validation, required, disabled, read-only, `PUBLIC_PREVIEW` policy locking, Escape dismissal without closing parent modals (`stopPropagation`), and viewport-aware Popper placement (`flip: true`, `preventOverflow`, `zIndex: modal + 10`, `maxWidth: calc(100vw - 16px)`).
+- **Shared Segmented TIN Input Foundation (`src/design-system/forms/AppTinInput.tsx`, `AppTinDigitGrid.tsx`, `AppTinDigitCell.tsx`, `AppTinPlainField.tsx`, `AppTinLookupField.tsx`, `AppTinSuggestionsPopper.tsx`, `AppTinResultCard.tsx`, `tinInputUtils.ts`, `useTinLookupPopper.ts`)**:
+  - Preserves 12-digit TIN appearance with one accessible controlled numeric `<input>` behind visible digit blocks, preserving strings and leading zeros, configurable `maxLength`, optional masking, clear/search actions, localized EN/BN labels, and viewport-aware Popper suggestions (`flip: true`, `preventOverflow`).
+  - Added `replaceDigitAtFullLength` and `resolveTinPasteUpdate` in `tinInputUtils.ts` so sequential direct digit replacement and keyboard movement work even when all digits are filled, and non-digit clipboard pastes do not disrupt caret state.
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`: PASSED with 0 violations (`151` TypeScript files, `146` implementation files all `<=200` lines, `146` production-reachable, `5` test files, `0` test-only, `3` CSS files).
+  - `npm run typecheck` (`tsc --noEmit`): 0 errors.
+  - `npm run lint` (`eslint .` / `lint_applet`): 0 errors, 0 warnings.
+  - `npm test`: `31/31` tests passing across `forms.test.tsx`, `buttons.test.tsx`, `selection.test.tsx`, `home.test.tsx`, and `payments.test.tsx`.
+  - `compile_applet` & `NODE_ENV=production npx vite build --base=/Nbr-taxpay-v2/`: succeeded cleanly.
+  - Browser verification (`playwright-cli` + headless Chromium): verified dev mode (`http://localhost:3000`) Home 2 desktop (`1440x900`) and mobile (`390x844`, `homeMobileOverflowX: false`), interactive `AppCheckbox` click/Space toggle and `AppRadioGroup` ArrowRight keyboard selection on `/all-taxes`, and compiled Pages `PUBLIC_PREVIEW=true` preview (`/Nbr-taxpay-v2/` on `127.0.0.1:4173`: warning banner, `PRIVATE_SENTINEL` isolation, disabled inputs on `#/travel-tax` and `#/login`, 0 console/page errors). Note: pre-existing inner-route `Navbar` mobile header at `390px` on `/all-taxes` still exhibits horizontal overflow from the `"Sign In / TIN Login"` link (`Navbar.tsx` untouched in Cycle 06 scope).
+- **Remaining Outside-Sandbox Steps**:
+  - This container workspace has no `.git` directory or GitHub credentials; verifying the `01f150d6ec5855227bddfd6c3e044a7d17c25a1d` backup/restore bundle, pushing Cycle 06 commits to `main`, and confirming live `.github/workflows/citizen-pages.yml` deployment URL and `version.txt` SHA must be executed in a git-connected environment / GitHub Actions runner.
+

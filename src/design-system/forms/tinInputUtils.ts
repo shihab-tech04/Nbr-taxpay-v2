@@ -65,3 +65,61 @@ export function validateIdentifierLength(
   if (!exactDigits.test(trimmed)) return { valid: false, reason: 'format' };
   return { valid: true };
 }
+
+export function replaceDigitAtFullLength(
+  current: string,
+  index: number,
+  digit: string,
+  maxLength = DEFAULT_TIN_LENGTH
+): { nextValue: string; nextCaretIndex: number } | null {
+  const cleaned = sanitizeIdentifierDigits(digit, 1);
+  if (!cleaned || index < 0 || index >= maxLength || index >= current.length) {
+    return null;
+  }
+  const nextValue = sanitizeIdentifierDigits(
+    `${current.slice(0, index)}${cleaned}${current.slice(index + 1)}`,
+    maxLength
+  );
+  return {
+    nextValue,
+    nextCaretIndex: Math.min(index + 1, maxLength),
+  };
+}
+
+export function findDigitCellIndexAtPoint(
+  container: HTMLElement,
+  clientX: number,
+  clientY: number,
+  maxLength: number,
+  valueLength: number
+): number {
+  const cells = Array.from(container.querySelectorAll(':scope > span'));
+  const hit = cells.findIndex((cell) => {
+    const rect = cell.getBoundingClientRect();
+    return (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    );
+  });
+  return Math.min(hit < 0 ? maxLength - 1 : hit, valueLength);
+}
+
+export function resolveTinPasteUpdate(
+  currentValue: string,
+  clipboardText: string,
+  selectionStart: number | null,
+  selectionEnd: number | null,
+  maxLength: number
+): { nextValue: string; activeDigit: number } | null {
+  const pasted = parsePastedIdentifierDigits(clipboardText, maxLength);
+  if (!pasted) return null;
+  if (pasted.length === maxLength) {
+    return { nextValue: pasted, activeDigit: maxLength - 1 };
+  }
+  const start = selectionStart ?? currentValue.length;
+  const end = selectionEnd ?? start;
+  const { nextValue, nextCaretIndex } = insertDigitsAtRange(currentValue, start, end, pasted, maxLength);
+  return { nextValue, activeDigit: Math.min(nextCaretIndex, maxLength - 1) };
+}

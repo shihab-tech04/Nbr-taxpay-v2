@@ -31,6 +31,7 @@ export {
   insertDigitsAtRange,
   maskTinForDisplay,
   parsePastedIdentifierDigits,
+  replaceDigitAtFullLength,
   sanitizeIdentifierDigits,
   validateIdentifierLength,
 } from './tinInputUtils';

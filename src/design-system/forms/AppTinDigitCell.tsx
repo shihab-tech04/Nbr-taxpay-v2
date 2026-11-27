@@ -62,23 +62,3 @@ export const AppTinDigitCell: React.FC<AppTinDigitCellProps> = ({
     </span>
   );
 };
-
-export function findDigitCellIndexAtPoint(
-  container: HTMLElement,
-  clientX: number,
-  clientY: number,
-  maxLength: number,
-  valueLength: number
-): number {
-  const cells = Array.from(container.querySelectorAll(':scope > span'));
-  const hit = cells.findIndex((cell) => {
-    const rect = cell.getBoundingClientRect();
-    return (
-      clientX >= rect.left &&
-      clientX <= rect.right &&
-      clientY >= rect.top &&
-      clientY <= rect.bottom
-    );
-  });
-  return Math.min(hit < 0 ? maxLength - 1 : hit, valueLength);
-}

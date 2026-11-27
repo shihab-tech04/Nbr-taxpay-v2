@@ -232,7 +232,27 @@ for (const file of tsFiles) {
       node.moduleSpecifier &&
       ts.isStringLiteral(node.moduleSpecifier)
     ) {
-      recordEdge(node.moduleSpecifier.text);
+      const spec = node.moduleSpecifier.text;
+      recordEdge(spec);
+      if (!isTest && !node.isTypeOnly && !fileRel.startsWith('src/design-system/')) {
+        if (spec === '@mui/material' && node.exportClause && ts.isNamedExports(node.exportClause)) {
+          for (const el of node.exportClause.elements) {
+            if (el.isTypeOnly) continue;
+            const exportedName = el.propertyName?.text ?? el.name.text;
+            if (PROHIBITED_MUI_PRIMITIVES.has(exportedName)) {
+              const aliasNote = el.propertyName ? ` (aliased as '${el.name.text}')` : '';
+              violations.push(
+                `Prohibited direct MUI primitive re-export '${exportedName}'${aliasNote} outside design-system: ${fileRel}`
+              );
+            }
+          }
+        } else if (spec.startsWith('@mui/material/')) {
+          const sub = spec.slice('@mui/material/'.length).split('/')[0];
+          if (PROHIBITED_MUI_PRIMITIVES.has(sub)) {
+            violations.push(`Prohibited direct MUI primitive re-export '${sub}' outside design-system: ${fileRel}`);
+          }
+        }
+      }
     } else if (
       ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword &&
