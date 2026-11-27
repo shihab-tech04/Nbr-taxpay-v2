@@ -1,0 +1,13 @@
+feature_id,feature_name,category,scope,priority,description
+F-01,Citizen Authentication & TIN Login,CITIZEN,Core,P1,Secure 12-digit TIN sign-in with OTP verification and session persistence
+F-02,Taxpayer Dashboard & Profile,CITIZEN,Core,P1,Profile information view, 24-field profile manifest support, and tax payment summaries
+F-03,All Tax Payments (Tax with Return & Other Tax),CITIZEN,Core,P1,Filing annual income tax with return (0111) and other tax heads (AIT, TDS, property) with multi-head calculation
+F-04,Travel Tax Calculator & Payment,CITIZEN,Core,P1,Departure travel tax assessment by passport number, destination, and travel class
+F-05,Gift Tax (দানকর) 4-Stage Filing,CITIZEN,Core,P1,Structured gift tax filing with Donor & Donee TIN mapping and relationship tagging
+F-06,Receipts & E-Challan Certificates,CITIZEN,Core,P1,Official digitally verifiable NBR E-Challan generation with download and print
+F-07,Beneficiary Management,CITIZEN,Core,P2,Mapping family members and clients with relationship options (Father, Mother, Spouse, etc.)
+F-08,Payment History & Audit Trail,CITIZEN,Core,P1,Tamper-evident history table with search, filters, status tracking, and Pay Again capability
+F-09,Saved Drafts & Resume,CITIZEN,Core,P2,Saving payment progress as drafts and resuming checkout
+F-10,Challan Correction Requests,CITIZEN,Shared,P2,Submitting and tracking challan administrative correction requests
+F-11,Support & FAQ Center,CITIZEN,Core,P2,NBR National Helpline (16555), FAQs, and support ticket intake
+F-12,Office Management & Admin,OFFICE_ONLY,Excluded,P3,Excluded admin dashboards, CMS, and officer workflows

@@ -1,0 +1,12 @@
+acceptance_id,story_id,condition,expected_result,status
+AC-01-01,US-01,Valid 12-digit TIN entered with OTP,Session initiated and user redirected to dashboard,PASS
+AC-02-01,US-02,Dashboard loaded for authenticated user,Profile summary, total paid metric, and recent challans displayed correctly,PASS
+AC-03-01,US-03,Tax with return selected with valid AY and amount,Multi-head items calculated and checkout completed with official E-Challan,PASS
+AC-04-01,US-04,Passport number and India/SAARC destination entered,Correct travel tax calculated and receipt generated,PASS
+AC-05-01,US-05,Donor and donee TIN with 5% gift tax calculation,4-stage flow completed successfully with challan mapping,PASS
+AC-06-01,US-06,Receipt modal requested for completed transaction,Official challan modal opens with download and print options,PASS
+AC-07-01,US-07,New beneficiary added with relationship tag,Beneficiary listed in table and available in tax payment dropdown,PASS
+AC-08-01,US-08,Payment history searched with reference keyword,Filtered transactions displayed instantly with Pay Again action,PASS
+AC-09-01,US-09,Draft saved from payment form,Draft visible in Drafts view and ready to resume,PASS
+AC-10-01,US-10,Correction application submitted with challan ref,Application recorded and listed under Under Review status,PASS
+AC-11-01,US-11,Support page opened,NBR helpline 16555 displayed with FAQ and ticket intake,PASS
