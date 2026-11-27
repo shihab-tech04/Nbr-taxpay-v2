@@ -1,5 +1,7 @@
 journey_id,journey_name,primary_actor,description,steps
 J-01,Public Home to Tax Filing,Citizen Visitor,Browse public portal, select tax type, authenticate, and complete payment,Home -> Chooser -> Form -> Preview -> Payment -> Receipt
 J-02,Travel Tax Departure Payment,Citizen Traveler,Enter passport and destination, calculate tax, and generate departure challan,Travel Tax Form -> Preview -> Gateway -> Challan Receipt
-J-03,Gift Tax 4-Stage Filing,Citizen Donor,Enter donor/donee TIN, gift details, calculated tax, and payment confirmation,Donor/Donee Info -> Gift Details -> Preview -> Result Receipt
+J-03,Gift Tax 4-Stage Filing,Citizen Donor,Enter donor/donee TIN, gift date and valuation, calculated tax, and payment confirmation,Donor/Donee Info -> Gift Valuation & Date -> Preview -> Result Receipt
 J-04,Beneficiary Tax Facilitation,Citizen Payer,Add beneficiary, select beneficiary in tax filing, and pay on their behalf,Beneficiaries -> All Tax Payments -> Select Beneficiary -> Checkout -> Receipt
+J-05,Payment History Date-Range Filtering,Citizen Payer,Filter transaction history using optional browser-local inclusive date bounds or clear filter under policy rules,History -> From/To Pickers -> Filtered Table -> Clear Dates -> Receipt/Pay Again
+J-06,Bilingual Mobile Navigation & Protected TIN Review,Citizen Visitor,Switch EN/BN and Dark/Light themes at 320px/390px without Navbar clipping and view masked/revealed TIN records safely,Navbar (EN/BN + Theme) -> Route Navigation -> TIN Lookup / Result Card

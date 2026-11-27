@@ -185,4 +185,10 @@ export const bnTranslation = {
   dateToLabel: 'শেষের তারিখ',
   dateRangeClear: 'তারিখ মুছুন',
   dateRangeInvalidError: 'শেষের তারিখ শুরুর তারিখের আগে হতে পারবে না।',
+  dateInvalidError: 'অনুগ্রহ করে সঠিক তারিখ লিখুন (DD/MM/YYYY)।',
+  dateRequiredError: 'অনুগ্রহ করে একটি তারিখ নির্বাচন করুন।',
+  dateMinError: 'তারিখ {{minDate}}-এর আগে হতে পারবে না।',
+  dateMaxError: 'তারিখ {{maxDate}}-এর পরে হতে পারবে না।',
+  datePastError: 'তারিখ অতীতের হতে পারবে না।',
+  dateFutureError: 'তারিখ ভবিষ্যতের হতে পারবে না।',
 };

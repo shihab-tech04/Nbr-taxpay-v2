@@ -185,4 +185,10 @@ export const enTranslation = {
   dateToLabel: 'To Date',
   dateRangeClear: 'Clear Dates',
   dateRangeInvalidError: 'End date cannot be earlier than start date.',
+  dateInvalidError: 'Please enter a valid date (DD/MM/YYYY).',
+  dateRequiredError: 'Please select a date.',
+  dateMinError: 'Date cannot be earlier than {{minDate}}.',
+  dateMaxError: 'Date cannot be later than {{maxDate}}.',
+  datePastError: 'Date cannot be in the past.',
+  dateFutureError: 'Date cannot be in the future.',
 };

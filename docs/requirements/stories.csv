@@ -10,3 +10,8 @@ US-08,F-08,Payment History Search & Pay Again,Citizen,AC-08-01,P1
 US-09,F-09,Draft Save and Resume,Citizen,AC-09-01,P2
 US-10,F-10,Challan Correction Application,Citizen,AC-10-01,P2
 US-11,F-11,Support and Helpline Access,Citizen,AC-11-01,P2
+US-12,F-13,Canonical Home 2 Bento & Public Preview Locking,Citizen Visitor,AC-12-01,P1
+US-13,F-14,Unified Semantic Buttons & MUI Selection/Form System,Citizen,AC-13-01,P1
+US-14,F-15,Searchable Autocomplete & Protected Segmented TIN Lookup,Citizen,AC-14-01,P1
+US-15,F-16,Timezone-Safe EN/BN Date Controls & Mobile Navbar Fit,Citizen,AC-15-01,P1
+US-16,F-17,Live SQL/API Integration & Shared Table Architecture,Citizen,AC-16-01,P2

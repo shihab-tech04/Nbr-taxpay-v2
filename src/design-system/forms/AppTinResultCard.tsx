@@ -8,7 +8,8 @@ import { getThemeColors, TIN_TOKENS } from '../theme';
 import { maskTinForDisplay } from './tinInputUtils';
 
 export interface AppTinResultCardProps {
-  tin: string;
+  tin?: string;
+  maskedTin?: string;
   name: string;
   classification?: string | null;
   duplicateMessage?: string;
@@ -27,6 +28,7 @@ export interface AppTinResultCardProps {
 
 export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
   tin,
+  maskedTin,
   name,
   classification,
   duplicateMessage,
@@ -47,16 +49,19 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
   const theme = useTheme();
   const colors = getThemeColors(theme.palette.mode);
 
-  const identityKey = `${tin}\u0000${name}`;
-  const [revealState, setRevealState] = useState<{ key: string; open: boolean }>({
-    key: identityKey,
-    open: false,
-  });
-  const revealed = Boolean(
-    allowRevealTin && revealState.key === identityKey && revealState.open
-  );
+  const resolvedMaskedTin = maskedTin ?? maskTinForDisplay(tin);
+  const canReveal = Boolean(allowRevealTin && tin && tin !== resolvedMaskedTin);
+  const scopeKey = `${canReveal ? (tin ?? '') : ''}\u0000${resolvedMaskedTin}\u0000${name}\u0000${canReveal ? '1' : '0'}`;
 
-  const displayedTin = revealed ? tin : maskTinForDisplay(tin);
+  const [prevScopeKey, setPrevScopeKey] = useState(scopeKey);
+  const [revealed, setRevealed] = useState(false);
+  if (prevScopeKey !== scopeKey) {
+    setPrevScopeKey(scopeKey);
+    setRevealed(false);
+  }
+
+  const effectiveRevealed = canReveal && revealed;
+  const displayedTin = effectiveRevealed && tin ? tin : resolvedMaskedTin;
 
   return (
     <div
@@ -97,11 +102,11 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
           </dt>
           <dd className="m-0 flex items-center justify-end gap-2 text-right text-[13px] font-semibold tabular-nums">
             <span>{displayedTin}</span>
-            {allowRevealTin && (
+            {canReveal && (
               <AppIconButton
                 size="small"
                 aria-label={
-                  revealed
+                  effectiveRevealed
                     ? bn
                       ? 'টিআইএন আড়াল করুন'
                       : 'Hide TIN'
@@ -109,15 +114,14 @@ export const AppTinResultCard: React.FC<AppTinResultCardProps> = ({
                       ? 'টিআইএন দেখুন'
                       : 'Reveal TIN'
                 }
-                onClick={() =>
-                  setRevealState((prev) => ({
-                    key: identityKey,
-                    open: !(prev.key === identityKey && prev.open),
-                  }))
-                }
+                onClick={() => setRevealed((prev) => !prev)}
                 sx={{ width: 29, height: 29 }}
               >
-                {revealed ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}
+                {effectiveRevealed ? (
+                  <EyeOff size={15} aria-hidden="true" />
+                ) : (
+                  <Eye size={15} aria-hidden="true" />
+                )}
               </AppIconButton>
             )}
           </dd>

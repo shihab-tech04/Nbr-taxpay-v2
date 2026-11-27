@@ -95,6 +95,31 @@ test('giftTaxLogic and travelTaxLogic preserve 1:1 original calculations and val
   assert.equal(giftValuationErrors.giftDate, 'Future date blocked');
   assert.equal(giftValuationErrors.description, 'Desc required');
 
+  const emptyAndInvalidDateErrors = [
+    validateGiftValuationStep(
+      { giftAmountInput: '500000', description: 'Land gift', giftDate: '' },
+      {
+        amountMin: 'Min 1000',
+        amountInvalid: 'Invalid',
+        requiredDescription: 'Desc required',
+        requiredGiftDate: 'Date required',
+        invalidGiftDate: 'Invalid date',
+      }
+    ),
+    validateGiftValuationStep(
+      { giftAmountInput: '500000', description: 'Land gift', giftDate: '__INVALID_DATE__' },
+      {
+        amountMin: 'Min 1000',
+        amountInvalid: 'Invalid',
+        requiredDescription: 'Desc required',
+        requiredGiftDate: 'Date required',
+        invalidGiftDate: 'Invalid date',
+      }
+    ),
+  ];
+  assert.equal(emptyAndInvalidDateErrors[0].giftDate, 'Date required');
+  assert.equal(emptyAndInvalidDateErrors[1].giftDate, 'Invalid date');
+
   assert.equal(resolveDestinationBaseTax('India (By Air)'), 2000);
   assert.equal(resolveDestinationBaseTax('SAARC Countries'), 3000);
   assert.equal(resolveDestinationBaseTax('Other International'), 5000);

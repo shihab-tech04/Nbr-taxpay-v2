@@ -46,6 +46,7 @@ export function validateGiftValuationStep(
     amountMin: string;
     amountInvalid: string;
     requiredDescription: string;
+    requiredGiftDate?: string;
     invalidGiftDate?: string;
     futureGiftDate?: string;
   }
@@ -68,7 +69,9 @@ export function validateGiftValuationStep(
       errors.giftDate =
         dateCheck.reason === 'future'
           ? messages.futureGiftDate ?? 'Gift date cannot exceed today.'
-          : messages.invalidGiftDate ?? 'Please enter a valid date.';
+          : dateCheck.reason === 'required'
+            ? messages.requiredGiftDate ?? messages.invalidGiftDate ?? 'Please select a date.'
+            : messages.invalidGiftDate ?? 'Please enter a valid date.';
     }
   }
   if (!input.description.trim()) {

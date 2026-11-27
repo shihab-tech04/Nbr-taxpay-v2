@@ -9,6 +9,7 @@ import {
   resolveTinPasteUpdate,
   sanitizeIdentifierDigits,
 } from './tinInputUtils';
+import { useTinCaretRestore } from './useTinCaretRestore';
 
 export type { AppTinDigitGridProps };
 
@@ -43,6 +44,7 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
   const pointerDigitRef = useRef<number | null>(null);
   const [activeDigit, setActiveDigit] = useState<number | null>(null);
   const locked = disabled || readOnly;
+  const commitWithCaret = useTinCaretRestore(inputRef, value, onChange);
 
   const selectDigitIndex = (input: HTMLInputElement, index: number) => {
     input.setSelectionRange(index, index < value.length ? index + 1 : index);
@@ -102,7 +104,7 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
         id={fieldId}
         name={name}
         data-testid={inputTestId}
-        type="text"
+        type={masked ? 'password' : 'text'}
         inputMode="numeric"
         pattern="[0-9]*"
         autoComplete="off"
@@ -143,9 +145,8 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
           const el = event.currentTarget;
           const result = resolveTinPasteUpdate(value, event.clipboardData.getData('text'), el.selectionStart, el.selectionEnd, maxLength);
           if (!result) return;
-          onChange(result.nextValue);
           setActiveDigit(result.activeDigit);
-          queueMicrotask(() => el.setSelectionRange(result.nextCaretIndex, result.nextCaretIndex));
+          commitWithCaret(result.nextValue, result.nextCaretIndex);
         }}
         onKeyDown={(event) => {
           const el = event.currentTarget;
@@ -162,9 +163,8 @@ export const AppTinDigitGrid: React.FC<AppTinDigitGridProps> = ({
           if (action.preventDefault) event.preventDefault();
           if (action.replacement) {
             const { nextValue, nextCaretIndex } = action.replacement;
-            onChange(nextValue);
             setActiveDigit(Math.min(nextCaretIndex, maxLength - 1));
-            queueMicrotask(() => el.setSelectionRange(nextCaretIndex, nextCaretIndex));
+            commitWithCaret(nextValue, nextCaretIndex);
           }
           onKeyDown?.(event);
         }}

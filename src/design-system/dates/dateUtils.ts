@@ -1,6 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs';
 
 export const DHAKA_TIME_ZONE = 'Asia/Dhaka';
+export const INVALID_YMD_VALUE = '__INVALID_DATE__';
 
 const YMD_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -8,6 +9,8 @@ export interface DateRangeFilterValue {
   from: string;
   to: string;
 }
+
+export type DateValidationReason = 'required' | 'invalid' | 'min' | 'max' | 'past' | 'future';
 
 export function isValidYmd(value: string): boolean {
   const match = YMD_PATTERN.exec(value);
@@ -55,6 +58,14 @@ function formatDatePartsToYmd(date: Date, timeZone: string): string {
   return isValidYmd(ymd) ? ymd : '';
 }
 
+export function getLocalTodayYmd(now: Date = new Date()): string {
+  const year = String(now.getFullYear()).padStart(4, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const ymd = `${year}-${month}-${day}`;
+  return isValidYmd(ymd) ? ymd : '';
+}
+
 export function getDhakaTodayYmd(now: Date = new Date()): string {
   return formatDatePartsToYmd(now, DHAKA_TIME_ZONE);
 }
@@ -73,8 +84,15 @@ export function formatIsoToDhakaYmd(
 
 export function validateYmdDate(
   value: string,
-  options: { required?: boolean; minDate?: string; maxDate?: string } = {}
-): { valid: boolean; reason?: 'required' | 'invalid' | 'min' | 'max' } {
+  options: {
+    required?: boolean;
+    minDate?: string;
+    maxDate?: string;
+    disablePast?: boolean;
+    disableFuture?: boolean;
+    todayYmd?: string;
+  } = {}
+): { valid: boolean; reason?: DateValidationReason } {
   const trimmed = value.trim();
   if (!trimmed) {
     return options.required ? { valid: false, reason: 'required' } : { valid: true };
@@ -82,11 +100,20 @@ export function validateYmdDate(
   if (!isValidYmd(trimmed)) {
     return { valid: false, reason: 'invalid' };
   }
+  const today =
+    options.todayYmd && isValidYmd(options.todayYmd) ? options.todayYmd : getLocalTodayYmd();
+
   if (options.minDate && isValidYmd(options.minDate) && trimmed < options.minDate) {
     return { valid: false, reason: 'min' };
   }
+  if (options.disablePast && today && trimmed < today) {
+    return { valid: false, reason: 'past' };
+  }
   if (options.maxDate && isValidYmd(options.maxDate) && trimmed > options.maxDate) {
     return { valid: false, reason: 'max' };
+  }
+  if (options.disableFuture && today && trimmed > today) {
+    return { valid: false, reason: 'future' };
   }
   return { valid: true };
 }
@@ -97,7 +124,7 @@ export function validateGiftDate(
 ): { valid: boolean; reason?: 'required' | 'invalid' | 'future' } {
   const res = validateYmdDate(value, { required: true, maxDate: todayYmd });
   if (res.valid) return { valid: true };
-  if (res.reason === 'max') return { valid: false, reason: 'future' };
+  if (res.reason === 'max' || res.reason === 'future') return { valid: false, reason: 'future' };
   return { valid: false, reason: res.reason === 'required' ? 'required' : 'invalid' };
 }
 
@@ -119,20 +146,37 @@ export function validateDateRangeFilter(range: DateRangeFilterValue): {
   return { valid: true };
 }
 
-export function isDateWithinInclusiveRange(
-  isoOrYmd: string,
-  range: DateRangeFilterValue,
-  timeZone: string = DHAKA_TIME_ZONE
-): boolean {
-  const validation = validateDateRangeFilter(range);
-  if (!validation.valid) return true;
+function parseYmdToLocalDayBounds(ymd: string): { startMs: number; endMs: number } | null {
+  if (!isValidYmd(ymd)) return null;
+  const [y, m, d] = ymd.split('-').map(Number);
+  return {
+    startMs: new Date(y, m - 1, d, 0, 0, 0, 0).getTime(),
+    endMs: new Date(y, m - 1, d, 23, 59, 59, 999).getTime(),
+  };
+}
+
+function parseRecordTimestampMs(isoOrYmd: string): number | null {
+  const trimmed = isoOrYmd.trim();
+  if (!trimmed) return null;
+  if (isValidYmd(trimmed)) {
+    const [y, m, d] = trimmed.split('-').map(Number);
+    return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  }
+  const parsed = Date.parse(trimmed);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+export function isDateWithinInclusiveRange(isoOrYmd: string, range: DateRangeFilterValue): boolean {
+  if (!validateDateRangeFilter(range).valid) return false;
   const from = range.from.trim();
   const to = range.to.trim();
+  const recordMs = parseRecordTimestampMs(isoOrYmd);
+  if (recordMs === null) return false;
   if (!from && !to) return true;
-  const recordYmd = formatIsoToDhakaYmd(isoOrYmd, timeZone);
-  if (!recordYmd) return false;
-  if (from && recordYmd < from) return false;
-  if (to && recordYmd > to) return false;
+  const fromBounds = from ? parseYmdToLocalDayBounds(from) : null;
+  if (from && (!fromBounds || recordMs < fromBounds.startMs)) return false;
+  const toBounds = to ? parseYmdToLocalDayBounds(to) : null;
+  if (to && (!toBounds || recordMs > toBounds.endMs)) return false;
   return true;
 }
 

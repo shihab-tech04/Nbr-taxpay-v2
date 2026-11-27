@@ -3,7 +3,8 @@ import { X } from 'lucide-react';
 import type { PublicCapability } from '../../shared/previewPolicy';
 import { AppIconButton } from '../buttons';
 import { AppTextField } from './AppTextField';
-import { sanitizeIdentifierDigits } from './tinInputUtils';
+import { resolveTinPasteUpdate, sanitizeIdentifierDigits } from './tinInputUtils';
+import { useTinCaretRestore } from './useTinCaretRestore';
 
 export interface AppTinPlainFieldProps {
   fieldId: string;
@@ -67,49 +68,67 @@ export const AppTinPlainField: React.FC<AppTinPlainFieldProps> = ({
   onKeyDown,
   publicCapability,
   previewRestricted,
-}) => (
-  <AppTextField
-    id={fieldId}
-    name={name}
-    inputRef={inputRef}
-    label={label}
-    type={masked ? 'password' : 'text'}
-    value={value}
-    onChange={(e) => {
-      if (!locked) onChange(sanitizeIdentifierDigits(e.target.value, maxLength));
-    }}
-    placeholder={placeholder}
-    required={required}
-    disabled={disabled}
-    readOnly={readOnly}
-    error={error}
-    helperText={helperText}
-    publicCapability={publicCapability}
-    previewRestricted={previewRestricted}
-    onFocus={onFocus}
-    onBlur={onBlur}
-    onKeyDown={onKeyDown}
-    slotProps={{
-      htmlInput: {
-        'data-testid': inputTestId,
-        inputMode: 'numeric',
-        pattern: '[0-9]*',
-        autoComplete: 'off',
-        maxLength,
-        role: ariaRole,
-        'aria-autocomplete': ariaAutocomplete,
-        'aria-controls': ariaControls,
-        'aria-expanded': ariaExpanded,
-        'aria-describedby': describedBy,
-      },
-      input: {
-        endAdornment:
-          showClearButton && value && !locked ? (
-            <AppIconButton size="small" aria-label={clearAriaLabel} onClick={onClear}>
-              <X size={16} aria-hidden="true" />
-            </AppIconButton>
-          ) : undefined,
-      },
-    }}
-  />
-);
+}) => {
+  const commitWithCaret = useTinCaretRestore(inputRef, value, onChange);
+
+  return (
+    <AppTextField
+      id={fieldId}
+      name={name}
+      inputRef={inputRef}
+      label={label}
+      type={masked ? 'password' : 'text'}
+      value={value}
+      onChange={(e) => {
+        if (!locked) onChange(sanitizeIdentifierDigits(e.target.value, maxLength));
+      }}
+      placeholder={placeholder}
+      required={required}
+      disabled={disabled}
+      readOnly={readOnly}
+      error={error}
+      helperText={helperText}
+      publicCapability={publicCapability}
+      previewRestricted={previewRestricted}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      slotProps={{
+        htmlInput: {
+          'data-testid': inputTestId,
+          inputMode: 'numeric',
+          pattern: '[0-9]*',
+          autoComplete: 'off',
+          maxLength,
+          role: ariaRole,
+          'aria-autocomplete': ariaAutocomplete,
+          'aria-controls': ariaControls,
+          'aria-expanded': ariaExpanded,
+          ...(describedBy ? { 'aria-describedby': describedBy } : {}),
+          onPaste: (event: React.ClipboardEvent<HTMLInputElement>) => {
+            if (locked) return;
+            event.preventDefault();
+            const el = event.currentTarget;
+            const result = resolveTinPasteUpdate(
+              value,
+              event.clipboardData.getData('text'),
+              el.selectionStart,
+              el.selectionEnd,
+              maxLength
+            );
+            if (!result) return;
+            commitWithCaret(result.nextValue, result.nextCaretIndex);
+          },
+        },
+        input: {
+          endAdornment:
+            showClearButton && value && !locked ? (
+              <AppIconButton size="small" aria-label={clearAriaLabel} onClick={onClear}>
+                <X size={16} aria-hidden="true" />
+              </AppIconButton>
+            ) : undefined,
+        },
+      }}
+    />
+  );
+};

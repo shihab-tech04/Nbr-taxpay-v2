@@ -78,6 +78,8 @@ jobs:
           trap 'kill "$server" || true' EXIT
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/Nbr-taxpay-v2/ >/dev/null && break; sleep 1; done
           NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/pages-smoke.cjs
+      - name: Run interactive browser regression suite
+        run: NODE_ENV=development NODE_PATH="$RUNNER_TEMP/pages-smoke/node_modules" node scripts/ci-interactive-browser.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: citizen-pages-dist

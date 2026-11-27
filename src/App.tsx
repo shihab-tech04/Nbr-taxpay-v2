@@ -9,6 +9,7 @@ import { ThemeProvider, CssBaseline, Alert } from '@mui/material';
 import { PUBLIC_PREVIEW } from './shared/previewMode';
 import { AppProvider, useApp } from './shared/AppContext';
 import { getTheme } from './design-system/theme';
+import { AppDateLocalizationProvider } from './design-system/dates';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { HomePage } from './features/home';
@@ -82,9 +83,11 @@ const AppContent: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <AppRoutes />
-      </Router>
+      <AppDateLocalizationProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AppDateLocalizationProvider>
     </ThemeProvider>
   );
 };

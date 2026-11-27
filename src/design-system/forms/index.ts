@@ -35,8 +35,10 @@ export {
   replaceDigitAtFullLength,
   resolveTinPasteUpdate,
   sanitizeIdentifierDigits,
+  sanitizeTinResultForDisplay,
   validateIdentifierLength,
 } from './tinInputUtils';
+export type { TinResultDisplayPayload } from './tinInputUtils';
 export {
   sanitizeDigits,
   sanitizeCurrencyInput,
@@ -54,10 +56,12 @@ export {
   AppDatePicker,
   AppDateRangeFilter,
   DHAKA_TIME_ZONE,
+  INVALID_YMD_VALUE,
   formatDayjsToYmd,
   formatIsoToDhakaYmd,
   formatYmdDisplay,
   getDhakaTodayYmd,
+  getLocalTodayYmd,
   isDateWithinInclusiveRange,
   isValidYmd,
   parseYmdToDayjs,
@@ -66,10 +70,13 @@ export {
   validateYmdDate,
 } from '../dates';
 export type {
+  AppDateControlProps,
   AppDateFieldProps,
   AppDateLocalizationProviderProps,
   AppDatePickerProps,
   AppDateRangeFilterProps,
+  DateInputValidity,
   DateRangeFilterValue,
+  DateValidationReason,
 } from '../dates';
 

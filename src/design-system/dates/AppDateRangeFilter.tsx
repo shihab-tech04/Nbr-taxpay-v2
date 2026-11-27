@@ -1,7 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { RotateCcw } from 'lucide-react';
-import type { PublicCapability } from '../../shared/previewPolicy';
+import {
+  isFieldLockedByPreviewPolicy,
+  type PublicCapability,
+} from '../../shared/previewPolicy';
 import { AppButton } from '../buttons';
 import { AppDatePicker } from './AppDatePicker';
 import {
@@ -18,6 +21,7 @@ export interface AppDateRangeFilterProps {
   invalidRangeMessage?: string;
   minDate?: string;
   maxDate?: string;
+  disablePast?: boolean;
   disableFuture?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
@@ -37,6 +41,7 @@ export const AppDateRangeFilter: React.FC<AppDateRangeFilterProps> = ({
   invalidRangeMessage,
   minDate,
   maxDate,
+  disablePast = false,
   disableFuture = false,
   disabled = false,
   readOnly = false,
@@ -47,6 +52,10 @@ export const AppDateRangeFilter: React.FC<AppDateRangeFilterProps> = ({
   clearTestId = 'date-range-clear',
 }) => {
   const { t } = useTranslation();
+  const previewLocked = isFieldLockedByPreviewPolicy({ publicCapability, previewRestricted });
+  const effectiveDisabled = Boolean(disabled || previewLocked);
+  const effectiveReadOnly = Boolean(readOnly || previewLocked);
+
   const rangeCheck = validateDateRangeFilter(value);
   const isInverted = !rangeCheck.valid && rangeCheck.reason === 'inverted';
   const hasSelection = Boolean(value.from || value.to);
@@ -66,6 +75,7 @@ export const AppDateRangeFilter: React.FC<AppDateRangeFilterProps> = ({
         onChange={(from) => onChange({ ...value, from })}
         minDate={minDate}
         maxDate={maxDate}
+        disablePast={disablePast}
         disableFuture={disableFuture}
         disabled={disabled}
         readOnly={readOnly}
@@ -80,6 +90,7 @@ export const AppDateRangeFilter: React.FC<AppDateRangeFilterProps> = ({
         onChange={(to) => onChange({ ...value, to })}
         minDate={minDate}
         maxDate={maxDate}
+        disablePast={disablePast}
         disableFuture={disableFuture}
         disabled={disabled}
         readOnly={readOnly}
@@ -96,8 +107,13 @@ export const AppDateRangeFilter: React.FC<AppDateRangeFilterProps> = ({
           surface="soft"
           size="small"
           startIcon={<RotateCcw size={14} />}
-          disabled={disabled || readOnly || !hasSelection}
-          onClick={() => onChange({ from: '', to: '' })}
+          disabled={effectiveDisabled || effectiveReadOnly || !hasSelection}
+          publicCapability={publicCapability}
+          previewRestricted={previewRestricted}
+          onClick={() => {
+            if (effectiveDisabled || effectiveReadOnly) return;
+            onChange({ from: '', to: '' });
+          }}
           data-testid={clearTestId}
           sx={{ minHeight: 40, px: 1.75, whiteSpace: 'nowrap' }}
         >

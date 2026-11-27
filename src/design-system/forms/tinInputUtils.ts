@@ -64,6 +64,30 @@ export function maskTinForDisplay(tin: string | null | undefined): string {
     : `${digits.slice(0, 3)}${'*'.repeat(digits.length - 3)}`;
 }
 
+export interface TinResultDisplayPayload {
+  tin?: string;
+  maskedTin: string;
+  name: string;
+  classification?: string | null;
+  allowRevealTin: boolean;
+}
+
+export function sanitizeTinResultForDisplay(params: {
+  tin: string;
+  name: string;
+  classification?: string | null;
+  allowRevealTin?: boolean;
+}): TinResultDisplayPayload {
+  const allowRevealTin = Boolean(params.allowRevealTin);
+  return {
+    maskedTin: maskTinForDisplay(params.tin),
+    ...(allowRevealTin ? { tin: params.tin } : {}),
+    name: params.name,
+    classification: params.classification,
+    allowRevealTin,
+  };
+}
+
 export function validateIdentifierLength(
   value: string,
   expectedLength = DEFAULT_TIN_LENGTH

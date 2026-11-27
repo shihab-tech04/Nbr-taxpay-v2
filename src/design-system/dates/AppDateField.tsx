@@ -1,104 +1,43 @@
 import React from 'react';
 import { DateField } from '@mui/x-date-pickers/DateField';
-import {
-  isFieldLockedByPreviewPolicy,
-  type PublicCapability,
-} from '../../shared/previewPolicy';
-import { AppDateLocalizationProvider } from './AppDateLocalizationProvider';
-import { formatDayjsToYmd, getDhakaTodayYmd, parseYmdToDayjs } from './dateUtils';
+import { useSharedDateControlState, type AppDateControlProps } from './dateFieldShared';
 
-export interface AppDateFieldProps {
-  id?: string;
-  label: React.ReactNode;
-  value: string;
-  onChange: (nextValue: string) => void;
-  minDate?: string;
-  maxDate?: string;
-  disableFuture?: boolean;
-  format?: string;
-  clearable?: boolean;
-  required?: boolean;
-  disabled?: boolean;
-  readOnly?: boolean;
-  error?: boolean;
-  helperText?: React.ReactNode;
-  size?: 'small' | 'medium';
-  fullWidth?: boolean;
-  ariaLabel?: string;
-  testId?: string;
-  publicCapability?: PublicCapability;
-  previewRestricted?: boolean;
-}
+export type AppDateFieldProps = AppDateControlProps;
 
 export const AppDateField: React.FC<AppDateFieldProps> = ({
-  id,
-  label,
-  value,
-  onChange,
-  minDate,
-  maxDate,
-  disableFuture = false,
   format = 'DD/MM/YYYY',
   clearable = true,
   required = false,
-  disabled = false,
-  readOnly = false,
-  error = false,
-  helperText,
   size = 'small',
   fullWidth = true,
-  ariaLabel,
-  testId,
-  publicCapability = 'none',
-  previewRestricted = false,
+  label,
+  ...rest
 }) => {
-  const previewLocked = isFieldLockedByPreviewPolicy({ publicCapability, previewRestricted });
-  const effectiveDisabled = Boolean(disabled || previewLocked);
-  const effectiveReadOnly = Boolean(readOnly || previewLocked);
-  const effectiveMaxYmd = maxDate ?? (disableFuture ? getDhakaTodayYmd() : undefined);
+  const state = useSharedDateControlState({ required, ...rest });
 
   return (
-    <AppDateLocalizationProvider>
-      <DateField
-        label={label}
-        value={parseYmdToDayjs(value)}
-        onChange={(nextDayjs) => {
-          if (effectiveDisabled || effectiveReadOnly) return;
-          if (nextDayjs === null) {
-            onChange('');
-            return;
-          }
-          if (nextDayjs.isValid()) {
-            onChange(formatDayjsToYmd(nextDayjs));
-          }
-        }}
-        minDate={parseYmdToDayjs(minDate) ?? undefined}
-        maxDate={parseYmdToDayjs(effectiveMaxYmd) ?? undefined}
-        format={format}
-        clearable={clearable && !effectiveDisabled && !effectiveReadOnly}
-        required={required}
-        disabled={effectiveDisabled}
-        readOnly={effectiveReadOnly}
-        size={size}
-        fullWidth={fullWidth}
-        slotProps={{
-          textField: {
-            id,
-            error,
-            helperText,
-            className: effectiveReadOnly && !effectiveDisabled ? 'Mui-readOnly' : undefined,
-            slotProps:
-              ariaLabel || testId
-                ? {
-                    htmlInput: {
-                      ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
-                      ...(testId ? { 'data-testid': testId } : {}),
-                    },
-                  }
-                : undefined,
-          },
-        }}
-      />
-    </AppDateLocalizationProvider>
+    <DateField
+      label={label}
+      value={state.pickerValue}
+      onChange={state.handlePickerChange}
+      minDate={state.effectiveMinDayjs}
+      maxDate={state.effectiveMaxDayjs}
+      format={format}
+      clearable={clearable && !state.effectiveDisabled && !state.effectiveReadOnly}
+      required={required}
+      disabled={state.effectiveDisabled}
+      readOnly={state.effectiveReadOnly}
+      size={size}
+      fullWidth={fullWidth}
+      slotProps={{
+        textField: {
+          id: state.id,
+          error: state.effectiveError,
+          helperText: state.effectiveHelperText,
+          className: state.effectiveReadOnly && !state.effectiveDisabled ? 'Mui-readOnly' : undefined,
+          slotProps: state.htmlInputSlot ? { htmlInput: state.htmlInputSlot } : undefined,
+        },
+      }}
+    />
   );
 };

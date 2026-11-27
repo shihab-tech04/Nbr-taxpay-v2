@@ -38,6 +38,15 @@ export const GiftTaxView: React.FC = () => {
 
   const { giftAmount, calculatedTax } = calculateGiftTaxAmount(giftAmountInput);
 
+  const valuationMessages = {
+    amountMin: t('amountMinError', { amount: '1,000' }),
+    amountInvalid: t('amountInvalidError'),
+    requiredDescription: t('requiredGiftDescriptionError'),
+    requiredGiftDate: t('dateRequiredError'),
+    invalidGiftDate: t('giftDateInvalidError'),
+    futureGiftDate: t('giftDateFutureError'),
+  };
+
   const handleNext = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
     if (stage === 1) {
@@ -56,16 +65,7 @@ export const GiftTaxView: React.FC = () => {
       setErrors({});
       setStage(2);
     } else if (stage === 2) {
-      const nextErrors = validateGiftValuationStep(
-        { giftAmountInput, description, giftDate },
-        {
-          amountMin: t('amountMinError', { amount: '1,000' }),
-          amountInvalid: t('amountInvalidError'),
-          requiredDescription: t('requiredGiftDescriptionError'),
-          invalidGiftDate: t('giftDateInvalidError'),
-          futureGiftDate: t('giftDateFutureError'),
-        }
-      );
+      const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
       if (Object.keys(nextErrors).length > 0) {
         setErrors(nextErrors);
         return;
@@ -77,6 +77,12 @@ export const GiftTaxView: React.FC = () => {
 
   const handlePay = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
+    const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setStage(2);
+      return;
+    }
     const tx = addTransaction({
       taxpayerTin: donorTin,
       taxpayerName: donorName,
@@ -119,22 +125,10 @@ export const GiftTaxView: React.FC = () => {
             doneeName={doneeName}
             relationship={relationship}
             errors={errors}
-            onChangeDonorTin={(val) => {
-              setDonorTin(val);
-              if (errors.donorTin) setErrors((p) => ({ ...p, donorTin: undefined }));
-            }}
-            onChangeDonorName={(val) => {
-              setDonorName(val);
-              if (errors.donorName) setErrors((p) => ({ ...p, donorName: undefined }));
-            }}
-            onChangeDoneeTin={(val) => {
-              setDoneeTin(val);
-              if (errors.doneeTin) setErrors((p) => ({ ...p, doneeTin: undefined }));
-            }}
-            onChangeDoneeName={(val) => {
-              setDoneeName(val);
-              if (errors.doneeName) setErrors((p) => ({ ...p, doneeName: undefined }));
-            }}
+            onChangeDonorTin={(val) => { setDonorTin(val); if (errors.donorTin) setErrors((p) => ({ ...p, donorTin: undefined })); }}
+            onChangeDonorName={(val) => { setDonorName(val); if (errors.donorName) setErrors((p) => ({ ...p, donorName: undefined })); }}
+            onChangeDoneeTin={(val) => { setDoneeTin(val); if (errors.doneeTin) setErrors((p) => ({ ...p, doneeTin: undefined })); }}
+            onChangeDoneeName={(val) => { setDoneeName(val); if (errors.doneeName) setErrors((p) => ({ ...p, doneeName: undefined })); }}
             onChangeRelationship={setRelationship}
             onNext={handleNext}
           />
@@ -147,18 +141,9 @@ export const GiftTaxView: React.FC = () => {
             description={description}
             calculatedTax={calculatedTax}
             errors={errors}
-            onChangeAmount={(val) => {
-              setGiftAmountInput(val);
-              if (errors.giftAmount) setErrors((p) => ({ ...p, giftAmount: undefined }));
-            }}
-            onChangeGiftDate={(val) => {
-              setGiftDate(val);
-              if (errors.giftDate) setErrors((p) => ({ ...p, giftDate: undefined }));
-            }}
-            onChangeDescription={(val) => {
-              setDescription(val);
-              if (errors.description) setErrors((p) => ({ ...p, description: undefined }));
-            }}
+            onChangeAmount={(val) => { setGiftAmountInput(val); if (errors.giftAmount) setErrors((p) => ({ ...p, giftAmount: undefined })); }}
+            onChangeGiftDate={(val) => { setGiftDate(val); if (errors.giftDate) setErrors((p) => ({ ...p, giftDate: undefined })); }}
+            onChangeDescription={(val) => { setDescription(val); if (errors.description) setErrors((p) => ({ ...p, description: undefined })); }}
             onBack={() => setStage(1)}
             onNext={handleNext}
           />

@@ -37,6 +37,7 @@ import {
   sanitizeDigits,
   sanitizeIdentifierDigits,
   sanitizePassport,
+  sanitizeTinResultForDisplay,
   validateBangladeshPhone,
   validateCurrencyAmount,
   validateIdentifierLength,
@@ -253,6 +254,23 @@ test('Segmented TIN helpers preserve leading zeros, configurable length, masking
   assert.equal(maskTinForDisplay('12'), '**');
   assert.equal(maskTinForDisplay(''), '');
 
+  const unauthorizedPayload = sanitizeTinResultForDisplay({
+    tin: '012345678901',
+    name: 'Sample Record',
+    classification: 'Individual',
+  });
+  assert.equal('tin' in unauthorizedPayload, false);
+  assert.equal(unauthorizedPayload.maskedTin, '012*********');
+  assert.equal(unauthorizedPayload.allowRevealTin, false);
+
+  const authorizedPayload = sanitizeTinResultForDisplay({
+    tin: '012345678901',
+    name: 'Sample Record',
+    allowRevealTin: true,
+  });
+  assert.equal(authorizedPayload.tin, '012345678901');
+  assert.equal(authorizedPayload.allowRevealTin, true);
+
   assert.deepEqual(validateIdentifierLength('0123456789012', 13), { valid: true });
   assert.deepEqual(validateIdentifierLength('012345678901', 13), { valid: false, reason: 'format' });
   assert.deepEqual(validateIdentifierLength('', 12), { valid: false, reason: 'required' });
@@ -276,6 +294,19 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard enforce Cycle 07 mask
       assert.match(segmented12Html, /inputmode="numeric"/i);
       assert.match(segmented12Html, /value="012345"/);
       assert.match(segmented12Html, /Enter 12 digits/);
+
+      const segmentedMaskedHtml = renderWithProviders(
+        <AppTinInput
+          masked
+          value="012345678901"
+          onChange={() => {}}
+          publicCapability="public_help_question"
+        />,
+        mode,
+        lang
+      );
+      assert.match(segmentedMaskedHtml, /type="password"/);
+      assert.match(segmentedMaskedHtml, /•/);
 
       const plainMaskedReadOnlyHtml = renderWithProviders(
         <AppTinInput
@@ -326,11 +357,14 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard enforce Cycle 07 mask
       assert.match(lookupHtml, new RegExp(lang === 'bn' ? 'খুঁজুন' : 'Search'));
       assert.match(lookupHtml, /role="combobox"/);
 
+      const lockedPayload = sanitizeTinResultForDisplay({
+        tin: '012345678901',
+        name: 'Sample Record',
+        classification: 'Individual',
+      });
       const defaultLockedResultHtml = renderWithProviders(
         <AppTinResultCard
-          tin="012345678901"
-          name="Sample Record"
-          classification="Individual"
+          {...lockedPayload}
           testId="taxpayer-tin-result"
           canAdd
           onAdd={() => {}}
@@ -341,14 +375,17 @@ test('AppTinInput, AppTinLookupField, and AppTinResultCard enforce Cycle 07 mask
       );
       assert.match(defaultLockedResultHtml, /data-testid="taxpayer-tin-result"/);
       assert.match(defaultLockedResultHtml, /012\*{9}/);
+      assert.doesNotMatch(defaultLockedResultHtml, /012345678901/);
       assert.doesNotMatch(defaultLockedResultHtml, /টিআইএন দেখুন|Reveal TIN/);
       assert.match(defaultLockedResultHtml, new RegExp(lang === 'bn' ? 'করদাতা যোগ করুন' : 'Add taxpayer'));
 
       const authorizedResultHtml = renderWithProviders(
         <AppTinResultCard
-          tin="012345678901"
-          name="Sample Record"
-          allowRevealTin
+          {...sanitizeTinResultForDisplay({
+            tin: '012345678901',
+            name: 'Sample Record',
+            allowRevealTin: true,
+          })}
           testId="taxpayer-tin-result-auth"
           publicCapability="public_help_question"
         />,

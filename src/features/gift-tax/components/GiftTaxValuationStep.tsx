@@ -59,7 +59,6 @@ export const GiftTaxValuationStep: React.FC<GiftTaxValuationStepProps> = ({
             value={giftDate}
             onChange={onChangeGiftDate}
             maxDate={getDhakaTodayYmd()}
-            disableFuture
             error={Boolean(errors.giftDate)}
             helperText={errors.giftDate || t('giftDateHelper')}
             required

@@ -1,12 +1,17 @@
 acceptance_id,story_id,condition,expected_result,status
-AC-01-01,US-01,Valid 12-digit TIN entered with OTP,Session initiated and user redirected to dashboard,PASS
+AC-01-01,US-01,Valid 12-digit TIN entered with OTP (UI simulation),Session initiated and user redirected to dashboard,PASS
 AC-02-01,US-02,Dashboard loaded for authenticated user,Profile summary, total paid metric, and recent challans displayed correctly,PASS
 AC-03-01,US-03,Tax with return selected with valid AY and amount,Multi-head items calculated and checkout completed with official E-Challan,PASS
 AC-04-01,US-04,Passport number and India/SAARC destination entered,Correct travel tax calculated and receipt generated,PASS
-AC-05-01,US-05,Donor and donee TIN with 5% gift tax calculation,4-stage flow completed successfully with challan mapping,PASS
+AC-05-01,US-05,Donor and donee TIN with 5% gift tax and Dhaka Gift date validation,4-stage flow blocks invalid/future/stale dates and completes with giftDate in challan,PASS
 AC-06-01,US-06,Receipt modal requested for completed transaction,Official challan modal opens with download and print options,PASS
 AC-07-01,US-07,New beneficiary added with relationship tag,Beneficiary listed in table and available in tax payment dropdown,PASS
-AC-08-01,US-08,Payment history searched with reference keyword,Filtered transactions displayed instantly with Pay Again action,PASS
+AC-08-01,US-08,Payment history searched with reference keyword and optional From/To dates,Browser-local inclusive bounds match records; invalid/reversed ranges fail closed; Pay Again works,PASS
 AC-09-01,US-09,Draft saved from payment form,Draft visible in Drafts view and ready to resume,PASS
 AC-10-01,US-10,Correction application submitted with challan ref,Application recorded and listed under Under Review status,PASS
 AC-11-01,US-11,Support page opened,NBR helpline 16555 displayed with FAQ and ticket intake,PASS
+AC-12-01,US-12,Home 2 loaded in dev and PUBLIC_PREVIEW modes,Bento layout renders, HelpChatDialog manages focus/Escape, and private actions stay locked in preview,PASS
+AC-13-01,US-13,Architecture gate and selection/form controls tested,Zero violations under 200-line gate, semantic buttons and shared selection/form controls pass EN/BN light/dark,PASS
+AC-14-01,US-14,AppAutocomplete nullable clear + Escape and TIN A->B->A/masking/paste caret tested,Unit/SSR verified sanitizeTinResultForDisplay + masking parity + helper aria-describedby; live DOM harness scripted in ci-interactive-browser.cjs for CI,PARTIAL_LOCAL_PENDING_CI
+AC-15-01,US-15,AppDateField/Picker/RangeFilter Clear policy + 320px/390px Navbar tested in Chromium,Single root provider; invalid vs empty dates block stale valid submit; reversed range fails closed; Clear respects policy; 320/390px EN/BN Navbar fits,PASS
+AC-16-01,US-16,Live SQL/API integration, AppTable, external backup of prior release (de5a04e), and live CI deploy,SQL/API/Table deferred per scope; backup bundle with checksum/restore, push, and live Pages SHA verification require git-connected CI,DEFERRED_OR_EXTERNAL

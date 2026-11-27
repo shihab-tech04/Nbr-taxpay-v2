@@ -11,3 +11,8 @@ F-09,Saved Drafts & Resume,CITIZEN,Core,P2,Saving payment progress as drafts and
 F-10,Challan Correction Requests,CITIZEN,Shared,P2,Submitting and tracking challan administrative correction requests
 F-11,Support & FAQ Center,CITIZEN,Core,P2,NBR National Helpline (16555), FAQs, and support ticket intake
 F-12,Office Management & Admin,OFFICE_ONLY,Excluded,P3,Excluded admin dashboards, CMS, and officer workflows
+F-13,Home 2 Canonical Bento Shell & Public Capabilities,CITIZEN,Core,P1,Reconstructed Bento 03 homepage with Slider 2 branding, scoped publicCapability policy, and HelpChatDialog
+F-14,Unified MUI Design System (Buttons, Selection, Forms & Architecture Gate),CITIZEN,Core,P1,Semantic primary/secondary AppButton, shared MUI selection controls, AppTextField/Select/Number/Currency/Password/Search/TextArea, and 200-line AST architecture check
+F-15,Shared Searchable Autocomplete & Segmented TIN Controls,CITIZEN,Core,P1,AppAutocomplete with grouped/nullable options and Escape dismissal plus AppTinInput/AppTinLookupField/AppTinResultCard with masking, paste caret, numeric suggestions, and A->B->A reveal reset
+F-16,Unified MUI X Date Controls & Mobile Navbar Parity,CITIZEN,Core,P1,Single root AppDateLocalizationProvider, AppDateField/AppDatePicker/AppDateRangeFilter with EN/BN localization, browser-local inclusive History bounds, Dhaka Gift date bounds, and 320px/390px mobile Navbar fit
+F-17,Shared Table, Unified Modal & Live SQL/API Wiring,CITIZEN,Deferred,P2,Deferred AppTable, shared modal consolidation, and live SQL/API backend wiring pending Cycle 07 independent acceptance
