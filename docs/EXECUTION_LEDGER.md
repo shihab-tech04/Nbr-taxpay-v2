@@ -35,3 +35,18 @@ All citizen features, design tokens, bilingual translations, and production-grad
     - Verified all 8 screens and all 29 fields interactively in dev mode (`http://localhost:3000`) across desktop (`1440x900`) and mobile (`390x844`), `light` and `dark` themes, and `EN`/`BN` locales with zero console/page errors and zero horizontal overflow on mobile.
     - Verified compiled production preview (`vite preview` at `http://127.0.0.1:4173`, `PUBLIC_PREVIEW = true`): confirmed read-only warning banner, disabled `<input>` elements, disabled non-native `[role="combobox"]` dropdowns (`aria-disabled="true"`, zero `[role="listbox"]` opening on click), and mobile BN select ellipsis rendering.
 
+## Home 2 Exact Reconstruction (`Bento 03` Canonical Homepage)
+- **Authoritative Source Reference**: Reconstructed from pinned commit `69d4ff02b3fabe910295284bfb6cbce8b74ed0b5` of `shihab-tech04/nbr-taxpay` (`Home2Layout.tsx`, `DesktopView.tsx`, `MobileView.tsx`, `Slider2.tsx`, `slider2.css`, `home2.css`, `lineArt.tsx`, `i18n.ts`, `shared.tsx`, `PublicHeroCarousel.tsx`, `brandingCmsHealth.ts`, `routeContract.ts`) with approved hero photography in `public/branding/published/` and `.webp` bundled fallbacks in `src/assets/`.
+- **Architecture (`src/features/home/`)**:
+  - Centralized design tokens, layouts, timing constants, and approved fallback slide data in `model/home.tokens.ts` and `model/home.assets.ts`.
+  - Read-only branding CMS REST reader with cooldown health circuit breaker (`services/brandingCmsHealth.ts`, `services/bannerService.ts`, `hooks/usePublishedBanners.ts`), preserving empty CMS (`[]`) unavailable state cleanly.
+  - Responsive breakpoint shell (`HomePage.tsx`): desktop `1240px` max-width 12-column Bento layout at `>=960px` (`HomeDesktopLayout.tsx`) and dedicated `430px` max-width mobile Bento composition + fixed bottom navigation at `<=959px` (`HomeMobileLayout.tsx`, `HomeMobileNavigation.tsx`).
+  - Removed alternative-home switching links (`Original Home`, `মূল পাতা`, `Home 3`) so Home 2 is the sole canonical `/` homepage while preserving all 10 inner routes with their standard `<Navbar />`, `<Footer />`, and STEP 01.1 MUI forms.
+- **Actual Test Evidence**:
+  - **Unit & SSR Tests (`npx --yes tsx --test src/features/home/home.test.tsx src/design-system/forms/forms.test.tsx`)**: `12/12` passing (7 Home 2 tests + 5 STEP 01.1 tests).
+  - **Build & Type Check**: `compile_applet` (`vite build`) succeeded with zero errors; `lint_applet` (`tsc --noEmit`) exited `0` with zero errors.
+  - **Playwright Browser Verification (`playwright-cli` + headless Chromium)**:
+    - Verified side-by-side layout, header height (`65px` desktop / `57px` mobile incl. 1px border), fonts (`Poppins` / `Plus Jakarta Sans` / `Hind Siliguri`), zero horizontal overflow across all 11 widths (`320, 360, 390, 430, 768, 959, 960, 1024, 1280, 1440, 1920`), EN/BN switching, Slider 2 5-slide palette transitions & deferred image loading (`2 -> 3 -> 4 -> 5`), search validation/trim/clear, Other Tax & Help dialogs (with carousel pause), signed-out `Login` <-> signed-in `Dashboard` transitions, and navigation to inner routes (`/all-taxes`, `/travel-tax`, `/history`).
+    - Verified `NODE_ENV=production` compiled GitHub Pages build at `/Nbr-taxpay-v2/` (`PUBLIC_PREVIEW = true`): warning banner visible, `PRIVATE_SENTINEL` storage leak count `0`, simulated lookup blocked safely, `Pay Tax` navigates to `#/all-taxes`, hash reloads and disabled inner inputs (`/travel-tax`, `/login`) pass with `0` console/page errors.
+
+
