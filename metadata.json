@@ -2,5 +2,7 @@
   "name": "Sohojkor Citizen Portal",
   "description": "Sohojkor Citizen Tax Portal - Easy tax filing, payments, travel tax, gift tax, receipts, and beneficiary management.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
