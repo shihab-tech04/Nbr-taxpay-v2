@@ -14,4 +14,5 @@ US-12,F-13,Canonical Home 2 Bento & Public Preview Locking,Citizen Visitor,AC-12
 US-13,F-14,Unified Semantic Buttons & MUI Selection/Form System,Citizen,AC-13-01,P1
 US-14,F-15,Searchable Autocomplete & Protected Segmented TIN Lookup,Citizen,AC-14-01,P1
 US-15,F-16,Timezone-Safe EN/BN Date Controls & Mobile Navbar Fit,Citizen,AC-15-01,P1
-US-16,F-17,Live SQL/API Integration & Shared Table Architecture,Citizen,AC-16-01,P2
+US-16,F-17,Shared AppTable & Unified Modal System,Citizen,AC-16-01,P2
+US-17,F-18,Live SQL/API Backend Integration & Hosted Verification,Citizen,AC-17-01,P2

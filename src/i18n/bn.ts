@@ -42,7 +42,7 @@ export const bnTranslation = {
   totalPayable: 'মোট প্রদেয়',
   proceedToPreview: 'প্রিভিউ দেখুন',
   confirmPayment: 'নিশ্চিত করুন ও পেমেন্ট করুন',
-  paymentSuccess: 'পেমেন্ট সফল হয়েছে!',
+  paymentSuccess: 'নমুনা পেমেন্ট প্রিভিউ সংরক্ষিত হয়েছে',
   downloadChallan: 'চালান পিডিএফ ডাউনলোড করুন',
   printChallan: 'চালান প্রিন্ট করুন',
   payAgain: 'পুনরায় পেমেন্ট করুন',

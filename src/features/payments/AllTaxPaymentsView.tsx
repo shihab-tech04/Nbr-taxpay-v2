@@ -87,7 +87,7 @@ export const AllTaxPaymentsView: React.FC = () => {
         {flow.step === 'success' && flow.completedTx && (
           <PaymentSuccessCard
             title={t('paymentSuccess')}
-            subtitle="Challan successfully generated and verified via NBR gateway."
+            subtitle="Illustrative prototype record only — no real payment or official NBR gateway verification occurred."
             details={
               <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl max-w-md mx-auto text-left space-y-2 text-xs font-mono">
                 <div className="flex justify-between">

@@ -307,6 +307,11 @@ async function assertMobileNavbar(page, routeLabel) {
     assert.equal(await page.locator('tbody tr').count(), 0);
     await page.getByText('End date cannot be earlier than start date.').waitFor({ state: 'visible' });
 
+    // Malformed bound fails closed (0 rows)
+    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
+    await page.keyboard.type('30022026');
+    assert.equal(await page.locator('tbody tr').count(), 0);
+
     // Clear restores rows
     await page.getByTestId('date-range-clear').click();
     assert.equal(await page.locator('tbody tr').count(), initialRows);
@@ -322,6 +327,7 @@ async function assertMobileNavbar(page, routeLabel) {
     await page.goto('http://127.0.0.1:4174/gift-tax', { waitUntil: 'networkidle' });
     await page.getByRole('button', { name: /Proceed to Gift Details/i }).click();
     await page.getByText('Stage 2: Gift & Valuation Information').waitFor({ state: 'visible' });
+    await page.getByText(/Sample Gift Tax Preview/i).waitFor({ state: 'visible' });
 
     const giftGroup = page.locator('main [role="group"]').first();
     await giftGroup.locator('[role="spinbutton"]').first().click();
@@ -334,10 +340,12 @@ async function assertMobileNavbar(page, routeLabel) {
     await page.keyboard.type('10042026');
     await page.getByRole('button', { name: /Proceed to Preview/i }).click();
     await page.getByText('Stage 3: Final Payment Preview').waitFor({ state: 'visible' });
+    await page.getByText(/Sample Gift Tax Estimate \(Not Official\):/i).waitFor({ state: 'visible' });
     assert.match(await page.locator('main').innerText(), /10 Apr 2026/);
     await page.getByRole('button', { name: /Confirm/i }).click();
-    await page.getByText('Gift Tax Paid Successfully!').waitFor({ state: 'visible' });
-    assert.match(await page.locator('[role="dialog"]').innerText(), /2026-04-10/);
+    await page.getByText('Sample Gift Tax Preview Recorded').waitFor({ state: 'visible' });
+    await page.locator('[role="dialog"]').getByText('Sample challan — not valid for payment').waitFor({ state: 'visible' });
+    assert.match(await page.locator('[role="dialog"] [data-testid="receipt-gift-date"]').innerText(), /2026-04-10/);
 
     assert.deepEqual(errors, []);
     console.log('CI interactive browser checks (TIN A->B->A, masking, caret, suggestions, Autocomplete clear, Date bounds, History, Gift Tax, Navbar 320/390px) PASS');

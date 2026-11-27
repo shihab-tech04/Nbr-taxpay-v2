@@ -5,19 +5,25 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ThemeProvider } from '@mui/material/styles';
 import { I18nextProvider } from 'react-i18next';
 import { getTheme } from '../../design-system/theme';
+import { AppDateLocalizationProvider } from '../../design-system/dates';
 import i18n from '../../i18n/i18n';
-import { INITIAL_BENEFICIARIES, TAX_HEADS } from '../../shared/mockData';
+import { INITIAL_BENEFICIARIES, INITIAL_TRANSACTIONS, TAX_HEADS } from '../../shared/mockData';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
+import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard';
+import { ReceiptModal } from '../../components/ReceiptModal';
 import {
   calculateGiftTaxAmount,
   validateGiftPartiesStep,
   validateGiftValuationStep,
 } from '../gift-tax/giftTaxLogic';
+import { GiftTaxPreviewStep } from '../gift-tax/components/GiftTaxPreviewStep';
+import { GiftTaxValuationStep } from '../gift-tax/components/GiftTaxValuationStep';
 import {
   calculateTravelDisplayTotal,
   resolveDestinationBaseTax,
   validateTravelFormStep,
 } from '../travel-tax/travelTaxLogic';
+import { TravelTaxFormStep } from '../travel-tax/components/TravelTaxFormStep';
 import {
   calculateItemsTotal,
   INITIAL_ALL_TAX_ITEMS,
@@ -31,7 +37,9 @@ function renderPaymentsWithProviders(node: React.ReactElement): string {
   void i18n.changeLanguage('en');
   return renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>
-      <ThemeProvider theme={getTheme('light')}>{node}</ThemeProvider>
+      <ThemeProvider theme={getTheme('light')}>
+        <AppDateLocalizationProvider>{node}</AppDateLocalizationProvider>
+      </ThemeProvider>
     </I18nextProvider>
   );
 }
@@ -191,4 +199,84 @@ test('AllTaxFormStep renders AppCheckbox and AllTaxPreviewStep renders accessibl
   assert.equal(isRestrictedOperationAllowed('payment_submit', true), false);
   assert.equal(isRestrictedOperationAllowed('draft_write', true), false);
   assert.equal(isRestrictedOperationAllowed('payment_submit', false), true);
+});
+
+test('Gift Tax preserves typed giftDate outside remarks and fixture UI avoids official tax/receipt claims', () => {
+  const giftTx = INITIAL_TRANSACTIONS.find((tx) => tx.category === 'gift_tax');
+  assert.ok(giftTx);
+  assert.equal(giftTx.giftDate, '2026-05-02');
+
+  const syntheticGiftTx = {
+    ...giftTx,
+    giftDate: '2026-04-10',
+    items: [{ ...giftTx.items[0], remarks: 'Residential plot transfer' }],
+  };
+  const receiptHtml = renderPaymentsWithProviders(
+    <ReceiptModal open disablePortal onClose={() => {}} transaction={syntheticGiftTx} />
+  );
+  assert.match(receiptHtml, /data-testid="receipt-gift-date"/);
+  assert.match(receiptHtml, /2026-04-10/);
+  assert.doesNotMatch(receiptHtml, /Total Paid:/);
+
+  const valuationHtml = renderPaymentsWithProviders(
+    <GiftTaxValuationStep
+      giftAmountInput="500000"
+      giftDate="2026-04-10"
+      description="Land gift"
+      calculatedTax={25000}
+      errors={{}}
+      onChangeAmount={() => {}}
+      onChangeGiftDate={() => {}}
+      onChangeDescription={() => {}}
+      onBack={() => {}}
+      onNext={() => {}}
+    />
+  );
+  assert.match(valuationHtml, /Sample Gift Tax Preview/);
+  assert.doesNotMatch(valuationHtml, /Calculated Gift Tax \(5%\)/);
+
+  const giftPreviewHtml = renderPaymentsWithProviders(
+    <GiftTaxPreviewStep
+      donorName="Donor"
+      donorTin="882349102384"
+      doneeName="Donee"
+      doneeTin="992384102938"
+      relationship="Mother"
+      giftAmount={500000}
+      giftDate="2026-04-10"
+      calculatedTax={25000}
+      onBack={() => {}}
+      onPay={() => {}}
+    />
+  );
+  assert.match(giftPreviewHtml, /Sample Gift Tax Estimate/);
+  assert.doesNotMatch(giftPreviewHtml, /Total Gift Tax Taxable/);
+
+  const travelFormHtml = renderPaymentsWithProviders(
+    <TravelTaxFormStep
+      passportNumber="A06829102"
+      passengerName="Passenger"
+      destination="India (By Air)"
+      travelClass="Economy"
+      baseAmount={2000}
+      errors={{}}
+      onChangePassport={() => {}}
+      onChangePassengerName={() => {}}
+      onChangeDestination={() => {}}
+      onChangeTravelClass={() => {}}
+      onSubmit={() => {}}
+    />
+  );
+  assert.match(travelFormHtml, /Sample Travel Tax Preview/);
+
+  const successHtml = renderPaymentsWithProviders(
+    <PaymentSuccessCard
+      title="Sample Gift Tax Preview Recorded"
+      subtitle="Illustrative prototype record"
+      onViewReceipt={() => {}}
+      onReturnDashboard={() => {}}
+    />
+  );
+  assert.match(successHtml, /View Sample Receipt/);
+  assert.doesNotMatch(successHtml, /View Official Receipt/);
 });

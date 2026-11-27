@@ -155,12 +155,14 @@ function parseYmdToLocalDayBounds(ymd: string): { startMs: number; endMs: number
   };
 }
 
+const ISO_DATE_PREFIX_PATTERN = /^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/;
+
 function parseRecordTimestampMs(isoOrYmd: string): number | null {
   const trimmed = isoOrYmd.trim();
   if (!trimmed) return null;
-  if (isValidYmd(trimmed)) {
-    const [y, m, d] = trimmed.split('-').map(Number);
-    return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+  const prefixMatch = ISO_DATE_PREFIX_PATTERN.exec(trimmed);
+  if (prefixMatch && !isValidYmd(prefixMatch[1])) {
+    return null;
   }
   const parsed = Date.parse(trimmed);
   return Number.isNaN(parsed) ? null : parsed;
@@ -170,9 +172,9 @@ export function isDateWithinInclusiveRange(isoOrYmd: string, range: DateRangeFil
   if (!validateDateRangeFilter(range).valid) return false;
   const from = range.from.trim();
   const to = range.to.trim();
+  if (!from && !to) return true;
   const recordMs = parseRecordTimestampMs(isoOrYmd);
   if (recordMs === null) return false;
-  if (!from && !to) return true;
   const fromBounds = from ? parseYmdToLocalDayBounds(from) : null;
   if (from && (!fromBounds || recordMs < fromBounds.startMs)) return false;
   const toBounds = to ? parseYmdToLocalDayBounds(to) : null;

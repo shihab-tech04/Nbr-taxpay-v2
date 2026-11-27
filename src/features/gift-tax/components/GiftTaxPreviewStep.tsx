@@ -58,7 +58,7 @@ export const GiftTaxPreviewStep: React.FC<GiftTaxPreviewStepProps> = ({
           <strong>৳ {giftAmount.toLocaleString()}</strong>
         </div>
         <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-          <span className="text-slate-500 font-sans font-semibold">Total Gift Tax Taxable:</span>
+          <span className="text-slate-500 font-sans font-semibold">Sample Gift Tax Estimate (Not Official):</span>
           <strong className="text-teal-700 text-base font-bold">
             ৳ {calculatedTax.toLocaleString()}
           </strong>

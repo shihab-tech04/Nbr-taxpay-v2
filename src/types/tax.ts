@@ -45,6 +45,8 @@ export interface PaymentLineItem {
   remarks?: string;
 }
 
+export type YmdDateString = `${number}-${number}-${number}` | string;
+
 export interface PaymentTransaction {
   id: string;
   transactionRef: string;
@@ -53,6 +55,7 @@ export interface PaymentTransaction {
   beneficiaryTin?: string;
   beneficiaryName?: string;
   category: TaxHeadCategory;
+  giftDate?: YmdDateString;
   items: PaymentLineItem[];
   totalAmount: number;
   paymentChannel: 'bKash' | 'Nagad' | 'Rocket' | 'Visa/Mastercard' | 'CityBank' | 'SonaliBank';

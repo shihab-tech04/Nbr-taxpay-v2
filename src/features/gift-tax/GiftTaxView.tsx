@@ -89,6 +89,7 @@ export const GiftTaxView: React.FC = () => {
       beneficiaryTin: doneeTin,
       beneficiaryName: doneeName,
       category: 'gift_tax',
+      giftDate,
       items: [
         {
           headId: 'h6',
@@ -97,7 +98,7 @@ export const GiftTaxView: React.FC = () => {
           headNameBn: `দানকর - ${doneeName}`,
           assessmentYear: '2025-2026',
           amount: calculatedTax,
-          remarks: `${description} (${giftDate})`,
+          remarks: description.trim(),
         },
       ],
       totalAmount: calculatedTax,
@@ -166,8 +167,8 @@ export const GiftTaxView: React.FC = () => {
 
         {stage === 4 && completedTx && (
           <PaymentSuccessCard
-            title="Gift Tax Paid Successfully!"
-            subtitle={`Challan successfully generated for donor ${donorName} and donee ${doneeName}.`}
+            title="Sample Gift Tax Preview Recorded"
+            subtitle={`Illustrative prototype record for donor ${donorName} and donee ${doneeName} (not an official payment or challan).`}
             onViewReceipt={() => setCompletedTx(completedTx)}
             onReturnDashboard={() => navigate('/dashboard')}
           />

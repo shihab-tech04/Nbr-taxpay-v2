@@ -34,7 +34,7 @@ export const PaymentSuccessCard: React.FC<PaymentSuccessCardProps> = ({
         onClick={onViewReceipt}
         sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
       >
-        View Official Receipt
+        View Sample Receipt
       </AppButton>
       <AppButton
         actionType="secondary"

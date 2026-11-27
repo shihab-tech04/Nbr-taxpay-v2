@@ -80,7 +80,7 @@ export const GiftTaxValuationStep: React.FC<GiftTaxValuationStepProps> = ({
         <div className="p-4 bg-teal-50 dark:bg-teal-950/40 rounded-xl border border-teal-200 dark:border-teal-800 flex items-center justify-between">
           <div>
             <span className="text-xs text-teal-800 dark:text-teal-200 font-medium">
-              Calculated Gift Tax (5%)
+              Sample Gift Tax Preview (5% fixture — not an official calculation)
             </span>
             <div className="text-2xl font-bold font-mono text-teal-900 dark:text-teal-100">
               ৳ {calculatedTax.toLocaleString()}

@@ -42,7 +42,7 @@ export const enTranslation = {
   totalPayable: 'Total Payable',
   proceedToPreview: 'Proceed to Preview',
   confirmPayment: 'Confirm & Pay',
-  paymentSuccess: 'Payment Successful!',
+  paymentSuccess: 'Sample Payment Preview Recorded',
   downloadChallan: 'Download Challan PDF',
   printChallan: 'Print Challan',
   payAgain: 'Pay Again',

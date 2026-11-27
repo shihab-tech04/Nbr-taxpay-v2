@@ -21,8 +21,9 @@ jobs:
       - name: Backup and restore pre-release Main
         run: |
           set -euo pipefail
-          baseline=01f150d6ec5855227bddfd6c3e044a7d17c25a1d
-          git branch recovery-baseline "$baseline"
+          baseline_ref=de5a04e
+          baseline=$(git -C "$GITHUB_WORKSPACE" rev-parse --verify "${baseline_ref}^{commit}")
+          git -C "$GITHUB_WORKSPACE" branch -f recovery-baseline "$baseline"
           mkdir -p "$RUNNER_TEMP/recovery"
           cd "$RUNNER_TEMP/recovery"
           git -C "$GITHUB_WORKSPACE" bundle create "$RUNNER_TEMP/recovery/pre-release.bundle" recovery-baseline
@@ -34,7 +35,7 @@ jobs:
           sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: pre-release-01f150d-recovery
+          name: pre-release-de5a04e-recovery
           path: |
             ${{ runner.temp }}/recovery/pre-release.bundle
             ${{ runner.temp }}/recovery/SHA256SUMS
@@ -54,8 +55,12 @@ jobs:
         run: bun run typecheck
       - name: Lint
         run: bun run lint
-      - name: Run unit and interaction tests
-        run: bun run test
+      - name: Run unit and interaction tests across timezones
+        run: |
+          for tz in UTC Asia/Dhaka America/Los_Angeles America/New_York; do
+            echo "Running tests under TZ=$tz"
+            TZ="$tz" bun run test
+          done
       - name: Build Pages assets
         run: |
           bun run build --base=/Nbr-taxpay-v2/

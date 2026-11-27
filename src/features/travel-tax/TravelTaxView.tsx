@@ -125,8 +125,8 @@ export const TravelTaxView: React.FC = () => {
 
         {step === 'success' && completedTx && (
           <PaymentSuccessCard
-            title="Travel Tax Paid Successfully!"
-            subtitle={`Departure challan generated for passport ${passportNumber}.`}
+            title="Sample Travel Tax Preview Recorded"
+            subtitle={`Illustrative prototype record for passport ${passportNumber} (not an official departure challan).`}
             onViewReceipt={() => setCompletedTx(completedTx)}
             onReturnDashboard={() => navigate('/dashboard')}
           />

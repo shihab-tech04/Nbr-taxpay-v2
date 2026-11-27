@@ -51,6 +51,7 @@ export const INITIAL_TRANSACTIONS: PaymentTransaction[] = [
     beneficiaryTin: '992384102938',
     beneficiaryName: 'Mrs. Fatema Begum',
     category: 'gift_tax',
+    giftDate: '2026-05-02',
     items: [
       { headId: 'h6', headCode: '0130', headNameEn: 'Gift Tax (দানকর)', headNameBn: 'দানকর (Gift Tax)', assessmentYear: '2025-2026', amount: 12500, remarks: 'Property gift on behalf of mother' }
     ],

@@ -48,7 +48,7 @@ export const TravelTaxPreviewStep: React.FC<TravelTaxPreviewStepProps> = ({
           <strong>{travelClass}</strong>
         </div>
         <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-          <span className="text-slate-500 font-sans">Total Travel Tax:</span>
+          <span className="text-slate-500 font-sans">Sample Travel Tax (Not Official):</span>
           <strong className="text-teal-700 text-base">৳ {totalDisplay.toLocaleString()}</strong>
         </div>
       </div>

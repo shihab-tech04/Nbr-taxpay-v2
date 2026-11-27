@@ -88,7 +88,28 @@ test('Dhaka timezone helpers govern Gift date max bound only', () => {
   assert.match(formatYmdDisplay('2026-03-17', 'en'), /17.*2026/);
 });
 
-test('History date range filtering uses browser-local inclusive bounds and fails closed on invalid/reversed ranges', () => {
+function pinnedOriginalPaymentDateFilter(
+  createdAt: string,
+  fromDate: string,
+  toDate: string
+): boolean {
+  const from = fromDate.trim();
+  const to = toDate.trim();
+  if (!from && !to) return true;
+  const ts = new Date(createdAt).getTime();
+  if (Number.isNaN(ts)) return false;
+  if (from) {
+    const [y, m, d] = from.split('-').map(Number);
+    if (ts < new Date(y, m - 1, d, 0, 0, 0, 0).getTime()) return false;
+  }
+  if (to) {
+    const [y, m, d] = to.split('-').map(Number);
+    if (ts > new Date(y, m - 1, d, 23, 59, 59, 999).getTime()) return false;
+  }
+  return true;
+}
+
+test('History date range filtering matches pinned original paymentDateFilter.ts with unfiltered no-bounds and rejects malformed dates', () => {
   assert.deepEqual(validateDateRangeFilter({ from: '', to: '' }), { valid: true });
   assert.deepEqual(validateDateRangeFilter({ from: '2026-02-01', to: '' }), { valid: true });
   assert.deepEqual(validateDateRangeFilter({ from: '', to: '2026-03-01' }), { valid: true });
@@ -101,29 +122,55 @@ test('History date range filtering uses browser-local inclusive bounds and fails
     reason: 'inverted',
   });
 
+  // No bounds retains original unfiltered behavior even on unusual/empty record timestamps
+  assert.equal(isDateWithinInclusiveRange('not-a-timestamp', { from: '', to: '' }), true);
+  assert.equal(isDateWithinInclusiveRange('', { from: '', to: '' }), true);
+  assert.equal(isDateWithinInclusiveRange('2026-02-30', { from: '', to: '' }), true);
+
   const startOfDay = new Date(2026, 1, 15, 0, 0, 0, 0).toISOString();
   const endOfDay = new Date(2026, 1, 15, 23, 59, 59, 999).toISOString();
   const beforeDay = new Date(2026, 1, 14, 23, 59, 59, 999).toISOString();
   const afterDay = new Date(2026, 1, 16, 0, 0, 0, 0).toISOString();
 
-  assert.equal(isDateWithinInclusiveRange(startOfDay, { from: '2026-02-15', to: '2026-02-15' }), true);
-  assert.equal(isDateWithinInclusiveRange(endOfDay, { from: '2026-02-15', to: '2026-02-15' }), true);
-  assert.equal(isDateWithinInclusiveRange(beforeDay, { from: '2026-02-15', to: '' }), false);
-  assert.equal(isDateWithinInclusiveRange(afterDay, { from: '', to: '2026-02-15' }), false);
+  // Parity against pinned original paymentDateFilter.ts across browser-local timezones
+  const sampleTimestamps = [
+    startOfDay,
+    endOfDay,
+    beforeDay,
+    afterDay,
+    '2026-04-10T11:30:00Z',
+    '2026-04-10T20:30:00Z',
+    '2026-04-10T02:00:00Z',
+    '2026-04-10',
+  ];
+  const validRanges: Array<{ from: string; to: string }> = [
+    { from: '', to: '' },
+    { from: '2026-02-15', to: '2026-02-15' },
+    { from: '2026-02-15', to: '' },
+    { from: '', to: '2026-02-15' },
+    { from: '2026-04-10', to: '2026-04-10' },
+    { from: '2026-04-09', to: '2026-04-10' },
+    { from: '2026-04-10', to: '2026-04-11' },
+  ];
+  for (const ts of sampleTimestamps) {
+    for (const range of validRanges) {
+      assert.equal(
+        isDateWithinInclusiveRange(ts, range),
+        pinnedOriginalPaymentDateFilter(ts, range.from, range.to),
+        `Mismatch for ts=${ts} range=${JSON.stringify(range)} in TZ=${process.env.TZ ?? 'system'}`
+      );
+    }
+  }
 
-  // Fail closed on reversed ranges, invalid bounds, and invalid record timestamps
-  assert.equal(
-    isDateWithinInclusiveRange(startOfDay, { from: '2026-03-10', to: '2026-03-01' }),
-    false
-  );
-  assert.equal(
-    isDateWithinInclusiveRange(startOfDay, { from: INVALID_YMD_VALUE, to: '' }),
-    false
-  );
-  assert.equal(
-    isDateWithinInclusiveRange('not-a-timestamp', { from: '', to: '' }),
-    false
-  );
+  // With bounds active: reject malformed record dates (including V8 calendar rollover dates) & invalid/reversed bounds
+  assert.equal(isDateWithinInclusiveRange('not-a-timestamp', { from: '2026-02-01', to: '' }), false);
+  assert.equal(isDateWithinInclusiveRange('', { from: '', to: '2026-02-28' }), false);
+  assert.equal(isDateWithinInclusiveRange('2026-02-30', { from: '2026-03-01', to: '2026-03-05' }), false);
+  assert.equal(isDateWithinInclusiveRange('2026-02-29T12:00:00Z', { from: '2026-02-28', to: '2026-03-02' }), false);
+  assert.equal(isDateWithinInclusiveRange('2026-04-31T00:00:00Z', { from: '2026-04-01', to: '2026-05-05' }), false);
+  assert.equal(isDateWithinInclusiveRange(startOfDay, { from: '2026-03-10', to: '2026-03-01' }), false);
+  assert.equal(isDateWithinInclusiveRange(startOfDay, { from: INVALID_YMD_VALUE, to: '' }), false);
+  assert.equal(isDateWithinInclusiveRange(startOfDay, { from: '2026-02-30', to: '' }), false);
 });
 
 test('Date controls render single provider EN/BN validation errors and preview-locked range Clear', () => {

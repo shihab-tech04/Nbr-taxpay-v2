@@ -11,9 +11,15 @@ interface ReceiptModalProps {
   open: boolean;
   onClose: () => void;
   transaction: PaymentTransaction | null;
+  disablePortal?: boolean;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, transaction }) => {
+export const ReceiptModal: React.FC<ReceiptModalProps> = ({
+  open,
+  onClose,
+  transaction,
+  disablePortal = false,
+}) => {
   const { t } = useTranslation();
 
   if (!transaction) return null;
@@ -23,7 +29,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth disablePortal={disablePortal}>
       <DialogTitle className="flex items-center justify-between bg-teal-50 dark:bg-teal-950/45 px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 flex items-center justify-center">
@@ -66,6 +72,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
             <span className="text-slate-500 block">Payment Channel</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm font-semibold text-teal-700">{transaction.paymentChannel}</strong>
           </div>
+          {transaction.giftDate && (
+            <div data-testid="receipt-gift-date">
+              <span className="text-slate-500 block">{t('giftDate')}</span>
+              <strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.giftDate}</strong>
+            </div>
+          )}
         </div>
 
         {transaction.beneficiaryTin && (
@@ -101,7 +113,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
               </tbody>
               <tfoot className="bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white">
                 <tr>
-                  <td colSpan={2} className="p-3 text-right">Total Paid:</td>
+                  <td colSpan={2} className="p-3 text-right">Sample Total:</td>
                   <td className="p-3 text-right font-mono text-teal-700 dark:text-teal-400 text-sm">৳ {transaction.totalAmount.toLocaleString()}</td>
                 </tr>
               </tfoot>
