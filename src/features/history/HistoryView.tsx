@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
-import { FileText, Eye, RotateCcw } from 'lucide-react';
+import { Award, FileText, Eye, RotateCcw } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { PaymentTransaction } from '../../types/tax';
 import {
   AppDateRangeFilter,
@@ -18,11 +19,12 @@ export const HistoryView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { transactions } = useApp();
+  const { transactions, isAuthenticated } = useApp();
 
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>({ from: '', to: '' });
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
+  const [certTx, setCertTx] = useState<PaymentTransaction | null>(null);
 
   const normalizedQuery = search.trim().toLowerCase();
   const filtered = transactions.filter((tx) => {
@@ -33,10 +35,6 @@ export const HistoryView: React.FC = () => {
       tx.category.toLowerCase().includes(normalizedQuery);
     return matchesSearch && isDateWithinInclusiveRange(tx.createdAt, dateRange);
   });
-
-  const handlePayAgain = () => {
-    navigate('/all-taxes');
-  };
 
   const columns: AppColumn<PaymentTransaction>[] = [
     {
@@ -85,31 +83,16 @@ export const HistoryView: React.FC = () => {
       header: t('actions'),
       align: 'right',
       cell: (tx) => (
-        <div className="inline-flex items-center justify-end gap-2">
-          <AppButton
-            actionType="secondary"
-            size="small"
-            startIcon={<Eye size={14} />}
-            onClick={() => setSelectedTx(tx)}
-            sx={(theme) => ({
-              minHeight: 30,
-              px: 1.5,
-              py: 0.5,
-              borderRadius: '8px',
-              color: theme.palette.mode === 'dark' ? '#5EEAD4' : 'primary.main',
-              borderColor: 'divider',
-            })}
-          >
+        <div className="inline-flex items-center justify-end gap-1.5">
+          <AppButton actionType="secondary" size="small" startIcon={<Eye size={14} />} onClick={() => setSelectedTx(tx)}>
             {isBn ? 'রসিদ' : 'Receipt'}
           </AppButton>
-          <AppButton
-            actionType="secondary"
-            surface="soft"
-            size="small"
-            startIcon={<RotateCcw size={14} />}
-            onClick={handlePayAgain}
-            sx={{ minHeight: 30, px: 1.5, py: 0.5, borderRadius: '8px' }}
-          >
+          {tx.status === 'Completed' && (
+            <AppButton actionType="secondary" surface="soft" size="small" startIcon={<Award size={14} />} onClick={() => setCertTx(tx)}>
+              {isBn ? 'সনদ' : 'Certificate'}
+            </AppButton>
+          )}
+          <AppButton actionType="secondary" surface="soft" size="small" startIcon={<RotateCcw size={14} />} onClick={() => navigate('/all-taxes')}>
             {t('payAgain')}
           </AppButton>
         </div>
@@ -178,6 +161,14 @@ export const HistoryView: React.FC = () => {
         open={Boolean(selectedTx)}
         onClose={() => setSelectedTx(null)}
         transaction={selectedTx}
+        isAuthenticated={isAuthenticated}
+      />
+
+      <PaymentCertificateDialog
+        open={Boolean(certTx)}
+        onClose={() => setCertTx(null)}
+        transaction={certTx}
+        isAuthenticated={isAuthenticated}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle } from 'lucide-react';
+import { Award, CheckCircle } from 'lucide-react';
 import { AppButton } from '../../design-system/buttons';
 
 interface PaymentSuccessCardProps {
@@ -7,6 +7,7 @@ interface PaymentSuccessCardProps {
   subtitle: string;
   details?: React.ReactNode;
   onViewReceipt: () => void;
+  onViewCertificate?: () => void;
   onReturnDashboard: () => void;
 }
 
@@ -15,6 +16,7 @@ export const PaymentSuccessCard: React.FC<PaymentSuccessCardProps> = ({
   subtitle,
   details,
   onViewReceipt,
+  onViewCertificate,
   onReturnDashboard,
 }) => (
   <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-6">
@@ -28,7 +30,7 @@ export const PaymentSuccessCard: React.FC<PaymentSuccessCardProps> = ({
 
     {details}
 
-    <div className="flex justify-center gap-4 pt-4">
+    <div className="flex flex-wrap justify-center gap-3 pt-4">
       <AppButton
         actionType="primary"
         onClick={onViewReceipt}
@@ -36,6 +38,17 @@ export const PaymentSuccessCard: React.FC<PaymentSuccessCardProps> = ({
       >
         View Sample Receipt
       </AppButton>
+      {onViewCertificate && (
+        <AppButton
+          actionType="secondary"
+          surface="soft"
+          startIcon={<Award size={15} />}
+          onClick={onViewCertificate}
+          sx={{ borderRadius: '12px', px: 3, py: 1.5, fontSize: '0.75rem' }}
+        >
+          View Payment Certificate
+        </AppButton>
+      )}
       <AppButton
         actionType="secondary"
         onClick={onReturnDashboard}

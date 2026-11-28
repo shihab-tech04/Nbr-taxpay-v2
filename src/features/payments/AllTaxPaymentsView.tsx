@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { PaymentStepHeader } from '../../components/payments/PaymentStepHeader';
 import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard';
 import { AllTaxCategoryStep } from './components/AllTaxCategoryStep';
@@ -11,6 +12,7 @@ import { useAllTaxPaymentFlow } from './useAllTaxPaymentFlow';
 export const AllTaxPaymentsView: React.FC = () => {
   const { t } = useTranslation();
   const flow = useAllTaxPaymentFlow();
+  const [certOpen, setCertOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
@@ -111,15 +113,23 @@ export const AllTaxPaymentsView: React.FC = () => {
               </div>
             }
             onViewReceipt={() => flow.setCompletedTx(flow.completedTx)}
+            onViewCertificate={() => setCertOpen(true)}
             onReturnDashboard={flow.goDashboard}
           />
         )}
       </div>
 
       <ReceiptModal
-        open={Boolean(flow.completedTx && flow.step === 'success')}
+        open={Boolean(flow.completedTx && flow.step === 'success' && !certOpen)}
         onClose={flow.goDashboard}
         transaction={flow.completedTx}
+        isAuthenticated={flow.isAuthenticated}
+      />
+      <PaymentCertificateDialog
+        open={certOpen}
+        onClose={() => setCertOpen(false)}
+        transaction={flow.completedTx}
+        isAuthenticated={flow.isAuthenticated}
       />
     </div>
   );

@@ -9,13 +9,13 @@ import { NavbarDesktopLinks } from './NavbarDesktopLinks';
 import { NavbarAccountMenu } from './NavbarAccountMenu';
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, setIsAuthenticated } = useSession();
+  const { user, isAuthenticated, signOutClean } = useSession();
   const { language, setLanguage, themeMode, toggleTheme } = usePreferences();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleSignOut = () => {
-    setIsAuthenticated(false);
+    signOutClean();
     navigate('/');
   };
 

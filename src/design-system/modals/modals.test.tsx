@@ -38,13 +38,23 @@ test('AppDialog, AppDrawer, and AppBottomSheet render correctly when open and re
   assert.match(openDialog, /aria-label="Go back"/);
 
   const openDrawer = renderToStaticMarkup(
-    <AppDrawer open disablePortal onClose={() => {}} title="Test Drawer" subtitle="Drawer Subtitle">
+    <AppDrawer
+      open
+      disablePortal
+      id="custom-test-drawer"
+      onBack={() => {}}
+      onClose={() => {}}
+      title="Test Drawer"
+      subtitle="Drawer Subtitle"
+    >
       <p>Drawer Body</p>
     </AppDrawer>
   );
   assert.match(openDrawer, /Test Drawer/);
   assert.match(openDrawer, /Drawer Subtitle/);
   assert.match(openDrawer, /Drawer Body/);
+  assert.match(openDrawer, /id="custom-test-drawer-title"/);
+  assert.match(openDrawer, /aria-label="Go back"/);
 
   const openSheet = renderToStaticMarkup(
     <AppBottomSheet open disablePortal onBack={() => {}} onClose={() => {}} title="Test Sheet" subtitle="Sheet Subtitle">
@@ -65,6 +75,7 @@ test('AppConfirmDialog renders confirmation and destructive action variants', as
       <AppConfirmDialog
         open
         disablePortal
+        id="delete-confirm"
         onClose={() => {}}
         onConfirm={() => {}}
         title="Confirm Delete"
@@ -77,4 +88,5 @@ test('AppConfirmDialog renders confirmation and destructive action variants', as
   assert.match(confirmHtml, /Confirm Delete/);
   assert.match(confirmHtml, /Are you sure you want to delete this beneficiary\?/);
   assert.match(confirmHtml, /Yes, Delete/);
+  assert.match(confirmHtml, /aria-labelledby="delete-confirm-title"/);
 });

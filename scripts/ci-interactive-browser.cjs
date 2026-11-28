@@ -305,23 +305,49 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     assert.equal(await page.locator('tbody tr').count(), 1);
     assert.match(await page.locator('tbody tr').first().innerText(), /Income Tax with Return/);
 
-    // 10. Taxpayer Profile (24 fields): signed-out masked default -> sign in -> eye reveal, copy toast, certificate dialog & mobile check
+    // 10. Taxpayer Profile (24 fields): exact grouping, first-3-digit masking, email domain mask, no duplicates
     await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
-    for (const key of ['taxpayerName', 'tin', 'tinType', 'registeredOn', 'mobileNumber', 'emailAddress', 'taxesCircle', 'issuingOfficer']) {
+    for (const key of ['taxpayerName', 'tin', 'tinType', 'taxesCircle', 'registeredOn', 'lastLoginAt', 'mobileNumber', 'emailAddress', 'taxOfficePhone', 'previousTin']) {
       await page.getByTestId(`profile-field-${key}`).waitFor({ state: 'visible' });
     }
     assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
-    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882 •••• •384/);
+    assert.equal(await page.locator('[data-testid="profile-field-taxesCircle"]').count(), 1);
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882•••••••••/);
+    assert.match(await page.getByTestId('profile-field-previousTin').innerText(), /654•••••••/);
+    assert.match(await page.getByTestId('profile-field-emailAddress').innerText(), /ra••••@e••••\.•••/);
+    assert.match(await page.getByTestId('profile-field-taxOfficePhone').innerText(), /880••••••••/);
     assert.equal(await page.getByRole('button', { name: /Reveal TIN/i }).isDisabled(), true);
     assert.equal(await page.getByRole('button', { name: /Copy TIN/i }).isDisabled(), true);
 
-    await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' });
+    // 11. Auth & Account journey: masked contacts, wrong-OTP validation, Resend OTP, ?returnTo=, sequential FirstLoginNoticeDialog
+    await page.goto(`${baseUrl}/login?returnTo=/dashboard`, { waitUntil: 'networkidle' });
+    await page.getByTestId('login-masked-contacts').waitFor({ state: 'visible' });
+    assert.match(await page.getByTestId('login-masked-contacts').innerText(), /880••••••••••/);
+    await page.getByRole('radio', { name: /Email/i }).click();
     await page.getByRole('button', { name: /Continue with OTP/i }).click();
+
+    await page.getByRole('button', { name: /Resend OTP/i }).click();
+    await page.getByTestId('otp-resent-status').waitFor({ state: 'visible' });
+    await page.getByLabel(/One-Time Password|OTP/i).fill('999999');
+    await page.getByRole('button', { name: /Verify & Sign In/i }).click();
+    await page.getByRole('alert').filter({ hasText: /Incorrect OTP code/i }).waitFor({ state: 'visible' });
+
+    await page.getByLabel(/One-Time Password|OTP/i).fill('123456');
     await page.getByRole('button', { name: /Verify & Sign In/i }).click();
     await page.waitForURL('**/dashboard');
+
+    // First-login queued notice 1 -> Acknowledge & Next -> notice 2 -> Acknowledge
+    const noticeDialog = page.locator('[role="dialog"]');
+    await noticeDialog.waitFor({ state: 'visible' });
+    assert.match(await noticeDialog.innerText(), /First-Login Account Notice/);
+    await noticeDialog.getByRole('button', { name: /Acknowledge & Next/i }).click();
+    assert.match(await noticeDialog.innerText(), /Verify Assessment Year/);
+    await noticeDialog.getByRole('button', { name: /^Acknowledge$/i }).click();
+    await noticeDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
+    // Navigate to Profile: reveal TIN, copy toast, Sample Certificate modal, then switch to Account B for isolation
     await page.getByRole('button', { name: /Taxpayer Profile/i }).click();
     await page.waitForURL('**/profile');
-
     await page.getByRole('button', { name: /Reveal TIN/i }).click();
     assert.match(await page.getByTestId('profile-field-tin').innerText(), /882349102384/);
     await page.getByRole('button', { name: /Copy TIN/i }).click();
@@ -337,8 +363,22 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     assert.equal(await certBtn.evaluate((el) => document.activeElement === el), true);
     await assertMobileNavbar(page, 'profile-en');
 
+    // 12. Certificates separation & Combined Payment Certificate modal
+    await page.goto(`${baseUrl}/certificates`, { waitUntil: 'networkidle' });
+    await page.getByTestId('tax-credit-certificates-section').waitFor({ state: 'visible' });
+    await page.getByTestId('payment-certificates-section').waitFor({ state: 'visible' });
+    assert.match(await page.getByTestId('tax-credit-certificates-section').innerText(), /Official Tax Credit Certificates Require Live NBR Verification/);
+    await page.locator('[data-testid="payment-certificates-section"] tbody tr').first().getByRole('button', { name: /^View$/i }).click();
+    const payCertDialog = page.locator('[role="dialog"]');
+    await payCertDialog.waitFor({ state: 'visible' });
+    assert.match(await payCertDialog.innerText(), /Combined Payment Certificate/);
+    await payCertDialog.getByRole('button', { name: /Download PDF/i }).click();
+    await page.getByText(/Downloaded CERT-/i).waitFor({ state: 'visible' });
+    await page.keyboard.press('Escape');
+    await payCertDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
     assert.deepEqual(errors, []);
-    return 'CI interactive browser checks (TIN, Autocomplete, Dates, History sort/BN pagination, Beneficiaries search/sort/dirty-guard/confirm-delete, AllTaxItems sort-remove, Corrections, Drafts, 24-field Profile & Navbar 320/390px) PASS';
+    return 'CI interactive browser checks (Cycle 10-11: Profile 24 parity, Tables/Modals, Combined Payment Certificates & Tax Credit separation, Auth OTP/Resend/First-Login Queue) PASS';
   } finally {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);

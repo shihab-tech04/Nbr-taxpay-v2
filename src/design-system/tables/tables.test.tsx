@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n/i18n';
 import { AppTable } from './AppTable';
-import { sortTableData, paginateTableData } from './tableUtils';
+import { sortTableData, paginateTableData, resolveValidPage } from './tableUtils';
 import type { AppColumn } from './tableTypes';
 
 interface TestRow {
@@ -25,7 +25,7 @@ const columns: AppColumn<TestRow>[] = [
   { key: 'amount', header: 'Amount', sortable: true, align: 'right' },
 ];
 
-test('table utilities sort and paginate deterministically', () => {
+test('table utilities sort and paginate deterministically and reset invalid/empty pages', () => {
   const sortedAsc = sortTableData(testData, 'name', 'asc');
   assert.equal(sortedAsc[0].name, 'Apple');
   assert.equal(sortedAsc[2].name, 'Zebra');
@@ -38,6 +38,13 @@ test('table utilities sort and paginate deterministically', () => {
   assert.equal(paginated.length, 2);
   assert.equal(paginated[0].name, 'Apple');
   assert.equal(paginated[1].name, 'Mango');
+
+  // Empty data and out-of-bounds pages always reset cleanly to 0
+  assert.equal(resolveValidPage(0, 2, 10), 0);
+  assert.equal(resolveValidPage(3, 2, 5), 0);
+  assert.equal(resolveValidPage(25, 2, 10), 2);
+  assert.equal(resolveValidPage(25, -1, 10), 0);
+  assert.deepEqual(paginateTableData([], 2, 10), []);
 });
 
 test('table utilities sort with custom accessors, numeric formatting, and dates', () => {

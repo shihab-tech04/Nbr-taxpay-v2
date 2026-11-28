@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "arch:check": "node scripts/arch-check.mjs",
-    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/dates/dates.test.tsx src/design-system/buttons/buttons.test.tsx src/design-system/selection/selection.test.tsx src/design-system/tables/tables.test.tsx src/design-system/modals/modals.test.tsx src/design-system/feedback/feedback.test.tsx src/features/home/home.test.tsx src/features/payments/payments.test.tsx src/features/profile/profile.test.tsx"
+    "test": "tsx --test src/design-system/forms/forms.test.tsx src/design-system/dates/dates.test.tsx src/design-system/buttons/buttons.test.tsx src/design-system/selection/selection.test.tsx src/design-system/tables/tables.test.tsx src/design-system/modals/modals.test.tsx src/design-system/feedback/feedback.test.tsx src/features/home/home.test.tsx src/features/payments/payments.test.tsx src/features/profile/profile.test.tsx src/features/certificates/certificates.test.tsx src/features/account/account.test.tsx"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

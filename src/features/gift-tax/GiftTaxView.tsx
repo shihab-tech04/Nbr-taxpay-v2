@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Gift } from 'lucide-react';
 import { getDhakaTodayYmd, isValidYmd } from '../../design-system/forms';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { PaymentTransaction } from '../../types/tax';
@@ -22,7 +23,7 @@ import {
 export const GiftTaxView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, addTransaction } = useApp();
+  const { user, isAuthenticated, addTransaction } = useApp();
 
   const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
   const [donorTin, setDonorTin] = useState(user.tin);
@@ -34,6 +35,7 @@ export const GiftTaxView: React.FC = () => {
   const [giftDate, setGiftDate] = useState<string>(() => getDhakaTodayYmd());
   const [description, setDescription] = useState('Residential land transfer as family gift');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
   const [errors, setErrors] = useState<GiftFormErrors>({});
 
   const { giftAmount, calculatedTax } = calculateGiftTaxAmount(giftAmountInput);
@@ -172,16 +174,14 @@ export const GiftTaxView: React.FC = () => {
             title="Sample Gift Tax Preview Recorded"
             subtitle={`Illustrative prototype record for donor ${donorName} and donee ${doneeName} (not an official payment or challan).`}
             onViewReceipt={() => setCompletedTx(completedTx)}
+            onViewCertificate={() => setCertOpen(true)}
             onReturnDashboard={() => navigate('/dashboard')}
           />
         )}
       </div>
 
-      <ReceiptModal
-        open={Boolean(completedTx && stage === 4)}
-        onClose={() => navigate('/dashboard')}
-        transaction={completedTx}
-      />
+      <ReceiptModal open={Boolean(completedTx && stage === 4 && !certOpen)} onClose={() => navigate('/dashboard')} transaction={completedTx} isAuthenticated={isAuthenticated} />
+      <PaymentCertificateDialog open={certOpen} onClose={() => setCertOpen(false)} transaction={completedTx} isAuthenticated={isAuthenticated} />
     </div>
   );
 };

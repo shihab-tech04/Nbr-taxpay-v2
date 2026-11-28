@@ -58,12 +58,22 @@ export function sortTableData<T>(
   });
 }
 
+export function resolveValidPage(
+  totalItems: number,
+  page: number,
+  rowsPerPage: number
+): number {
+  if (totalItems <= 0 || rowsPerPage <= 0 || page <= 0) return 0;
+  return page * rowsPerPage >= totalItems ? 0 : page;
+}
+
 export function paginateTableData<T>(
   data: readonly T[],
   page: number,
   rowsPerPage: number
 ): T[] {
-  const start = Math.max(0, page) * Math.max(1, rowsPerPage);
+  const safePage = resolveValidPage(data.length, page, rowsPerPage);
+  const start = safePage * Math.max(1, rowsPerPage);
   return data.slice(start, start + rowsPerPage);
 }
 

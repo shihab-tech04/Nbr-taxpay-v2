@@ -1,0 +1,86 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../../i18n/i18n';
+import { getTheme } from '../../design-system/theme';
+import { AppProvider } from '../../shared/AppContext';
+import {
+  getNoticesForTin,
+  ISOLATED_SECONDARY_USER,
+  lookupTinIdentity,
+  sanitizeReturnPath,
+  verifySimulationOtp,
+} from './accountAdapter';
+import { LoginView } from './LoginView';
+import { FirstLoginNoticeDialog } from '../../components/account/FirstLoginNoticeDialog';
+
+test('lookupTinIdentity reveals masked contacts only and isolates unrelated TIN identities', () => {
+  assert.equal(lookupTinIdentity('12345'), null);
+
+  const primary = lookupTinIdentity('882349102384');
+  assert.ok(primary);
+  assert.equal(primary.directoryMatched, true);
+  assert.equal(primary.maskedSms, '880••••••••••');
+  assert.equal(primary.maskedEmail, 'ra••••@e••••.•••');
+  assert.doesNotMatch(primary.maskedNameHint, /Rafiqul/);
+
+  const unknown = lookupTinIdentity('998877665544');
+  assert.ok(unknown);
+  assert.equal(unknown.directoryMatched, false);
+  assert.equal(unknown.profile.circle, '—');
+  assert.doesNotMatch(unknown.profile.name, /Rafiqul/);
+
+  const secondary = lookupTinIdentity(ISOLATED_SECONDARY_USER.tin);
+  assert.ok(secondary);
+  assert.equal(secondary.profile.name, 'Tasnim Chowdhury');
+  assert.notDeepEqual(getNoticesForTin('882349102384'), getNoticesForTin(ISOLATED_SECONDARY_USER.tin));
+});
+
+test('verifySimulationOtp and sanitizeReturnPath enforce validation and open-redirect protection', () => {
+  assert.deepEqual(verifySimulationOtp('123'), { valid: false, reason: 'format' });
+  assert.deepEqual(verifySimulationOtp('999999'), { valid: false, reason: 'mismatch' });
+  assert.deepEqual(verifySimulationOtp('123456'), { valid: true });
+  assert.deepEqual(verifySimulationOtp('111111'), { valid: true });
+
+  assert.equal(sanitizeReturnPath('/profile'), '/profile');
+  assert.equal(sanitizeReturnPath('/certificates'), '/certificates');
+  assert.equal(sanitizeReturnPath('https://evil.example.com'), '/dashboard');
+  assert.equal(sanitizeReturnPath('//evil.example.com'), '/dashboard');
+  assert.equal(sanitizeReturnPath('/login'), '/dashboard');
+  assert.equal(sanitizeReturnPath(null), '/dashboard');
+});
+
+test('LoginView and FirstLoginNoticeDialog render masked OTP channel controls and sequential queued notice', async () => {
+  await i18n.changeLanguage('en');
+  const loginHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <AppProvider>
+        <ThemeProvider theme={getTheme('light')}>
+          <MemoryRouter initialEntries={['/login?returnTo=/profile']}>
+            <LoginView />
+          </MemoryRouter>
+        </ThemeProvider>
+      </AppProvider>
+    </I18nextProvider>
+  );
+  assert.match(loginHtml, /data-testid="login-masked-contacts"/);
+  assert.match(loginHtml, /880••••••••••/);
+  assert.match(loginHtml, /ra••••@e••••\.•••/);
+  assert.match(loginHtml, /Continue with OTP/);
+  assert.match(loginHtml, /Continue as Walk-In Taxpayer/);
+
+  const notices = getNoticesForTin('882349102384');
+  const noticeHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <ThemeProvider theme={getTheme('light')}>
+        <FirstLoginNoticeDialog disablePortal notices={notices} onAcknowledge={() => {}} />
+      </ThemeProvider>
+    </I18nextProvider>
+  );
+  assert.match(noticeHtml, /First-Login Account Notice/);
+  assert.match(noticeHtml, /Acknowledge &amp; Next/);
+});

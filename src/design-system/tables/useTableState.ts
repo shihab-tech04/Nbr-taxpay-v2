@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { AppColumn, TableSortState, TablePaginationState } from './tableTypes';
-import { sortTableData, paginateTableData } from './tableUtils';
+import { sortTableData, paginateTableData, resolveValidPage } from './tableUtils';
 
 export interface UseTableStateOptions<T> {
   initialSort?: TableSortState<string>;
@@ -21,13 +21,14 @@ export function useTableState<T>(
   });
 
   const columns = options?.columns;
+  const effectivePage = resolveValidPage(data.length, pagination.page, pagination.rowsPerPage);
 
-  // Auto-reset page if current page is beyond data range
+  // Sync state when filtered data shrinks, becomes empty, or leaves page out of bounds
   useEffect(() => {
-    if (data.length > 0 && pagination.page * pagination.rowsPerPage >= data.length) {
-      setPagination((prev) => ({ ...prev, page: 0 }));
+    if (pagination.page !== effectivePage) {
+      setPagination((prev) => ({ ...prev, page: effectivePage }));
     }
-  }, [data.length, pagination.page, pagination.rowsPerPage]);
+  }, [effectivePage, pagination.page]);
 
   const handleSort = useCallback((columnKey: string) => {
     setSortState((prev) => {
@@ -43,8 +44,11 @@ export function useTableState<T>(
   }, []);
 
   const handlePageChange = useCallback((newPage: number) => {
-    setPagination((prev) => ({ ...prev, page: newPage }));
-  }, []);
+    setPagination((prev) => ({
+      ...prev,
+      page: resolveValidPage(data.length, newPage, prev.rowsPerPage),
+    }));
+  }, [data.length]);
 
   const handleRowsPerPageChange = useCallback((newRowsPerPage: number) => {
     setPagination({ page: 0, rowsPerPage: newRowsPerPage });
@@ -59,15 +63,20 @@ export function useTableState<T>(
     return sortTableData(data, sortState.columnKey, sortState.direction, columns);
   }, [data, sortState, columns]);
 
+  const normalizedPagination = useMemo<TablePaginationState>(
+    () => ({ page: effectivePage, rowsPerPage: pagination.rowsPerPage }),
+    [effectivePage, pagination.rowsPerPage]
+  );
+
   const pagedData = useMemo(() => {
-    return paginateTableData(sortedData, pagination.page, pagination.rowsPerPage);
-  }, [sortedData, pagination.page, pagination.rowsPerPage]);
+    return paginateTableData(sortedData, effectivePage, pagination.rowsPerPage);
+  }, [sortedData, effectivePage, pagination.rowsPerPage]);
 
   return {
     sortState,
     setSortState,
     handleSort,
-    pagination,
+    pagination: normalizedPagination,
     setPagination,
     handlePageChange,
     handleRowsPerPageChange,

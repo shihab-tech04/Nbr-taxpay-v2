@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plane } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { PaymentTransaction } from '../../types/tax';
@@ -20,7 +21,7 @@ import {
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, addTransaction } = useApp();
+  const { user, isAuthenticated, addTransaction } = useApp();
 
   const [passportNumber, setPassportNumber] = useState('A06829102');
   const [passengerName, setPassengerName] = useState(user.name);
@@ -29,6 +30,7 @@ export const TravelTaxView: React.FC = () => {
   const [amount, setAmount] = useState<number>(2000);
   const [step, setStep] = useState<'form' | 'preview' | 'success'>('form');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
+  const [certOpen, setCertOpen] = useState(false);
   const [errors, setErrors] = useState<TravelFormErrors>({});
 
   const handleProceed = (e: React.FormEvent) => {
@@ -128,15 +130,23 @@ export const TravelTaxView: React.FC = () => {
             title="Sample Travel Tax Preview Recorded"
             subtitle={`Illustrative prototype record for passport ${passportNumber} (not an official departure challan).`}
             onViewReceipt={() => setCompletedTx(completedTx)}
+            onViewCertificate={() => setCertOpen(true)}
             onReturnDashboard={() => navigate('/dashboard')}
           />
         )}
       </div>
 
       <ReceiptModal
-        open={Boolean(completedTx && step === 'success')}
+        open={Boolean(completedTx && step === 'success' && !certOpen)}
         onClose={() => navigate('/dashboard')}
         transaction={completedTx}
+        isAuthenticated={isAuthenticated}
+      />
+      <PaymentCertificateDialog
+        open={certOpen}
+        onClose={() => setCertOpen(false)}
+        transaction={completedTx}
+        isAuthenticated={isAuthenticated}
       />
     </div>
   );

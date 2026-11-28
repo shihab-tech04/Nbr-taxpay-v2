@@ -15,7 +15,7 @@ import type { ActivePaymentChannel } from './paymentChannels';
 export function useAllTaxPaymentFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, beneficiaries, addTransaction, saveDraft } = useApp();
+  const { user, isAuthenticated, beneficiaries, addTransaction, saveDraft } = useApp();
 
   const [step, setStep] = useState<'chooser' | 'form' | 'preview' | 'success'>('chooser');
   const [selectedCategory, setSelectedCategory] = useState<TaxHeadCategory>('tax_with_return');
@@ -105,6 +105,7 @@ export function useAllTaxPaymentFlow() {
 
   return {
     user,
+    isAuthenticated,
     beneficiaries,
     step,
     stepNumber,

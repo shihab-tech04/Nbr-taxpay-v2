@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Award, Printer, ShieldAlert } from 'lucide-react';
 import { AppButton } from '../../../design-system/buttons';
 import { AppDialog } from '../../../design-system/modals';
-import { maskProfileTin } from '../profileUtils';
+import { formatProfileValue } from '../profileUtils';
 import type { TaxpayerProfile24 } from '../profileTypes';
 
 interface ProfileCertificateDialogProps {
@@ -73,7 +73,7 @@ export const ProfileCertificateDialog: React.FC<ProfileCertificateDialogProps> =
           <div>
             <span className="text-slate-500 block">{t('taxpayerTin')}</span>
             <strong className="font-mono text-slate-900 dark:text-white">
-              {canReveal ? profile.tin : maskProfileTin(profile.tin)}
+              {formatProfileValue('tin', profile.tin, canReveal)}
             </strong>
           </div>
           <div>
@@ -89,6 +89,18 @@ export const ProfileCertificateDialog: React.FC<ProfileCertificateDialogProps> =
           <div>
             <span className="text-slate-500 block">{isBn ? 'সনদ জারির তারিখ' : 'Issued On'}</span>
             <strong className="font-mono text-slate-900 dark:text-white">{profile.certificateIssuedOn}</strong>
+          </div>
+          <div>
+            <span className="text-slate-500 block">{isBn ? 'পূর্ববর্তী টিআইএন' : 'Previous TIN'}</span>
+            <strong className="font-mono text-slate-900 dark:text-white">
+              {formatProfileValue('previousTin', profile.previousTin, canReveal)}
+            </strong>
+          </div>
+          <div>
+            <span className="text-slate-500 block">{isBn ? 'কর অফিসের ফোন' : 'Tax Office Phone'}</span>
+            <strong className="font-mono text-slate-900 dark:text-white">
+              {formatProfileValue('taxOfficePhone', profile.taxOfficePhone, canReveal)}
+            </strong>
           </div>
           <div>
             <span className="text-slate-500 block">{isBn ? 'কর অফিস' : 'Tax Office'}</span>

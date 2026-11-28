@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  User,
-  Shield,
-  Phone,
-  MapPin,
-  FileCheck,
-  ArrowLeft,
-  Lock,
-} from 'lucide-react';
+import { User, Shield, Phone, MapPin, FileCheck, ArrowLeft, Lock } from 'lucide-react';
 import { AppButton } from '../../design-system/buttons';
 import { AppToast } from '../../design-system/feedback';
 import { useAppNavigation } from '../../design-system/navigation';
 import { useSession } from '../../shared/SessionContext';
 import { PUBLIC_PREVIEW } from '../../shared/previewMode';
-import { DEFAULT_TAXPAYER_PROFILE_24 } from './profileData';
-import { PROFILE_24_FIELD_MANIFEST, type ProfileGroupKey, type TaxpayerProfile24 } from './profileTypes';
+import { PROFILE_24_FIELD_MANIFEST, type ProfileGroupKey } from './profileTypes';
+import { resolveTaxpayerProfile } from './profileUtils';
 import { ProfileSummaryCard } from './components/ProfileSummaryCard';
 import { ProfileGroupCard } from './components/ProfileGroupCard';
 import { ProfileCertificateDialog } from './components/ProfileCertificateDialog';
@@ -32,18 +24,7 @@ export const ProfileView: React.FC = () => {
   const [showCertModal, setShowCertModal] = useState(false);
 
   const canReveal = isAuthenticated && !PUBLIC_PREVIEW;
-
-  const profile: TaxpayerProfile24 = {
-    ...DEFAULT_TAXPAYER_PROFILE_24,
-    taxpayerName: user.name || DEFAULT_TAXPAYER_PROFILE_24.taxpayerName,
-    tin: user.tin || DEFAULT_TAXPAYER_PROFILE_24.tin,
-    tinType: user.taxpayerType || DEFAULT_TAXPAYER_PROFILE_24.tinType,
-    registeredOn: user.registeredDate || DEFAULT_TAXPAYER_PROFILE_24.registeredOn,
-    mobileNumber: user.phone || DEFAULT_TAXPAYER_PROFILE_24.mobileNumber,
-    emailAddress: user.email || DEFAULT_TAXPAYER_PROFILE_24.emailAddress,
-    taxesCircle: user.circle || DEFAULT_TAXPAYER_PROFILE_24.taxesCircle,
-    taxesZone: user.zone || DEFAULT_TAXPAYER_PROFILE_24.taxesZone,
-  };
+  const { profile, isSampleIdentity } = resolveTaxpayerProfile(user, isAuthenticated, PUBLIC_PREVIEW);
 
   const byGroup = (group: ProfileGroupKey) =>
     PROFILE_24_FIELD_MANIFEST.filter((f) => f.group === group);
@@ -73,8 +54,8 @@ export const ProfileView: React.FC = () => {
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isBn
-                  ? 'ইউআই প্রদর্শনীর জন্য নমুনা ২৪-ক্ষেত্রের করদাতা প্রোফাইল।'
-                  : 'Sample 24-field taxpayer profile for UI preview only.'}
+                  ? 'ইউআই প্রদর্শনীর জন্য ২৪-ক্ষেত্রের করদাতা প্রোফাইল।'
+                  : '24-field taxpayer profile structured per approved specification.'}
               </p>
             </div>
           </div>
@@ -86,12 +67,12 @@ export const ProfileView: React.FC = () => {
               <Lock size={15} className="text-teal-700 shrink-0" />
               <span>
                 {isBn
-                  ? 'টিআইএন, মোবাইল এবং ইমেইল ডিফল্টভাবে গোপন রাখা হয়েছে। উন্মোচন ও কপি করতে সাইন ইন করুন।'
-                  : 'Sensitive TIN, mobile, and email fields stay masked by default. Sign in to enable eye reveal and copy.'}
+                  ? 'সংবেদনশীল ক্ষেত্রসমূহ ডিফল্টভাবে গোপন রাখা হয়েছে। উন্মোচন ও কপি করতে সাইন ইন করুন।'
+                  : 'Sensitive fields stay masked by default. Sign in to enable eye reveal and copy.'}
               </span>
             </div>
             {!PUBLIC_PREVIEW && (
-              <AppButton actionType="secondary" size="small" onClick={() => navigate('/login')}>
+              <AppButton actionType="secondary" size="small" onClick={() => navigate('/login?returnTo=/profile')}>
                 {t('signIn')}
               </AppButton>
             )}
@@ -100,6 +81,8 @@ export const ProfileView: React.FC = () => {
 
         <ProfileSummaryCard
           profile={profile}
+          summaryFields={byGroup('summary')}
+          isSampleIdentity={isSampleIdentity}
           onPrintCertificate={() => setShowCertModal(true)}
         />
 
@@ -118,15 +101,6 @@ export const ProfileView: React.FC = () => {
             titleBn="ব্যক্তিগত তথ্য"
             icon={<User size={20} />}
             fields={byGroup('personal')}
-            profile={profile}
-            canReveal={canReveal}
-            onCopySuccess={handleCopySuccess}
-          />
-          <ProfileGroupCard
-            titleEn="Account & Registration Summary"
-            titleBn="অ্যাকাউন্ট ও নিবন্ধন সারসংক্ষেপ"
-            icon={<FileCheck size={20} />}
-            fields={byGroup('summary')}
             profile={profile}
             canReveal={canReveal}
             onCopySuccess={handleCopySuccess}
@@ -157,6 +131,7 @@ export const ProfileView: React.FC = () => {
             profile={profile}
             canReveal={canReveal}
             onCopySuccess={handleCopySuccess}
+            className="lg:col-span-2"
           />
         </div>
       </div>

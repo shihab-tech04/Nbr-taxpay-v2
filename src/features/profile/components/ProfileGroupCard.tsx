@@ -44,6 +44,7 @@ export const ProfileGroupCard: React.FC<ProfileGroupCardProps> = ({
             key={field.key}
             meta={field}
             value={profile[field.key]}
+            identityKey={profile.tin}
             canReveal={canReveal}
             onCopySuccess={onCopySuccess}
           />

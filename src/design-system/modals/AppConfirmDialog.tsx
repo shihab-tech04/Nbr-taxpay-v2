@@ -15,6 +15,7 @@ export interface AppConfirmDialogProps {
   intent?: 'destructive' | 'default';
   loading?: boolean;
   disablePortal?: boolean;
+  id?: string;
 }
 
 export const AppConfirmDialog: React.FC<AppConfirmDialogProps> = ({
@@ -28,6 +29,7 @@ export const AppConfirmDialog: React.FC<AppConfirmDialogProps> = ({
   intent = 'default',
   loading = false,
   disablePortal = false,
+  id,
 }) => {
   const { t } = useTranslation();
   const isDestructive = intent === 'destructive';
@@ -38,6 +40,7 @@ export const AppConfirmDialog: React.FC<AppConfirmDialogProps> = ({
       onClose={onClose}
       maxWidth="xs"
       disablePortal={disablePortal}
+      id={id ?? 'app-confirm-dialog'}
       title={
         <div className="flex items-center gap-2">
           {isDestructive ? (

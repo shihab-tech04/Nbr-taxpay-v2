@@ -219,5 +219,26 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **GitHub Pages `.nojekyll` Artifact Fix (`.github/workflows/citizen-pages.yml`)**:
   - Added `include-hidden-files: true` to `citizen-pages-dist` `actions/upload-artifact@v4` and `test -f dist/.nojekyll` in `deploy` so `.nojekyll` is never stripped between `build` and `deploy`.
 - **Remaining Outside-Sandbox Steps**:
-  - Commit/push changes from a git-connected environment, verify `de5a04e` recovery bundle & checksums, run GitHub Actions CI (`citizen-pages.yml`), and verify live GitHub Pages deployed `version.txt` SHA and `.nojekyll` bypass.
+## Accelerated Cycle 10–11 — Profile 24-Field Parity, Table/Modal Closure, Certificate UI Foundation, & Auth/Account Journeys
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); zero SQL/RPC/Edge/Office changes; Home 2 (`routeContract.ts` & `home.test.tsx`) and previously completed foundation work preserved cleanly.
+- **Exact 24-Field Taxpayer Profile Parity (`src/features/profile/`)**:
+  - Updated `PROFILE_24_FIELD_MANIFEST` with explicit declared `source` (`'certificate' | 'tin_profile' | 'account'`), placed `taxesCircle` (`'Taxes circle'`) exclusively inside the embedded Summary bar (`tinType`, `taxesCircle`, `registeredOn`, `lastLoginAt`), moved `previousTin` (`'Previous TIN'`) into Certificate Details (6 fields), reduced Tax Jurisdiction to 4 fields (`taxesZone`, `taxesRange`, `district`, `country`), and removed the duplicated detached Account Summary card so every `data-testid="profile-field-*"` renders exactly once across the 6 groups.
+  - Corrected masking in `profileUtils.ts`: first 3 digits only for TIN & phones (`882•••••••••`, `654•••••••`, `880••••••••••`, `880••••••••` without trailing digits), domain masking for email (`ra••••@e••••.•••`), and sensitive certificate field masking (`previousTin`, `taxOfficePhone`) across Profile cards and `ProfileCertificateDialog`.
+  - Extracted `MaskedProfileValue.tsx` with synchronous identity/value/permission scope reset (clearing reveal & copy state on identity switch `A -> B`, value change, or sign-out), bilingual ARIA labels, and `resolveTaxpayerProfile` isolating `SAMPLE_TAXPAYER_PROFILE_24` from unrelated user identities.
+- **Shared Table & Modal Closure (`src/design-system/tables/`, `src/design-system/modals/`)**:
+  - Added `resolveValidPage` in `tableUtils.ts` and fixed `useTableState.ts` so filtered datasets shrinking to empty (`data.length === 0`) or leaving `page` out-of-range reset synchronously and persistently to `page: 0`.
+  - Extended `AppDrawer.tsx` (`onBack`, `isDirty`, `DirtyCloseBanner`, `disableEscapeKeyDown`/`disableBackdropClick`, mobile safe-area bottom padding) and `AppConfirmDialog.tsx` (`id` prop forwarded to `AppDialog`).
+- **Certificate UI Foundation (`F-20` / `US-19`)**:
+  - Created `src/shared/certificateUtils.ts` (`buildPaymentCertificateRecord` producing 1 combined `CERT-${transactionRef}` per completed transaction with challan/bank refs, allocations, assessment years, total, and signed-in vs walk-in lifecycle copy; `buildSamplePdfBytes` / `downloadSamplePdf` generating client-side `%PDF-1.4` preview files without fabricated official claims).
+  - Created `PaymentCertificateDialog.tsx` (`AppDialog` with `responsiveBottomSheet`, Print, Download PDF, `AppToast`) and `TaxCreditCertificatesView.tsx` (`/certificates`), keeping Tax Credit Certificates (truthful unavailable `AppStateView` pending SQL/API `F-18`) strictly separate from Transaction Payment Certificates.
+  - Enabled sample PDF download + Certificate modal inside `ReceiptModal.tsx` and wired `PaymentSuccessCard` (`AllTaxPaymentsView`, `TravelTaxView`, `GiftTaxView`), `HistoryView`, `DashboardView`, and `NavbarAccountMenu`.
+- **Authentication & Account Journeys (`src/shared/accountSession.ts`, `SessionContext.tsx`, `src/features/account/`, `FirstLoginNoticeDialog.tsx`)**:
+  - Added isolated typed directory lookup (`lookupTinIdentity`) returning masked SMS/Email choices without leaking raw contacts or merging identities, OTP simulation validation (`123456` / `111111` with inline error alert), Resend OTP cooldown/counter, Change TIN recovery, open-redirect-safe `sanitizeReturnPath` (`?returnTo=`), Walk-In taxpayer shortcut (`/all-taxes`), clean cross-account `signOutClean()`, and sequential `FirstLoginNoticeDialog` notice queue on `/dashboard`.
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`: PASSED (`0` violations across `204` TypeScript files, `192` implementation files all `<=200` lines, `192` production-reachable, `12` test files, `0` test-only, `3` CSS files).
+  - `npm run typecheck` (`tsc --noEmit`), `compile_applet` (`vite build`), `lint_applet` (`eslint .`), and `NODE_ENV=production npx vite build --base=/Nbr-taxpay-v2/`: all succeeded with `0` errors and `0` warnings.
+  - Multi-timezone `npm test` (`UTC`, `Asia/Dhaka`, `America/Los_Angeles`, `America/New_York`): `55/55` tests passing across every timezone (`0` failures).
+  - Chromium verification (`ci-interactive-browser.cjs` + `pages-smoke.cjs` + `playwright-cli` full-page screenshots of `/profile`, `/login`, `/certificates` desktop & `390px` mobile): all checks PASS with `0` console/page errors.
+- **Remaining Outside-Sandbox Steps**:
+  - Commit/push Cycle 10–11 changes from a git-connected environment, verify prior `2a6c024` backup/restore bundle, trigger `.github/workflows/citizen-pages.yml` CI run, and confirm live deployed GitHub Pages SHA and `.nojekyll` bypass.
 

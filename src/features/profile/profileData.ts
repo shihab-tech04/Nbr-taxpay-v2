@@ -1,15 +1,15 @@
 import type { TaxpayerProfile24 } from './profileTypes';
 import { INITIAL_USER } from '../../shared/mockData';
 
-export const DEFAULT_TAXPAYER_PROFILE_24: TaxpayerProfile24 = {
+export const SAMPLE_TAXPAYER_PROFILE_24: TaxpayerProfile24 = {
   // Identity
   taxpayerName: INITIAL_USER.name,
   tin: INITIAL_USER.tin,
 
-  // Summary / Account
+  // Summary
   tinType: INITIAL_USER.taxpayerType,
+  taxesCircle: INITIAL_USER.circle,
   registeredOn: INITIAL_USER.registeredDate,
-  previousTin: 'N/A',
   lastLoginAt: '2026-11-27 18:00 (Asia/Dhaka)',
 
   // Personal information
@@ -25,7 +25,6 @@ export const DEFAULT_TAXPAYER_PROFILE_24: TaxpayerProfile24 = {
   currentAddress: 'Holding 42, Road 7, Dhanmondi, Dhaka-1205',
 
   // Jurisdiction
-  taxesCircle: INITIAL_USER.circle,
   taxesZone: INITIAL_USER.zone,
   taxesRange: 'Range-04',
   district: 'Dhaka',
@@ -37,4 +36,7 @@ export const DEFAULT_TAXPAYER_PROFILE_24: TaxpayerProfile24 = {
   issuingOfficer: 'Deputy Commissioner of Taxes',
   taxOfficeAddress: 'Segunbagicha, Dhaka-1000',
   taxOfficePhone: '+880-2-9355555',
+  previousTin: '6543210987',
 };
+
+export const DEFAULT_TAXPAYER_PROFILE_24 = SAMPLE_TAXPAYER_PROFILE_24;

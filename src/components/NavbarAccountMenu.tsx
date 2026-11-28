@@ -73,6 +73,9 @@ export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
         <MenuItem onClick={() => { handleClose(); navigate('/history'); }}>
           {t('history')}
         </MenuItem>
+        <MenuItem onClick={() => { handleClose(); navigate('/certificates'); }}>
+          {bn ? 'সনদসমূহ' : 'Certificates'}
+        </MenuItem>
         <MenuItem
           onClick={() => {
             handleClose();
