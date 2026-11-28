@@ -275,6 +275,13 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **Verification Evidence (Sandbox)**:
   - `npm run arch:check`: PASSED (`0` violations across `253` TypeScript files, `237` implementation files all `<=200` lines, `16` test files, `0` cycles, `0` orphaned files).
   - `npm run typecheck`, `compile_applet`, and `lint_applet`: all succeeded (`0` errors, `0` warnings).
-  - `npm run test`: `68/68` unit & SSR tests passing (`0` failures).
-  - Headless Chromium E2E (`playwright-cli`): verified walk-in and signed-in Gift Tax Stages 1–4, drafts save/resume, `Pay Again`, Challan/Certificate attribution, correction safeguards (account isolation, derived circle, duplicate guard, reload persistence, inquiry regex), History sorting, EN/BN localization, Light/Dark themes, mobile `320px`/`390px` zero-overflow layouts, and `NODE_ENV=production` compiled GitHub Pages preview (`/Nbr-taxpay-v2/`, `PUBLIC_PREVIEW = true`) with `0` console/page errors.
+  - `npm run test`: `70/70` unit & SSR tests passing (`0` failures).
+  - Headless Chromium E2E (`playwright-cli`): verified walk-in and signed-in Gift Tax Stages 1–4, drafts save/resume, `Pay Again`, Challan/Certificate attribution, correction safeguards, History sorting, EN/BN localization, Light/Dark themes, mobile `320px`/`390px` zero-overflow layouts, and `NODE_ENV=production` compiled GitHub Pages preview (`/Nbr-taxpay-v2/`, `PUBLIC_PREVIEW = true`) with `0` console/page errors.
+
+## Cycle 20 — Beneficiary Feature Closure (`F-055` to `F-063`)
+- **Beneficiary Management & Account Isolation (`src/features/beneficiaries/`, `domainMutations.ts`, `scopedDomainStorage.ts`, `beneficiaryLogic.ts`)**:
+  - Fully verified Features **F-055** (Create, rename, select and delete owned beneficiary lists; list membership persistence across refresh and sign-out), **F-056** (All Beneficiaries view showing every owned entry without duplication with unified search/filter toolbar), **F-057** (Complete creation, review, Edit, and confirmed Delete using shared modals), **F-058** (Required valid Tag/Relationship validation before saving), **F-059** (Others relationship requiring custom text up to 80 characters with automatic clearing of stale custom values on standard relation selection), **F-060** (Searchable relationship options: Father, Mother, Siblings, Son, Daughter, Spouse, Friends, Clients, Others), **F-061** (Unified name, TIN, tag, and list search/filters, pagination, bulk selection, unified desktop table, and responsive mobile cards), **F-062** (Excel import hidden), and **F-063** (Strict per-account ownership isolating User1, User2, and walk-in session state with zero cross-account leakage across switches and refreshes).
+  - Updated requirements register (`docs/requirements/features.csv`) status for `F-055` through `F-063` from `PARTIAL_UI_ONLY` to `VERIFIED_UI_PROTOTYPE`.
+  - Verified zero compilation errors (`compile_applet`), zero linter errors (`lint_applet`), and all `70/70` unit & SSR tests passing.
+
 
