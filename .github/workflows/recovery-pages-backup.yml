@@ -1,0 +1,39 @@
+name: Independent recovery export
+on:
+  push:
+    branches: [recovery/pages-6d39761]
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Export and independently restore exact pre-repair source history
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline=6d39761aad6f13e3070cbbb9599c5aabc89424fd
+          git cat-file -e "$baseline^{commit}"
+          git branch -f recovery-baseline "$baseline"
+          mkdir -p "$RUNNER_TEMP/backup"
+          cd "$RUNNER_TEMP/backup"
+          git -C "$GITHUB_WORKSPACE" bundle create current-main.bundle recovery-baseline
+          sha256sum current-main.bundle > SHA256SUMS
+          sha256sum -c SHA256SUMS
+          git clone --mirror current-main.bundle restored.git
+          git -C restored.git fsck --full --strict
+          test "$(git -C restored.git rev-parse refs/heads/recovery-baseline)" = "$baseline"
+          git -C restored.git show "$baseline:package.json" >/dev/null
+          printf '%s\n' "$baseline" > BASELINE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: current-main-6d39761-recovery
+          path: |
+            ${{ runner.temp }}/backup/current-main.bundle
+            ${{ runner.temp }}/backup/SHA256SUMS
+            ${{ runner.temp }}/backup/BASELINE
+          if-no-files-found: error
