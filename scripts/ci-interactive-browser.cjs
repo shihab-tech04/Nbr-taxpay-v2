@@ -129,6 +129,16 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
       await assertMobileNavbar(page, `${route}-en`);
       await page.setViewportSize({ width: 320, height: 568 });
+
+      const dialog = page.locator('[role="dialog"]');
+      if (await dialog.count() > 0 && await dialog.isVisible()) {
+        const dismissBtn = dialog.getByRole('button', { name: /Cancel|Close|বাতিল|Go to Dashboard/i }).first();
+        if (await dismissBtn.count() > 0) {
+          await dismissBtn.click();
+          await dialog.waitFor({ state: 'hidden', timeout: 3000 });
+        }
+      }
+
       await page.locator('header button[title*="Language"]').click();
       await assertMobileNavbar(page, `${route}-bn`);
       await page.locator('header button[title*="Language"]').click();
