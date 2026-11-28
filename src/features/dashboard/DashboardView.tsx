@@ -150,7 +150,7 @@ export const DashboardView: React.FC = () => {
             </div>
             <AppButton
               actionType="secondary"
-              surface="minimal"
+              surface="ghost"
               size="small"
               endIcon={<ArrowRight size={14} />}
               onClick={() => navigate('/history')}
