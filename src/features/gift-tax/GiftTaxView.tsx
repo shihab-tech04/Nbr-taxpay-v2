@@ -72,6 +72,14 @@ export const GiftTaxView: React.FC = () => {
 
   const handlePay = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
+    const valuationMessages = {
+      amountMin: t('amountMinError', { amount: '1,000' }),
+      amountInvalid: t('amountInvalidError'),
+      requiredDescription: t('requiredGiftDescriptionError'),
+      requiredGiftDate: t('dateRequiredError'),
+      invalidGiftDate: t('giftDateInvalidError'),
+      futureGiftDate: t('giftDateFutureError'),
+    };
     const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
     if (Object.keys(nextErrors).length > 0 || !isValidYmd(giftDate)) {
       setErrors(
