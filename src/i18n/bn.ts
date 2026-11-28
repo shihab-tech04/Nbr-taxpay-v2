@@ -3,6 +3,7 @@ export const bnTranslation = {
   tagline: 'বাংলাদেশী নাগরিকদের জন্য স্মার্ট, দ্রুত ও নিরাপদ জাতীয় কর প্রদান পোর্টাল',
   home: 'হোম',
   dashboard: 'ড্যাশবোর্ড',
+  profile: 'করদাতার প্রোফাইল',
   allTaxes: 'সকল কর প্রদান',
   travelTax: 'ভ্রমণ কর (Travel Tax)',
   giftTax: 'দানকর (Gift Tax)',

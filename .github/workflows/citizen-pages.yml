@@ -99,6 +99,7 @@ jobs:
         with:
           name: citizen-pages-dist
           path: dist/
+          include-hidden-files: true
           if-no-files-found: error
   deploy:
     if: ${{ success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.build.result == 'success' && needs.recovery.result == 'success' }}
@@ -119,6 +120,7 @@ jobs:
       - name: Verify downloaded Pages artifact matches commit and production HTML
         run: |
           set -euo pipefail
+          test -f dist/.nojekyll
           test -f dist/index.html
           test "$(cat dist/version.txt)" = "$GITHUB_SHA"
           grep -q '/Nbr-taxpay-v2/assets/' dist/index.html

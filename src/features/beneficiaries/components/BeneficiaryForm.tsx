@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppButton } from '../../../design-system/buttons';
 import { AppNumberField, AppSelectField, AppTextField } from '../../../design-system/forms';
 import type { Beneficiary } from '../../../types/tax';
 
 type RelationshipType = Beneficiary['relationship'];
 
 interface BeneficiaryFormProps {
+  formId?: string;
   name: string;
   tin: string;
   relationship: RelationshipType;
@@ -16,11 +16,11 @@ interface BeneficiaryFormProps {
   onChangeTin: (val: string) => void;
   onChangeRelationship: (val: RelationshipType) => void;
   onChangePhone: (val: string) => void;
-  onCancel: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
 export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
+  formId = 'beneficiary-form',
   name,
   tin,
   relationship,
@@ -30,19 +30,13 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
   onChangeTin,
   onChangeRelationship,
   onChangePhone,
-  onCancel,
   onSubmit,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4"
-    >
-      <h3 className="text-base font-bold">{t('addBeneficiary')}</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <AppTextField
           label={t('name')}
           value={name}
@@ -95,14 +89,6 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
           }}
           required
         />
-      </div>
-      <div className="flex justify-end gap-3 pt-2">
-        <AppButton type="button" actionType="secondary" size="small" onClick={onCancel}>
-          {t('cancel')}
-        </AppButton>
-        <AppButton type="submit" actionType="primary" size="small" previewRestricted>
-          {t('save')}
-        </AppButton>
       </div>
     </form>
   );

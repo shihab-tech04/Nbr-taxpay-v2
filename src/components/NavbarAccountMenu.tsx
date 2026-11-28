@@ -64,6 +64,9 @@ export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
         <MenuItem onClick={() => { handleClose(); navigate('/dashboard'); }}>
           {t('dashboard')}
         </MenuItem>
+        <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
+          {t('profile') || 'Profile'}
+        </MenuItem>
         <MenuItem onClick={() => { handleClose(); navigate('/beneficiaries'); }}>
           {t('beneficiaries')}
         </MenuItem>

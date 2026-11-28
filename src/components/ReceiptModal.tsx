@@ -1,12 +1,11 @@
+import React from 'react';
 import { PaymentTransaction, PaymentLineItem } from '../types/tax';
 import { useTranslation } from 'react-i18next';
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-} from '@mui/material';
-import { CheckCircle, Download, Printer, X, ShieldCheck } from 'lucide-react';
-import { AppButton, AppIconButton } from '../design-system/buttons';
+import { CheckCircle, Download, Printer, ShieldCheck } from 'lucide-react';
+import { AppButton } from '../design-system/buttons';
 import { isValidYmd } from '../design-system/dates/dateUtils';
-import { AppTable } from '../design-system/tables';
+import { AppTable, useTableState, type AppColumn } from '../design-system/tables';
+import { AppDialog } from '../design-system/modals';
 
 interface ReceiptModalProps {
   open: boolean;
@@ -21,57 +20,113 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   transaction,
   disablePortal = false,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n?.language === 'bn';
+
+  const columns: AppColumn<PaymentLineItem>[] = [
+    {
+      key: 'headNameEn',
+      header: isBn ? 'কর খাতের কোড ও নাম' : 'Tax Head Code & Name',
+      sortable: true,
+      accessor: (item) => (isBn ? item.headNameBn : item.headNameEn),
+      cell: (item) => (
+        <div>
+          <div className="font-medium">{isBn ? item.headNameBn : item.headNameEn}</div>
+          <div className="text-[11px] text-slate-500 font-mono">
+            {isBn ? 'কোড' : 'Code'}: {item.headCode} {item.remarks ? `· ${item.remarks}` : ''}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'assessmentYear',
+      header: t('assessmentYear'),
+      sortable: true,
+      accessor: (item) => item.assessmentYear,
+      cell: (item) => <span className="font-mono">{item.assessmentYear}</span>,
+    },
+    {
+      key: 'amount',
+      header: t('amountBdt'),
+      align: 'right',
+      sortable: true,
+      accessor: (item) => item.amount,
+      cell: (item) => <span className="font-semibold font-mono">৳ {item.amount.toLocaleString()}</span>,
+    },
+  ];
+
+  const { sortState, handleSort, sortedData } = useTableState(transaction?.items ?? [], {
+    columns,
+    initialSort: { columnKey: 'headNameEn', direction: 'asc' },
+  });
 
   if (!transaction) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth disablePortal={disablePortal}>
-      <DialogTitle className="flex items-center justify-between bg-teal-50 dark:bg-teal-950/45 px-6 py-4">
+    <AppDialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      responsiveBottomSheet
+      disablePortal={disablePortal}
+      id="receipt-modal"
+      title={
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 flex items-center justify-center shrink-0">
             <CheckCircle size={24} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Sample challan — not valid for payment</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Ref: {transaction.transactionRef}</p>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              {isBn ? 'নমুনা চালান — পরিশোধের জন্য বৈধ নয়' : 'Sample challan — not valid for payment'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+              Ref: {transaction.transactionRef}
+            </p>
           </div>
         </div>
-        <AppIconButton aria-label="Close receipt" onClick={onClose} size="small">
-          <X size={20} />
-        </AppIconButton>
-      </DialogTitle>
-
-      <DialogContent className="p-6 space-y-6">
-        {/* Header Metadata */}
+      }
+      closeLabel={isBn ? 'রসিদ বন্ধ করুন' : 'Close receipt'}
+      actions={
+        <div className="flex items-center justify-between w-full">
+          <AppButton actionType="secondary" size="small" onClick={onClose}>
+            {t('back')}
+          </AppButton>
+          <div className="flex gap-2">
+            <AppButton actionType="secondary" size="small" onClick={() => window.print()} startIcon={<Printer size={16} />}>
+              {t('printChallan')}
+            </AppButton>
+            <AppButton actionType="primary" size="small" disabled startIcon={<Download size={16} />}>
+              {t('downloadChallan')}
+            </AppButton>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs">
           <div>
-            <span className="text-slate-500 block">Challan Number</span>
+            <span className="text-slate-500 block">{t('challanNumberLabel')}</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.challanNumber}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block">Bank Reference</span>
+            <span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.bankRef}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block">Payment Date</span>
+            <span className="text-slate-500 block">{isBn ? 'পরিশোধের তারিখ' : 'Payment Date'}</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm">{new Date(transaction.createdAt).toLocaleString()}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block">Taxpayer TIN</span>
+            <span className="text-slate-500 block">{t('taxpayerTin')}</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.taxpayerTin}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block">Taxpayer Name</span>
+            <span className="text-slate-500 block">{t('name')}</span>
             <strong className="text-slate-900 dark:text-slate-100 text-sm">{transaction.taxpayerName}</strong>
           </div>
           <div>
-            <span className="text-slate-500 block">Payment Channel</span>
-            <strong className="text-slate-900 dark:text-slate-100 text-sm font-semibold text-teal-700">{transaction.paymentChannel}</strong>
+            <span className="text-slate-500 block">{isBn ? 'পেমেন্ট মাধ্যম' : 'Payment Channel'}</span>
+            <strong className="text-sm font-semibold text-teal-700 dark:text-teal-400">{transaction.paymentChannel}</strong>
           </div>
           {transaction.giftDate && isValidYmd(transaction.giftDate) && (
             <div data-testid="receipt-gift-date">
@@ -83,66 +138,42 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         {transaction.beneficiaryTin && (
           <div className="p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-200 dark:border-teal-800 text-xs">
-            <span className="font-semibold text-teal-900 dark:text-teal-200">Filed On Behalf Of Beneficiary: </span>
-            <span className="text-slate-700 dark:text-slate-300">{transaction.beneficiaryName} (TIN: {transaction.beneficiaryTin})</span>
+            <span className="font-semibold text-teal-900 dark:text-teal-200">
+              {isBn ? 'প্রাপকের পক্ষে দাখিলকৃত: ' : 'Filed On Behalf Of Beneficiary: '}
+            </span>
+            <span className="text-slate-700 dark:text-slate-300">
+              {transaction.beneficiaryName} (TIN: {transaction.beneficiaryTin})
+            </span>
           </div>
         )}
 
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Tax Head Allocations</h4>
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+              {isBn ? 'কর খাত বিভাজন' : 'Tax Head Allocations'}
+            </h4>
             <span className="text-xs font-bold text-teal-700 dark:text-teal-400 font-mono">
-              Sample Total: ৳ {transaction.totalAmount.toLocaleString()}
+              {isBn ? 'নমুনা মোট' : 'Sample Total'}: ৳ {transaction.totalAmount.toLocaleString()}
             </span>
           </div>
           <AppTable<PaymentLineItem>
-            columns={[
-              {
-                key: 'headNameEn',
-                header: 'Tax Head Code & Name',
-                cell: (item) => (
-                  <div>
-                    <div className="font-medium">{item.headNameEn}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">Code: {item.headCode} {item.remarks ? `· ${item.remarks}` : ''}</div>
-                  </div>
-                ),
-              },
-              {
-                key: 'assessmentYear',
-                header: 'Assessment Year',
-                cell: (item) => <span className="font-mono">{item.assessmentYear}</span>,
-              },
-              {
-                key: 'amount',
-                header: 'Amount (BDT)',
-                align: 'right',
-                cell: (item) => <span className="font-semibold font-mono">৳ {item.amount.toLocaleString()}</span>,
-              },
-            ]}
-            data={transaction.items}
+            columns={columns}
+            data={sortedData}
             keyExtractor={(_, index) => String(index)}
+            sortState={sortState}
+            onSort={handleSort}
           />
         </div>
 
         <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">
           <ShieldCheck size={20} className="shrink-0 text-emerald-600" />
-          <span>Illustrative receipt only. No payment or official challan has been issued.</span>
+          <span>
+            {isBn
+              ? 'এটি কেবল একটি নমুনা রসিদ। কোনো পেমেন্ট বা সরকারি চালান ইস্যু করা হয়নি।'
+              : 'Illustrative receipt only. No payment or official challan has been issued.'}
+          </span>
         </div>
-      </DialogContent>
-
-      <DialogActions className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 justify-between">
-        <AppButton actionType="secondary" size="small" onClick={onClose}>
-          {t('back')}
-        </AppButton>
-        <div className="flex gap-2">
-          <AppButton actionType="secondary" size="small" onClick={handlePrint} startIcon={<Printer size={16} />}>
-            {t('printChallan')}
-          </AppButton>
-          <AppButton actionType="primary" size="small" disabled startIcon={<Download size={16} />}>
-            {t('downloadChallan')}
-          </AppButton>
-        </div>
-      </DialogActions>
-    </Dialog>
+      </div>
+    </AppDialog>
   );
 };

@@ -23,6 +23,7 @@ import { HistoryView } from './features/history/HistoryView';
 import { DraftsView } from './features/drafts/DraftsView';
 import { CorrectionsView } from './features/corrections/CorrectionsView';
 import { SupportView } from './features/support/SupportView';
+import { ProfileView } from './features/profile';
 import './i18n/i18n';
 
 const Router = import.meta.env.BASE_URL === '/' ? BrowserRouter : HashRouter;
@@ -61,6 +62,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={previewView(<LoginView />)} />
           <Route path="/dashboard" element={previewView(<DashboardView />)} />
+          <Route path="/profile" element={previewView(<ProfileView />)} />
           <Route path="/all-taxes" element={previewView(<AllTaxPaymentsView />)} />
           <Route path="/travel-tax" element={previewView(<TravelTaxView />)} />
           <Route path="/gift-tax" element={previewView(<GiftTaxView />)} />

@@ -1,44 +1,57 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../shared/AppContext';
 import { FileText, Play, Trash2 } from 'lucide-react';
+import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { AppButton, AppIconButton } from '../../design-system/buttons';
-import { AppTable, type AppColumn } from '../../design-system/tables';
+import { AppConfirmDialog } from '../../design-system/modals';
+import { AppToast } from '../../design-system/feedback';
+import { AppTable, useTableState, type AppColumn } from '../../design-system/tables';
 import type { PaymentDraft } from '../../types/tax';
 
 export const DraftsView: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const { drafts, deleteDraft } = useApp();
+  const [deleteTarget, setDeleteTarget] = useState<PaymentDraft | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const columns: AppColumn<PaymentDraft>[] = [
     {
       key: 'title',
-      header: 'Draft Title & Category',
+      header: isBn ? 'খসড়ার শিরোনাম ও ধরন' : 'Draft Title & Category',
       sortable: true,
+      accessor: (d) => d.title,
       cell: (d) => (
         <div>
           <div className="font-bold text-slate-900 dark:text-white">{d.title}</div>
-          <div className="text-[11px] text-teal-700 capitalize">{d.category.replace(/_/g, ' ')}</div>
+          <div className="text-[11px] text-teal-700 dark:text-teal-400 capitalize">{d.category.replace(/_/g, ' ')}</div>
         </div>
       ),
     },
     {
       key: 'items',
-      header: 'Configured Items',
-      cell: (d) => <span className="font-mono text-slate-600 dark:text-slate-300">{d.items.length} head(s)</span>,
+      header: isBn ? 'নির্বাচিত খাত' : 'Configured Items',
+      sortable: true,
+      accessor: (d) => d.items.length,
+      cell: (d) => (
+        <span className="font-mono text-slate-600 dark:text-slate-300">
+          {d.items.length} {isBn ? 'টি খাত' : 'head(s)'}
+        </span>
+      ),
     },
     {
       key: 'updatedAt',
-      header: 'Last Updated',
+      header: isBn ? 'সর্বশেষ হালনাগাদ' : 'Last Updated',
       sortable: true,
+      accessor: (d) => d.updatedAt,
       cell: (d) => <span className="font-mono text-slate-600 dark:text-slate-300">{d.updatedAt}</span>,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: t('actions'),
       align: 'right',
       cell: (d) => (
         <div className="flex items-center justify-end gap-2">
@@ -50,16 +63,16 @@ export const DraftsView: React.FC = () => {
             onClick={() => navigate('/all-taxes')}
             sx={{ borderRadius: '8px', px: 2 }}
           >
-            Resume
+            {isBn ? 'পুনরায় শুরু' : 'Resume'}
           </AppButton>
           <AppIconButton
             intent="destructive"
             size="small"
             previewRestricted
-            aria-label={`Delete draft ${d.title}`}
+            aria-label={isBn ? `${d.title} খসড়া মুছুন` : `Delete draft ${d.title}`}
             onClick={() => {
               if (!isRestrictedOperationAllowed('draft_write')) return;
-              deleteDraft(d.id);
+              setDeleteTarget(d);
             }}
           >
             <Trash2 size={16} />
@@ -69,6 +82,20 @@ export const DraftsView: React.FC = () => {
     },
   ];
 
+  const {
+    sortState,
+    handleSort,
+    pagination,
+    handlePageChange,
+    handleRowsPerPageChange,
+    pagedData,
+    totalRows,
+  } = useTableState(drafts, {
+    columns,
+    initialSort: { columnKey: 'updatedAt', direction: 'desc' },
+    initialRowsPerPage: 5,
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -76,16 +103,46 @@ export const DraftsView: React.FC = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <FileText className="text-teal-700" size={28} /> {t('drafts')}
           </h1>
-          <p className="text-xs text-slate-500">Resume saved tax filing drafts and complete payments.</p>
+          <p className="text-xs text-slate-500">
+            {isBn
+              ? 'সংরক্ষিত কর প্রদানের খসড়া পুনরায় শুরু করুন এবং সম্পন্ন করুন।'
+              : 'Resume saved tax filing drafts and complete payments.'}
+          </p>
         </div>
 
         <AppTable
           columns={columns}
-          data={drafts}
+          data={pagedData}
           keyExtractor={(d) => d.id}
-          emptyMessage="No saved payment drafts found."
+          sortState={sortState}
+          onSort={handleSort}
+          pagination={pagination}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          totalRows={totalRows}
+          emptyMessage={isBn ? 'কোনো সংরক্ষিত খসড়া পাওয়া যায়নি।' : 'No saved payment drafts found.'}
         />
       </div>
+
+      <AppConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        intent="destructive"
+        title={isBn ? 'খসড়া মুছে ফেলবেন?' : 'Delete Draft?'}
+        message={
+          isBn
+            ? `আপনি কি নিশ্চিতভাবে "${deleteTarget?.title ?? ''}" খসড়াটি মুছে ফেলতে চান?`
+            : `Delete saved draft "${deleteTarget?.title ?? ''}"? This cannot be undone.`
+        }
+        confirmLabel={t('delete')}
+        onConfirm={() => {
+          if (!deleteTarget || !isRestrictedOperationAllowed('draft_write')) return;
+          deleteDraft(deleteTarget.id);
+          setToastMsg(isBn ? 'খসড়া মুছে ফেলা হয়েছে' : 'Draft deleted');
+        }}
+      />
+
+      <AppToast open={Boolean(toastMsg)} onClose={() => setToastMsg(null)} message={toastMsg} severity="success" />
     </div>
   );
 };

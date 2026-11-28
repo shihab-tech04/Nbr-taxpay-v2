@@ -12,10 +12,11 @@ import {
   type DateRangeFilterValue,
 } from '../../design-system/forms';
 import { AppButton } from '../../design-system/buttons';
-import { AppTable, type AppColumn } from '../../design-system/tables';
+import { AppTable, useTableState, type AppColumn } from '../../design-system/tables';
 
 export const HistoryView: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const { transactions } = useApp();
 
@@ -40,8 +41,9 @@ export const HistoryView: React.FC = () => {
   const columns: AppColumn<PaymentTransaction>[] = [
     {
       key: 'transactionRef',
-      header: 'Transaction & Challan',
+      header: isBn ? 'লেনদেন ও চালান' : 'Transaction & Challan',
       sortable: true,
+      accessor: (tx) => tx.transactionRef,
       cell: (tx) => (
         <div>
           <div className="font-bold font-mono text-slate-900 dark:text-white">{tx.transactionRef}</div>
@@ -51,32 +53,36 @@ export const HistoryView: React.FC = () => {
     },
     {
       key: 'category',
-      header: 'Category',
+      header: isBn ? 'বিভাগ' : 'Category',
       sortable: true,
+      accessor: (tx) => tx.category,
       cell: (tx) => <span className="font-medium capitalize">{tx.category.replace(/_/g, ' ')}</span>,
     },
     {
       key: 'paymentChannel',
-      header: 'Channel',
+      header: isBn ? 'মাধ্যম' : 'Channel',
       sortable: true,
+      accessor: (tx) => tx.paymentChannel,
       cell: (tx) => <span className="font-semibold">{tx.paymentChannel}</span>,
     },
     {
       key: 'totalAmount',
-      header: 'Amount',
+      header: t('amountBdt'),
       align: 'right',
       sortable: true,
-      cell: (tx) => <span className="font-mono font-bold text-teal-700">৳ {tx.totalAmount.toLocaleString()}</span>,
+      accessor: (tx) => tx.totalAmount,
+      cell: (tx) => <span className="font-mono font-bold text-teal-700 dark:text-teal-400">৳ {tx.totalAmount.toLocaleString()}</span>,
     },
     {
       key: 'createdAt',
-      header: 'Date',
+      header: isBn ? 'তারিখ' : 'Date',
       sortable: true,
+      accessor: (tx) => tx.createdAt,
       cell: (tx) => <span className="font-mono">{new Date(tx.createdAt).toLocaleDateString()}</span>,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: t('actions'),
       align: 'right',
       cell: (tx) => (
         <div className="inline-flex items-center justify-end gap-2">
@@ -85,9 +91,16 @@ export const HistoryView: React.FC = () => {
             size="small"
             startIcon={<Eye size={14} />}
             onClick={() => setSelectedTx(tx)}
-            sx={{ minHeight: 30, px: 1.5, py: 0.5, borderRadius: '8px', color: 'primary.main', borderColor: 'divider' }}
+            sx={(theme) => ({
+              minHeight: 30,
+              px: 1.5,
+              py: 0.5,
+              borderRadius: '8px',
+              color: theme.palette.mode === 'dark' ? '#5EEAD4' : 'primary.main',
+              borderColor: 'divider',
+            })}
           >
-            Receipt
+            {isBn ? 'রসিদ' : 'Receipt'}
           </AppButton>
           <AppButton
             actionType="secondary"
@@ -97,12 +110,26 @@ export const HistoryView: React.FC = () => {
             onClick={handlePayAgain}
             sx={{ minHeight: 30, px: 1.5, py: 0.5, borderRadius: '8px' }}
           >
-            Pay Again
+            {t('payAgain')}
           </AppButton>
         </div>
       ),
     },
   ];
+
+  const {
+    sortState,
+    handleSort,
+    pagination,
+    handlePageChange,
+    handleRowsPerPageChange,
+    pagedData,
+    totalRows,
+  } = useTableState(filtered, {
+    columns,
+    initialSort: { columnKey: 'createdAt', direction: 'desc' },
+    initialRowsPerPage: 10,
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
@@ -112,7 +139,9 @@ export const HistoryView: React.FC = () => {
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <FileText className="text-teal-700" size={28} /> {t('history')}
             </h1>
-            <p className="text-xs text-slate-500">Sample payment records for UI review only.</p>
+            <p className="text-xs text-slate-500">
+              {isBn ? 'ইউআই পর্যালোচনার জন্য নমুনা পেমেন্ট রেকর্ড।' : 'Sample payment records for UI review only.'}
+            </p>
           </div>
           <div className="w-full md:w-80">
             <AppSearchField
@@ -133,9 +162,15 @@ export const HistoryView: React.FC = () => {
 
         <AppTable
           columns={columns}
-          data={filtered}
+          data={pagedData}
           keyExtractor={(tx) => tx.id}
-          emptyMessage="No payment records found."
+          sortState={sortState}
+          onSort={handleSort}
+          pagination={pagination}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          totalRows={totalRows}
+          emptyMessage={isBn ? 'কোনো পেমেন্ট রেকর্ড পাওয়া যায়নি।' : 'No payment records found.'}
         />
       </div>
 

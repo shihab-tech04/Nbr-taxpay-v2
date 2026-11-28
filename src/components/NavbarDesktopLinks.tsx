@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAppNavigation } from '../design-system/navigation';
 
 interface NavbarDesktopLinksProps {
-  currentPath: string;
+  currentPath?: string;
   isAuthenticated: boolean;
 }
 
@@ -12,13 +13,17 @@ export const NavbarDesktopLinks: React.FC<NavbarDesktopLinksProps> = ({
   isAuthenticated,
 }) => {
   const { t } = useTranslation();
+  const { currentPath: routerPath, isActive } = useAppNavigation();
+  const resolvedPath = currentPath ?? routerPath;
 
-  const linkClass = (path: string) =>
-    `transition-colors whitespace-nowrap shrink-0 pb-1 border-b-2 ${
-      currentPath === path
+  const linkClass = (path: string) => {
+    const active = currentPath !== undefined ? resolvedPath === path : isActive(path, true);
+    return `transition-colors whitespace-nowrap shrink-0 pb-1 border-b-2 ${
+      active
         ? 'text-teal-700 dark:text-teal-400 border-teal-700'
         : 'text-slate-600 dark:text-slate-300 border-transparent hover:text-slate-900 dark:hover:text-white'
     }`;
+  };
 
   return (
     <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
@@ -35,9 +40,14 @@ export const NavbarDesktopLinks: React.FC<NavbarDesktopLinksProps> = ({
         {t('giftTax')}
       </Link>
       {isAuthenticated && (
-        <Link to="/dashboard" className={linkClass('/dashboard')}>
-          {t('dashboard')}
-        </Link>
+        <>
+          <Link to="/dashboard" className={linkClass('/dashboard')}>
+            {t('dashboard')}
+          </Link>
+          <Link to="/profile" className={linkClass('/profile')}>
+            {t('profile')}
+          </Link>
+        </>
       )}
     </nav>
   );

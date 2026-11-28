@@ -1,15 +1,16 @@
-import { useState, useMemo, useCallback } from 'react';
-import type { TableSortState, TablePaginationState } from './tableTypes';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import type { AppColumn, TableSortState, TablePaginationState } from './tableTypes';
 import { sortTableData, paginateTableData } from './tableUtils';
 
-export interface UseTableStateOptions {
+export interface UseTableStateOptions<T> {
   initialSort?: TableSortState<string>;
   initialRowsPerPage?: number;
+  columns?: readonly AppColumn<T>[];
 }
 
 export function useTableState<T>(
   data: readonly T[],
-  options?: UseTableStateOptions
+  options?: UseTableStateOptions<T>
 ) {
   const [sortState, setSortState] = useState<TableSortState<string> | null>(
     options?.initialSort ?? null
@@ -18,6 +19,15 @@ export function useTableState<T>(
     page: 0,
     rowsPerPage: options?.initialRowsPerPage ?? 10,
   });
+
+  const columns = options?.columns;
+
+  // Auto-reset page if current page is beyond data range
+  useEffect(() => {
+    if (data.length > 0 && pagination.page * pagination.rowsPerPage >= data.length) {
+      setPagination((prev) => ({ ...prev, page: 0 }));
+    }
+  }, [data.length, pagination.page, pagination.rowsPerPage]);
 
   const handleSort = useCallback((columnKey: string) => {
     setSortState((prev) => {
@@ -46,8 +56,8 @@ export function useTableState<T>(
 
   const sortedData = useMemo(() => {
     if (!sortState) return [...data];
-    return sortTableData(data, sortState.columnKey, sortState.direction);
-  }, [data, sortState]);
+    return sortTableData(data, sortState.columnKey, sortState.direction, columns);
+  }, [data, sortState, columns]);
 
   const pagedData = useMemo(() => {
     return paginateTableData(sortedData, pagination.page, pagination.rowsPerPage);

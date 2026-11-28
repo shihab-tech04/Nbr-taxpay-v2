@@ -197,41 +197,148 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.keyboard.press('Escape');
     await page.locator('[role="dialog"]').waitFor({ state: 'hidden', timeout: 3000 });
 
-    // 5. AppTable & AppDialog regression: Beneficiaries table + AppDialog modal
+    // 5. History AppTable sorting + EN/BN pagination + Receipt modal inner table sort & focus restore
+    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
+    const amountHeaderBtn = page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]');
+    await amountHeaderBtn.click(); // asc: 12,500 first
+    assert.match(await page.locator('tbody tr').first().innerText(), /SOHO-2026-88342/);
+    await amountHeaderBtn.click(); // desc: 25,000 first (Gift Tax or sample row)
+    assert.match(await page.locator('tbody tr').first().innerText(), /৳ 25,000/);
+    await page.getByText(/1–3 of 3/).waitFor({ state: 'visible' });
+
+    await page.locator('header button[title*="Language"]').click();
+    await page.getByText(/প্রতি পৃষ্ঠায় সারি:/).waitFor({ state: 'visible' });
+    await page.locator('header button[title*="Language"]').click();
+
+    const firstReceiptBtn = page.locator('tbody tr').first().getByRole('button', { name: /Receipt/i });
+    await firstReceiptBtn.click();
+    const receiptDialog = page.locator('[role="dialog"]');
+    await receiptDialog.waitFor({ state: 'visible' });
+    assert.match(await receiptDialog.innerText(), /Tax Head Allocations/);
+    await page.keyboard.press('Escape');
+    await receiptDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await firstReceiptBtn.evaluate((el) => document.activeElement === el), true);
+
+    // 6. Beneficiaries: sort, search, dirty-close guard, focus restore, and AppConfirmDialog delete
     await page.goto(`${baseUrl}/beneficiaries`, { waitUntil: 'networkidle' });
-    const benTable = page.locator('table');
-    await benTable.waitFor({ state: 'visible' });
-    const benRows = await page.locator('tbody tr').count();
-    assert.ok(benRows >= 1, 'Beneficiaries table has rows');
-    await page.getByRole('button', { name: /Add (New )?Beneficiary|নতুন বেনিফিশিয়ারি|সুবিধাভোগী যোগ/i }).click();
+    await page.locator('table').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('tbody tr').count(), 3);
+    assert.match(await page.locator('tbody tr').first().innerText(), /GreenCorp Ltd\./);
+
+    // Sort Name & TIN desc -> Tanvir Islam first
+    await page.locator('thead th', { hasText: /Name & TIN/i }).locator('[role="button"]').click();
+    assert.match(await page.locator('tbody tr').first().innerText(), /Tanvir Islam/);
+
+    // Search filters down & restores
+    const benSearch = page.getByLabel(/Search Beneficiaries/i);
+    await benSearch.fill('Fatema');
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    assert.match(await page.locator('tbody tr').first().innerText(), /Mrs\. Fatema Begum/);
+    await page.getByRole('button', { name: /Clear search/i }).click();
+    assert.equal(await page.locator('tbody tr').count(), 3);
+
+    // Open Add modal -> unfinished edit -> Escape shows dirty guard -> Keep editing -> Close -> Discard closes & restores focus
+    const addBenBtn = page.getByRole('button', { name: /Add New Beneficiary/i });
+    await addBenBtn.click();
     const benDialog = page.locator('[role="dialog"]');
     await benDialog.waitFor({ state: 'visible' });
-    assert.match(await benDialog.innerText(), /Add (New )?Beneficiary|নতুন বেনিফিশিয়ারি|সুবিধাভোগী যোগ/i);
+    await benDialog.getByLabel(/Name/i).fill('Unsaved Person');
     await page.keyboard.press('Escape');
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Keep editing/i }).click();
+    assert.equal(await benDialog.isVisible(), true);
+    await benDialog.getByRole('button', { name: /Close dialog/i }).click();
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Discard/i }).click();
     await benDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await addBenBtn.evaluate((el) => document.activeElement === el), true);
 
-    // 6. AppTable & AppDialog regression: Corrections table + AppDialog modal
+    // Delete Tanvir Islam via AppConfirmDialog -> row count drops & toast shows
+    await page.getByRole('button', { name: 'Delete Tanvir Islam' }).click();
+    const confirmDialog = page.locator('[role="dialog"]');
+    await confirmDialog.waitFor({ state: 'visible' });
+    assert.match(await confirmDialog.innerText(), /Delete Beneficiary\?/);
+    await confirmDialog.getByRole('button', { name: /^Delete$/i }).click();
+    await confirmDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await page.locator('tbody tr').count(), 2);
+    await page.getByText('Beneficiary removed').waitFor({ state: 'visible' });
+
+    // 7. Corrections: table + dirty-close guard on CorrectionFormDialog
     await page.goto(`${baseUrl}/corrections`, { waitUntil: 'networkidle' });
-    const corrTable = page.locator('table');
-    await corrTable.waitFor({ state: 'visible' });
-    const corrRows = await page.locator('tbody tr').count();
-    assert.ok(corrRows >= 1, 'Corrections table has rows');
-    await page.getByRole('button', { name: /Apply for Correction|Submit Correction|সংশোধনের আবেদন/i }).click();
+    await page.locator('table').waitFor({ state: 'visible' });
+    assert.ok((await page.locator('tbody tr').count()) >= 1);
+    await page.getByRole('button', { name: /Apply for Correction/i }).click();
     const corrDialog = page.locator('[role="dialog"]');
     await corrDialog.waitFor({ state: 'visible' });
-    assert.match(await corrDialog.innerText(), /Apply for Correction|Submit Correction|সংশোধনের আবেদন/i);
-    await page.keyboard.press('Escape');
+    await corrDialog.getByLabel(/Challan Number/i).fill('NBR-TEST-999');
+    await corrDialog.getByRole('button', { name: /Close dialog/i }).click();
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Discard/i }).click();
     await corrDialog.waitFor({ state: 'hidden', timeout: 3000 });
 
-    // 7. AppTable regression: Drafts table
+    // 8. Drafts: table + AppConfirmDialog delete cancellation preserves row
     await page.goto(`${baseUrl}/drafts`, { waitUntil: 'networkidle' });
-    const draftsTable = page.locator('table');
-    await draftsTable.waitFor({ state: 'visible' });
-    const draftRows = await page.locator('tbody tr').count();
-    assert.ok(draftRows >= 1, 'Drafts table has rows');
+    await page.locator('table').waitFor({ state: 'visible' });
+    const initialDrafts = await page.locator('tbody tr').count();
+    assert.ok(initialDrafts >= 1);
+    await page.locator('tbody tr').first().getByRole('button', { name: /Delete draft/i }).click();
+    const draftConfirm = page.locator('[role="dialog"]');
+    await draftConfirm.waitFor({ state: 'visible' });
+    await draftConfirm.getByRole('button', { name: /Cancel/i }).click();
+    await draftConfirm.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await page.locator('tbody tr').count(), initialDrafts);
+
+    // 9. All Tax Items table: sorting + removing sorted row deletes exact item by originalIndex
+    await page.goto(`${baseUrl}/all-taxes`, { waitUntil: 'networkidle' });
+    await page.locator('main button', { hasText: /Other Tax/i }).first().click();
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    await page.getByLabel(/Tax Head/i).click();
+    await page.getByRole('option', { name: /0112/i }).click();
+    await page.getByLabel(/Amount \(BDT\)/i).fill('1000');
+    await page.getByRole('button', { name: /Add Tax Head/i }).click();
+
+    assert.equal(await page.locator('tbody tr').count(), 2);
+    // Sort by Amount asc -> 1000 (Advance Income Tax 0112, originalIndex 1) moves to visual row 0; removing it preserves 0111 (originalIndex 0)!
+    await page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]').click();
+    assert.match(await page.locator('tbody tr').first().innerText(), /Advance Income Tax/);
+    await page.getByRole('button', { name: /Remove Advance Income Tax/i }).click();
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    assert.match(await page.locator('tbody tr').first().innerText(), /Income Tax with Return/);
+
+    // 10. Taxpayer Profile (24 fields): signed-out masked default -> sign in -> eye reveal, copy toast, certificate dialog & mobile check
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    for (const key of ['taxpayerName', 'tin', 'tinType', 'registeredOn', 'mobileNumber', 'emailAddress', 'taxesCircle', 'issuingOfficer']) {
+      await page.getByTestId(`profile-field-${key}`).waitFor({ state: 'visible' });
+    }
+    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882 •••• •384/);
+    assert.equal(await page.getByRole('button', { name: /Reveal TIN/i }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: /Copy TIN/i }).isDisabled(), true);
+
+    await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /Continue with OTP/i }).click();
+    await page.getByRole('button', { name: /Verify & Sign In/i }).click();
+    await page.waitForURL('**/dashboard');
+    await page.getByRole('button', { name: /Taxpayer Profile/i }).click();
+    await page.waitForURL('**/profile');
+
+    await page.getByRole('button', { name: /Reveal TIN/i }).click();
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882349102384/);
+    await page.getByRole('button', { name: /Copy TIN/i }).click();
+    await page.getByText(/Copied TIN to clipboard/i).waitFor({ state: 'visible' });
+
+    const certBtn = page.getByRole('button', { name: /View Sample Certificate/i });
+    await certBtn.click();
+    const certDialog = page.locator('[role="dialog"]');
+    await certDialog.waitFor({ state: 'visible' });
+    assert.match(await certDialog.innerText(), /Sample e-TIN Certificate Preview/);
+    await page.keyboard.press('Escape');
+    await certDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await certBtn.evaluate((el) => document.activeElement === el), true);
+    await assertMobileNavbar(page, 'profile-en');
 
     assert.deepEqual(errors, []);
-    return 'CI interactive browser checks (TIN A->B->A, masking, caret, suggestions, Autocomplete clear, Date bounds, History, Gift Tax, Navbar 320/390px, AppTable & AppDialog) PASS';
+    return 'CI interactive browser checks (TIN, Autocomplete, Dates, History sort/BN pagination, Beneficiaries search/sort/dirty-guard/confirm-delete, AllTaxItems sort-remove, Corrections, Drafts, 24-field Profile & Navbar 320/390px) PASS';
   } finally {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);

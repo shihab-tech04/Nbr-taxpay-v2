@@ -204,3 +204,20 @@ All citizen features, design tokens, bilingual translations, and production-grad
   - `compile_applet`: succeeded.
   - Multi-timezone `npm test`: `39/39` tests passing across `UTC`, `Asia/Dhaka`, `America/Los_Angeles`, and `America/New_York`.
 
+## Accelerated Cycle 09–10 — Complete AppTable, Modal System, Navigation/Feedback, 24-Field Profile, & Pages Artifact Fix
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); zero SQL/RPC/Edge/Office changes; all previous Home 2, button/form/selection, TIN, date, and mobile Navbar work preserved.
+- **Unified `AppTable` & Domain Adoption (`src/design-system/tables/`, all 7 tables)**:
+  - Completed `useTableState` typed sorting (numeric, text, date) + pagination + auto page reset across `HistoryView`, `BeneficiariesTable`, `DraftsView`, `CorrectionsView`, `RecentPaymentsTable` (Dashboard), `AllTaxItemsTable` (indexed `{ item, originalIndex }` wrapper so sorted deletions target the exact array index), and `ReceiptModal` (`Tax Head Allocations`).
+  - Added EN/BN localized headers, pagination labels (`প্রতি পৃষ্ঠায় সারি:`), empty/loading (`AppSkeleton`)/error/retry (`AppStateView`) states, dark-mode contrast fixes, and mobile horizontal scroll.
+- **Unified Modal System (`src/design-system/modals/`)**:
+  - Completed `AppDialog`, `AppDrawer`, `AppBottomSheet`, and `AppConfirmDialog` with unique accessible IDs, focus restoration (`useModalFocusRestore`), controlled `Escape` handling, `onBack`, in-UI `DirtyCloseBanner` (`useDirtyCloseGuard` replacing `window.confirm`), `safe-area-inset-bottom`, and `responsiveBottomSheet` mobile delegation (`<640px`).
+  - Migrated `ReceiptModal` (`responsiveBottomSheet` + focus restore), `BeneficiariesView`/`BeneficiaryForm`, `CorrectionsView`/`CorrectionFormDialog`, `DraftsView` (confirm delete), and `SupportView`/`SupportTicketForm` to shared modals, confirmation dialogs, and `AppToast`.
+- **Navigation & Feedback Foundations (`src/design-system/navigation/`, `src/design-system/feedback/`)**:
+  - Added `useAppNavigation` (integrated in `NavbarDesktopLinks` with `/profile` active route and `ProfileView` Back navigation), `AppSkeleton`, `AppStateView`, and `AppToast`.
+- **24-Field Taxpayer Profile (`src/features/profile/`)**:
+  - Implemented `PROFILE_24_FIELD_MANIFEST` (24 exact fields across 6 groups) with embedded summary row (`tinType`, `taxesCircle`, `registeredOn`, `lastLoginAt`), explicit `Sample taxpayer` badge (no false verified badge), default masking (`882 •••• •384`), session-authorized Eye Reveal (`allowRevealTin`), profile-only Copy controls + `AppToast`, Sample e-TIN Certificate preview (`AppDialog`), and mobile `break-words` layout without truncation.
+- **GitHub Pages `.nojekyll` Artifact Fix (`.github/workflows/citizen-pages.yml`)**:
+  - Added `include-hidden-files: true` to `citizen-pages-dist` `actions/upload-artifact@v4` and `test -f dist/.nojekyll` in `deploy` so `.nojekyll` is never stripped between `build` and `deploy`.
+- **Remaining Outside-Sandbox Steps**:
+  - Commit/push changes from a git-connected environment, verify `de5a04e` recovery bundle & checksums, run GitHub Actions CI (`citizen-pages.yml`), and verify live GitHub Pages deployed `version.txt` SHA and `.nojekyll` bypass.
+

@@ -3,6 +3,7 @@ export const enTranslation = {
   tagline: 'Smart, Fast & Secure National Tax Portal for Bangladeshi Citizens',
   home: 'Home',
   dashboard: 'Dashboard',
+  profile: 'Taxpayer Profile',
   allTaxes: 'All Tax Payments',
   travelTax: 'Travel Tax',
   giftTax: 'Gift Tax (দানকর)',

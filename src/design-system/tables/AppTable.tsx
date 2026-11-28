@@ -9,10 +9,9 @@ import {
   TableSortLabel,
   TablePagination,
   Paper,
-  CircularProgress,
-  Typography,
 } from '@mui/material';
-import { AppButton } from '../buttons';
+import { useTranslation } from 'react-i18next';
+import { AppSkeleton, AppStateView } from '../feedback';
 import type { AppColumn, TablePaginationState, TableSortState } from './tableTypes';
 
 export interface AppTableProps<T> {
@@ -46,13 +45,27 @@ export function AppTable<T>({
   totalRows,
   isLoading = false,
   isError = false,
-  errorMessage = 'Failed to load records.',
-  emptyMessage = 'No records found.',
+  errorMessage,
+  emptyMessage,
   onRetry,
-  retryLabel = 'Retry',
+  retryLabel,
   className = '',
 }: AppTableProps<T>) {
+  const { i18n } = useTranslation();
+  const isBn = i18n?.language === 'bn';
+  const resolvedEmpty =
+    emptyMessage ?? (isBn ? 'কোনো তথ্য পাওয়া যায়নি।' : 'No records found.');
+  const resolvedError =
+    errorMessage ?? (isBn ? 'তথ্য লোড করতে ব্যর্থ হয়েছে।' : 'Failed to load records.');
+  const resolvedRetry =
+    retryLabel ?? (isBn ? 'আবার চেষ্টা করুন' : 'Retry');
+
   const effectiveTotal = totalRows ?? data.length;
+  const safePage = pagination
+    ? effectiveTotal > 0 && pagination.page * pagination.rowsPerPage >= effectiveTotal
+      ? Math.max(0, Math.ceil(effectiveTotal / pagination.rowsPerPage) - 1)
+      : pagination.page
+    : 0;
 
   return (
     <Paper
@@ -70,7 +83,7 @@ export function AppTable<T>({
                   <TableCell
                     key={String(col.key)}
                     align={align}
-                    className="font-semibold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider py-3.5 px-4"
+                    className="font-semibold text-slate-700 dark:text-slate-300 text-[11px] uppercase tracking-wider py-3.5 px-4 whitespace-nowrap"
                   >
                     {col.sortable && onSort ? (
                       <TableSortLabel
@@ -91,26 +104,23 @@ export function AppTable<T>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" className="py-12">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <CircularProgress size={20} className="text-teal-600" />
-                    <Typography variant="body2" className="text-slate-500">Loading data...</Typography>
-                  </div>
+                <TableCell colSpan={columns.length} className="p-4">
+                  <span className="sr-only">
+                    {isBn ? 'তথ্য লোড হচ্ছে...' : 'Loading data...'}
+                  </span>
+                  <AppSkeleton variant="table-row" count={3} />
                 </TableCell>
               </TableRow>
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" className="py-12">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Typography variant="body2" className="text-rose-600 font-medium">
-                      {errorMessage}
-                    </Typography>
-                    {onRetry && (
-                      <AppButton actionType="secondary" size="small" onClick={onRetry}>
-                        {retryLabel}
-                      </AppButton>
-                    )}
-                  </div>
+                <TableCell colSpan={columns.length} className="p-4">
+                  <AppStateView
+                    variant="error"
+                    title={resolvedError}
+                    onRetry={onRetry}
+                    retryLabel={resolvedRetry}
+                    className="my-2"
+                  />
                 </TableCell>
               </TableRow>
             ) : (
@@ -127,7 +137,11 @@ export function AppTable<T>({
                       ? String(col.accessor(row) ?? '')
                       : String((row as Record<string, unknown>)[col.key as string] ?? '');
                     return (
-                      <TableCell key={String(col.key)} align={align} className={`py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300 ${col.className ?? ''}`}>
+                      <TableCell
+                        key={String(col.key)}
+                        align={align}
+                        className={`py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300 ${col.className ?? ''}`}
+                      >
                         {cellContent}
                       </TableCell>
                     );
@@ -137,9 +151,9 @@ export function AppTable<T>({
             )}
           </TableBody>
         </Table>
-        {!isLoading && !isError && data.length === 0 && emptyMessage && (
+        {!isLoading && !isError && data.length === 0 && resolvedEmpty && (
           <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 italic">
-            {emptyMessage}
+            {resolvedEmpty}
           </div>
         )}
       </TableContainer>
@@ -148,11 +162,17 @@ export function AppTable<T>({
         <TablePagination
           component="div"
           count={effectiveTotal}
-          page={pagination.page}
+          page={safePage}
           rowsPerPage={pagination.rowsPerPage}
           onPageChange={(_, newPage) => onPageChange?.(newPage)}
           onRowsPerPageChange={(e) => onRowsPerPageChange?.(parseInt(e.target.value, 10))}
           rowsPerPageOptions={[5, 10, 25, 50]}
+          labelRowsPerPage={isBn ? 'প্রতি পৃষ্ঠায় সারি:' : 'Rows per page:'}
+          labelDisplayedRows={({ from, to, count }) =>
+            isBn
+              ? `${from}–${to} / মোট ${count !== -1 ? count : 'অধিক'}`
+              : `${from}–${to} of ${count !== -1 ? count : `more than ${to}`}`
+          }
           className="bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-xs"
         />
       )}

@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { HelpCircle, PhoneCall, Plus } from 'lucide-react';
 import { AppButton } from '../../design-system/buttons';
+import { AppDialog } from '../../design-system/modals';
+import { AppToast } from '../../design-system/feedback';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { SupportTicket } from '../../types/tax';
 import { SupportContextBanner } from './components/SupportContextBanner';
 import { SupportFaqList } from './components/SupportFaqList';
 import { SupportTicketForm } from './components/SupportTicketForm';
-import { AppDialog } from '../../design-system/modals';
 
 type SupportCategory = SupportTicket['category'];
 
@@ -28,7 +29,17 @@ export const SupportView: React.FC = () => {
   );
   const [message, setMessage] = useState('');
   const [showModal, setShowModal] = useState(() => contract === 'incident');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ subject?: string; message?: string }>({});
+
+  const isDirty = Boolean(subject.trim() || message.trim());
+
+  const resetAndClose = () => {
+    setSubject('');
+    setMessage('');
+    setErrors({});
+    setShowModal(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,23 +52,32 @@ export const SupportView: React.FC = () => {
       return;
     }
 
-    setErrors({});
     addSupportTicket({ subject: subject.trim(), category, message: message.trim() });
-    setSubject('');
-    setMessage('');
-    setShowModal(false);
+    setToastMsg(isBn ? 'সহায়তা টিকেট জমা হয়েছে' : 'Support ticket submitted');
+    resetAndClose();
   };
+
+  const modalTitle =
+    contract === 'incident'
+      ? isBn
+        ? 'সমস্যা রিপোর্ট করুন'
+        : 'Report an Issue'
+      : isBn
+      ? 'সহায়তা টিকেট তৈরি করুন'
+      : 'Create Support Ticket';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
       <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <HelpCircle className="text-teal-700" size={28} /> {t('support')}
             </h1>
             <p className="text-xs text-slate-500">
-              Get assistance, view FAQs, and contact NBR helpline support.
+              {isBn
+                ? 'সহায়তা পান, সচরাচর প্রশ্নাবলী দেখুন এবং এনবিআর হেল্পলাইনে যোগাযোগ করুন।'
+                : 'Get assistance, view FAQs, and contact NBR helpline support.'}
             </p>
           </div>
           <AppButton
@@ -72,6 +92,8 @@ export const SupportView: React.FC = () => {
               ? isBn
                 ? 'সমস্যা রিপোর্ট করুন'
                 : 'Report an Issue'
+              : isBn
+              ? 'সহায়তা টিকেট খুলুন'
               : 'Open Support Ticket'}
           </AppButton>
         </div>
@@ -82,7 +104,7 @@ export const SupportView: React.FC = () => {
           <div className="space-y-1">
             <h3 className="text-lg font-bold">NBR National Call Center Helpline</h3>
             <p className="text-xs text-teal-100">
-              Official toll-free assistance for citizens regarding tax filings, E-Challans, and payment gateway issues.
+              {t('needHelp')}
             </p>
           </div>
           <div className="px-6 py-3 bg-white text-teal-900 rounded-xl font-bold text-lg flex items-center gap-2 font-mono shadow-sm">
@@ -92,14 +114,25 @@ export const SupportView: React.FC = () => {
 
         <AppDialog
           open={showModal}
-          onClose={() => {
-            setErrors({});
-            setShowModal(false);
-          }}
-          title={contract === 'incident' ? (isBn ? 'সমস্যা রিপোর্ট করুন' : 'Report an Issue') : 'Create Support Ticket'}
+          onClose={resetAndClose}
+          title={modalTitle}
           maxWidth="md"
+          responsiveBottomSheet
+          isDirty={isDirty}
+          id="support-ticket-dialog"
+          actions={
+            <div className="flex justify-end gap-3 w-full">
+              <AppButton type="button" actionType="secondary" size="small" onClick={resetAndClose}>
+                {t('cancel')}
+              </AppButton>
+              <AppButton type="submit" form="support-ticket-form" actionType="primary" size="small" previewRestricted>
+                {t('save')}
+              </AppButton>
+            </div>
+          }
         >
           <SupportTicketForm
+            formId="support-ticket-form"
             subject={subject}
             category={category}
             message={message}
@@ -113,16 +146,14 @@ export const SupportView: React.FC = () => {
               setMessage(val);
               if (errors.message) setErrors((p) => ({ ...p, message: undefined }));
             }}
-            onCancel={() => {
-              setErrors({});
-              setShowModal(false);
-            }}
             onSubmit={handleSubmit}
           />
         </AppDialog>
 
         <SupportFaqList />
       </div>
+
+      <AppToast open={Boolean(toastMsg)} onClose={() => setToastMsg(null)} message={toastMsg} severity="success" />
     </div>
   );
 };

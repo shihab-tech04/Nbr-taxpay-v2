@@ -80,11 +80,19 @@ async function assertNoMobileNavbarOverflow(page, routeLabel) {
     await page.locator('main h1').first().waitFor({ state: 'visible' });
     assert.equal(await page.locator('main input').first().isDisabled(), true);
 
+    await page.goto(base + '#/profile', { waitUntil: 'networkidle' });
+    await page.locator('main h1').first().waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
+    assert.equal(await page.getByRole('button', { name: /Reveal TIN/i }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: /Copy TIN/i }).isDisabled(), true);
+    assert.equal(await page.getByText('PRIVATE_SENTINEL', { exact: false }).count(), 0);
+    await assertNoMobileNavbarOverflow(page, 'profile-en');
+
     await page.goto(base + '#/login', { waitUntil: 'networkidle' });
     assert.equal(await page.locator('main input').first().isDisabled(), true);
     assert.equal(await page.evaluate(() => localStorage.getItem('sohojkor_transactions')), null);
     assert.deepEqual(errors, []);
-    console.log('Compiled Pages homepage, navigation, preview-policy, mobile Navbar 320/390px, and route smoke PASS');
+    console.log('Compiled Pages homepage, navigation, preview-policy, profile 24-field guard, mobile Navbar 320/390px, and route smoke PASS');
   } finally {
     await browser.close();
   }

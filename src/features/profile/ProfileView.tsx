@@ -1,0 +1,179 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import {
+  User,
+  Shield,
+  Phone,
+  MapPin,
+  FileCheck,
+  ArrowLeft,
+  Lock,
+} from 'lucide-react';
+import { AppButton } from '../../design-system/buttons';
+import { AppToast } from '../../design-system/feedback';
+import { useAppNavigation } from '../../design-system/navigation';
+import { useSession } from '../../shared/SessionContext';
+import { PUBLIC_PREVIEW } from '../../shared/previewMode';
+import { DEFAULT_TAXPAYER_PROFILE_24 } from './profileData';
+import { PROFILE_24_FIELD_MANIFEST, type ProfileGroupKey, type TaxpayerProfile24 } from './profileTypes';
+import { ProfileSummaryCard } from './components/ProfileSummaryCard';
+import { ProfileGroupCard } from './components/ProfileGroupCard';
+import { ProfileCertificateDialog } from './components/ProfileCertificateDialog';
+
+export const ProfileView: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+  const navigate = useNavigate();
+  const { goBack } = useAppNavigation();
+  const { user, isAuthenticated } = useSession();
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showCertModal, setShowCertModal] = useState(false);
+
+  const canReveal = isAuthenticated && !PUBLIC_PREVIEW;
+
+  const profile: TaxpayerProfile24 = {
+    ...DEFAULT_TAXPAYER_PROFILE_24,
+    taxpayerName: user.name || DEFAULT_TAXPAYER_PROFILE_24.taxpayerName,
+    tin: user.tin || DEFAULT_TAXPAYER_PROFILE_24.tin,
+    tinType: user.taxpayerType || DEFAULT_TAXPAYER_PROFILE_24.tinType,
+    registeredOn: user.registeredDate || DEFAULT_TAXPAYER_PROFILE_24.registeredOn,
+    mobileNumber: user.phone || DEFAULT_TAXPAYER_PROFILE_24.mobileNumber,
+    emailAddress: user.email || DEFAULT_TAXPAYER_PROFILE_24.emailAddress,
+    taxesCircle: user.circle || DEFAULT_TAXPAYER_PROFILE_24.taxesCircle,
+    taxesZone: user.zone || DEFAULT_TAXPAYER_PROFILE_24.taxesZone,
+  };
+
+  const byGroup = (group: ProfileGroupKey) =>
+    PROFILE_24_FIELD_MANIFEST.filter((f) => f.group === group);
+
+  const handleCopySuccess = (fieldLabel: string) => {
+    setToastMessage(isBn ? `${fieldLabel} কপি হয়েছে` : `Copied ${fieldLabel} to clipboard`);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-4 sm:px-6 lg:px-12">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <AppButton
+              actionType="secondary"
+              surface="outlined"
+              size="small"
+              startIcon={<ArrowLeft size={16} />}
+              onClick={() => goBack('/dashboard')}
+            >
+              {t('back')}
+            </AppButton>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                <User className="text-teal-700 dark:text-teal-400" size={26} />
+                {isBn ? 'করদাতার প্রোফাইল (২৪ ক্ষেত্র)' : 'Taxpayer Profile (24 Fields)'}
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isBn
+                  ? 'ইউআই প্রদর্শনীর জন্য নমুনা ২৪-ক্ষেত্রের করদাতা প্রোফাইল।'
+                  : 'Sample 24-field taxpayer profile for UI preview only.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {!canReveal && (
+          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+              <Lock size={15} className="text-teal-700 shrink-0" />
+              <span>
+                {isBn
+                  ? 'টিআইএন, মোবাইল এবং ইমেইল ডিফল্টভাবে গোপন রাখা হয়েছে। উন্মোচন ও কপি করতে সাইন ইন করুন।'
+                  : 'Sensitive TIN, mobile, and email fields stay masked by default. Sign in to enable eye reveal and copy.'}
+              </span>
+            </div>
+            {!PUBLIC_PREVIEW && (
+              <AppButton actionType="secondary" size="small" onClick={() => navigate('/login')}>
+                {t('signIn')}
+              </AppButton>
+            )}
+          </div>
+        )}
+
+        <ProfileSummaryCard
+          profile={profile}
+          onPrintCertificate={() => setShowCertModal(true)}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProfileGroupCard
+            titleEn="Identity Details"
+            titleBn="পরিচয় বিবরণ"
+            icon={<Shield size={20} />}
+            fields={byGroup('identity')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+          <ProfileGroupCard
+            titleEn="Personal Information"
+            titleBn="ব্যক্তিগত তথ্য"
+            icon={<User size={20} />}
+            fields={byGroup('personal')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+          <ProfileGroupCard
+            titleEn="Account & Registration Summary"
+            titleBn="অ্যাকাউন্ট ও নিবন্ধন সারসংক্ষেপ"
+            icon={<FileCheck size={20} />}
+            fields={byGroup('summary')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+          <ProfileGroupCard
+            titleEn="Contact & Addresses"
+            titleBn="যোগাযোগ ও ঠিকানা"
+            icon={<Phone size={20} />}
+            fields={byGroup('contact')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+          <ProfileGroupCard
+            titleEn="Tax Jurisdiction"
+            titleBn="কর এখতিয়ার"
+            icon={<MapPin size={20} />}
+            fields={byGroup('jurisdiction')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+          <ProfileGroupCard
+            titleEn="Certificate Details"
+            titleBn="সনদ বিবরণ"
+            icon={<FileCheck size={20} />}
+            fields={byGroup('certificate')}
+            profile={profile}
+            canReveal={canReveal}
+            onCopySuccess={handleCopySuccess}
+          />
+        </div>
+      </div>
+
+      <ProfileCertificateDialog
+        open={showCertModal}
+        onClose={() => setShowCertModal(false)}
+        profile={profile}
+        canReveal={canReveal}
+      />
+
+      <AppToast
+        open={Boolean(toastMessage)}
+        onClose={() => setToastMessage(null)}
+        message={toastMessage}
+        severity="success"
+      />
+    </div>
+  );
+};

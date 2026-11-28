@@ -2,8 +2,13 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import { AppIconButton } from '../../../design-system/buttons';
-import { AppTable, type AppColumn } from '../../../design-system/tables';
+import { AppTable, useTableState, type AppColumn } from '../../../design-system/tables';
 import type { PaymentLineItem } from '../../../types/tax';
+
+interface IndexedLineItem {
+  item: PaymentLineItem;
+  originalIndex: number;
+}
 
 interface AllTaxItemsTableProps {
   items: readonly PaymentLineItem[];
@@ -16,46 +21,61 @@ export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
   totalAmount,
   onRemoveItem,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
 
-  if (items.length === 0) return null;
+  const indexedItems: IndexedLineItem[] = items.map((item, originalIndex) => ({
+    item,
+    originalIndex,
+  }));
 
-  const columns: AppColumn<PaymentLineItem>[] = [
+  const columns: AppColumn<IndexedLineItem>[] = [
     {
       key: 'headNameEn',
-      header: 'Tax Head',
+      header: t('taxHead'),
       sortable: true,
-      cell: (item) => (
+      accessor: (row) => (isBn ? row.item.headNameBn : row.item.headNameEn),
+      cell: ({ item }) => (
         <div>
-          <div className="font-medium">{item.headNameEn}</div>
-          <div className="text-[11px] text-slate-500 font-mono">Code: {item.headCode}</div>
+          <div className="font-medium">{isBn ? item.headNameBn : item.headNameEn}</div>
+          <div className="text-[11px] text-slate-500 font-mono">
+            {isBn ? 'কোড' : 'Code'}: {item.headCode}
+          </div>
         </div>
       ),
     },
     {
       key: 'assessmentYear',
-      header: 'AY',
+      header: isBn ? 'কর বর্ষ' : 'AY',
       sortable: true,
-      cell: (item) => <span className="font-mono">{item.assessmentYear}</span>,
+      accessor: (row) => row.item.assessmentYear,
+      cell: ({ item }) => <span className="font-mono">{item.assessmentYear}</span>,
     },
     {
       key: 'amount',
-      header: 'Amount',
+      header: t('amountBdt'),
       align: 'right',
       sortable: true,
-      cell: (item) => <span className="font-mono font-semibold">৳ {item.amount.toLocaleString()}</span>,
+      accessor: (row) => row.item.amount,
+      cell: ({ item }) => (
+        <span className="font-mono font-semibold">৳ {item.amount.toLocaleString()}</span>
+      ),
     },
     {
       key: 'action',
-      header: 'Action',
+      header: t('actions'),
       align: 'center',
-      cell: (_, idx) => (
+      cell: ({ item, originalIndex }) => (
         <AppIconButton
           intent="destructive"
           size="small"
           previewRestricted
-          aria-label={`Remove item`}
-          onClick={() => onRemoveItem(idx)}
+          aria-label={
+            isBn
+              ? `${item.headNameBn} মুছুন`
+              : `Remove ${item.headNameEn}`
+          }
+          onClick={() => onRemoveItem(originalIndex)}
         >
           <Trash2 size={16} />
         </AppIconButton>
@@ -63,11 +83,20 @@ export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
     },
   ];
 
+  const { sortState, handleSort, sortedData } = useTableState(indexedItems, {
+    columns,
+    initialSort: { columnKey: 'headNameEn', direction: 'asc' },
+  });
+
+  if (items.length === 0) return null;
+
   return (
     <div className="space-y-3 pt-4">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Configured Line Items ({items.length})
+          {isBn
+            ? `নির্বাচিত কর খাতসমূহ (${items.length})`
+            : `Configured Line Items (${items.length})`}
         </h4>
         <span className="text-xs font-bold text-teal-700 dark:text-teal-400 font-mono">
           {t('totalPayable')}: ৳ {totalAmount.toLocaleString()}
@@ -75,8 +104,10 @@ export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
       </div>
       <AppTable
         columns={columns}
-        data={items}
-        keyExtractor={(item, idx) => `${item.headId}-${idx}`}
+        data={sortedData}
+        keyExtractor={(row) => `${row.item.headId}-${row.originalIndex}`}
+        sortState={sortState}
+        onSort={handleSort}
       />
     </div>
   );

@@ -1,92 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { ArrowRight, Eye, Plus } from 'lucide-react';
+import { ArrowRight, Plus, User } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
 import { AppButton } from '../../design-system/buttons';
-import { AppTable, type AppColumn } from '../../design-system/tables';
 import { DashboardMetrics } from './components/DashboardMetrics';
+import { RecentPaymentsTable } from './components/RecentPaymentsTable';
 
 export const DashboardView: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, transactions, beneficiaries, drafts } = useApp();
-
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
 
   const totalPaid = transactions
     .filter((tx) => tx.status === 'Completed')
     .reduce((sum, tx) => sum + tx.totalAmount, 0);
-
-  const columns: AppColumn<PaymentTransaction>[] = [
-    {
-      key: 'transactionRef',
-      header: 'Ref & Challan',
-      sortable: true,
-      cell: (tx) => (
-        <div>
-          <div className="font-semibold text-slate-900 dark:text-white font-mono">{tx.transactionRef}</div>
-          <div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      sortable: true,
-      cell: (tx) => (
-        <div>
-          <span className="font-medium text-slate-800 dark:text-slate-200 capitalize">{tx.category.replace(/_/g, ' ')}</span>
-          {tx.beneficiaryName && <div className="text-[11px] text-teal-600">For: {tx.beneficiaryName}</div>}
-        </div>
-      ),
-    },
-    {
-      key: 'paymentChannel',
-      header: 'Channel',
-      sortable: true,
-      cell: (tx) => <span className="font-semibold text-slate-700 dark:text-slate-300">{tx.paymentChannel}</span>,
-    },
-    {
-      key: 'totalAmount',
-      header: 'Amount (BDT)',
-      align: 'right',
-      sortable: true,
-      cell: (tx) => <span className="font-mono font-semibold text-slate-900 dark:text-white">৳ {tx.totalAmount.toLocaleString()}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      cell: (tx) => (
-        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-medium">
-          {tx.status}
-        </span>
-      ),
-    },
-    {
-      key: 'action',
-      header: 'Action',
-      align: 'right',
-      cell: (tx) => (
-        <AppButton
-          actionType="secondary"
-          size="small"
-          startIcon={<Eye size={14} />}
-          onClick={() => setSelectedTx(tx)}
-          sx={{
-            minHeight: 30,
-            px: 1.5,
-            py: 0.5,
-            borderRadius: '8px',
-            color: 'primary.main',
-            borderColor: 'divider',
-          }}
-        >
-          Receipt
-        </AppButton>
-      ),
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
@@ -111,6 +42,16 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <AppButton
+              actionType="secondary"
+              surface="outlined"
+              size="small"
+              startIcon={<User size={16} />}
+              onClick={() => navigate('/profile')}
+              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
+            >
+              {t('profile') || 'View Profile'}
+            </AppButton>
             <AppButton
               actionType="primary"
               size="small"
@@ -163,11 +104,9 @@ export const DashboardView: React.FC = () => {
             </AppButton>
           </div>
 
-          <AppTable
-            columns={columns}
-            data={transactions}
-            keyExtractor={(tx) => tx.id}
-            emptyMessage="No payment activities found."
+          <RecentPaymentsTable
+            transactions={transactions}
+            onSelectTx={setSelectedTx}
           />
         </div>
       </div>

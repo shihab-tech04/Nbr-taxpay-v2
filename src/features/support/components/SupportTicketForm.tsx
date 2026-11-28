@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppButton } from '../../../design-system/buttons';
 import { AppSelectField, AppTextArea, AppTextField } from '../../../design-system/forms';
 import type { SupportTicket } from '../../../types/tax';
 
 type SupportCategory = SupportTicket['category'];
 
 interface SupportTicketFormProps {
+  formId?: string;
   subject: string;
   category: SupportCategory;
   message: string;
@@ -14,11 +14,11 @@ interface SupportTicketFormProps {
   onChangeSubject: (val: string) => void;
   onChangeCategory: (val: SupportCategory) => void;
   onChangeMessage: (val: string) => void;
-  onCancel: () => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
 export const SupportTicketForm: React.FC<SupportTicketFormProps> = ({
+  formId = 'support-ticket-form',
   subject,
   category,
   message,
@@ -26,18 +26,12 @@ export const SupportTicketForm: React.FC<SupportTicketFormProps> = ({
   onChangeSubject,
   onChangeCategory,
   onChangeMessage,
-  onCancel,
   onSubmit,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4"
-    >
-      <h3 className="text-base font-bold">Create Support Ticket</h3>
+    <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <AppTextField
           label={t('supportSubjectLabel')}
@@ -71,14 +65,6 @@ export const SupportTicketForm: React.FC<SupportTicketFormProps> = ({
         helperText={errors.message || t('supportMessageHelper')}
         required
       />
-      <div className="flex justify-end gap-3">
-        <AppButton type="button" actionType="secondary" size="small" onClick={onCancel}>
-          {t('cancel')}
-        </AppButton>
-        <AppButton type="submit" actionType="primary" size="small" previewRestricted>
-          {t('save')}
-        </AppButton>
-      </div>
     </form>
   );
 };
