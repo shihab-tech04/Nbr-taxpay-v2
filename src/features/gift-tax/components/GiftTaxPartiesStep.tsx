@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, CheckCircle2, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { AppButton, AppIconButton } from '../../../design-system/buttons';
-import { AppSelectField, AppTextField, AppTinLookupField, AppTinResultCard, maskTinForDisplay, sanitizeTinResultForDisplay } from '../../../design-system/forms';
+import { AppAutocomplete, AppTextField, AppTinLookupField, AppTinResultCard, maskTinForDisplay, sanitizeTinResultForDisplay } from '../../../design-system/forms';
 import { GIFT_SUGGESTED_TINS, canUndoGiftPartyRemoval, getRelationshipLabel, isGiftRelationshipValid } from '../giftTaxLogic';
 import { APPROVED_GIFT_RELATIONSHIPS, type GiftFormErrors, type GiftPartyRecord, type GiftRelationship, type RemovedPartyUndoState } from '../giftTaxTypes';
 
@@ -105,7 +105,18 @@ export const GiftTaxPartiesStep: React.FC<GiftTaxPartiesStepProps> = (p) => {
           </div>
         )}
         <div className={`grid grid-cols-1 ${p.relationship === 'Others' ? 'sm:grid-cols-2' : ''} gap-3`}>
-          <AppSelectField label={t('relationship')} value={p.relationship} required error={Boolean(p.errors.relationship)} helperText={p.errors.relationship || t('relationshipHelper')} onChange={(e) => p.onSelectRelationship(String(e.target.value) as GiftRelationship)} options={[{ value: '', label: isBn ? '— সম্পর্ক নির্বাচন করুন —' : '— Select relationship —' }, ...APPROVED_GIFT_RELATIONSHIPS.map((rel) => ({ value: rel, label: getRelationshipLabel(rel, lang) }))]} />
+          <AppAutocomplete
+            label={t('relationship')}
+            value={p.relationship || null}
+            required
+            error={Boolean(p.errors.relationship)}
+            helperText={p.errors.relationship || t('relationshipHelper')}
+            onChange={(val) => p.onSelectRelationship((val ?? '') as GiftRelationship)}
+            options={APPROVED_GIFT_RELATIONSHIPS.map((rel) => ({
+              value: rel,
+              label: getRelationshipLabel(rel, lang),
+            }))}
+          />
           {p.relationship === 'Others' && (
             <AppTextField data-testid="gift-others-relationship-input" label={isBn ? 'অন্যান্য সম্পর্কের বিবরণ (১–৮০ অক্ষর)' : 'Custom Relationship / Tag (1–80 chars)'} value={p.relationshipTag} required error={Boolean(p.errors.relationshipTag)} helperText={p.errors.relationshipTag || (isBn ? 'অন্যান্য সম্পর্কের বিবরণ দিন (১–৮০ অক্ষর)' : 'Required for Others (1–80 characters)')} onChange={(e) => p.onChangeRelationshipTag(e.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} />
           )}
