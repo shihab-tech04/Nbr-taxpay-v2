@@ -1,3 +1,6 @@
+import type { BeneficiaryRelationship, GiftDetails, GiftDraftSnapshot, GiftPartyRecord, YmdDateString, YmdDay, YmdMonth } from './giftTax';
+export type { BeneficiaryRelationship, GiftDetails, GiftDraftSnapshot, GiftPartyRecord, YmdDateString, YmdDay, YmdMonth };
+
 export type Language = 'en' | 'bn';
 
 export interface UserProfile {
@@ -21,7 +24,7 @@ export interface Beneficiary {
   id: string;
   name: string;
   tin: string;
-  relationship: 'Father' | 'Mother' | 'Siblings' | 'Son' | 'Daughter' | 'Spouse' | 'Friends' | 'Clients' | 'Others';
+  relationship: BeneficiaryRelationship;
   relationshipNote?: string;
   listId?: string;
   phone?: string;
@@ -54,16 +57,10 @@ export interface PaymentLineItem {
   amount: number;
   taxpayerTin?: string;
   taxpayerName?: string;
+  circle?: string;
   category?: TaxHeadCategory;
   remarks?: string;
 }
-
-export type YmdMonth = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10' | '11' | '12';
-export type YmdDay =
-  | '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10'
-  | '11' | '12' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20'
-  | '21' | '22' | '23' | '24' | '25' | '26' | '27' | '28' | '29' | '30' | '31';
-export type YmdDateString = `${number}-${YmdMonth}-${YmdDay}`;
 
 export interface TravelPassengerRecord {
   id: string;
@@ -95,6 +92,7 @@ export interface PaymentTransaction {
   transactionRef: string;
   taxpayerTin: string;
   taxpayerName: string;
+  circle?: string;
   beneficiaryTin?: string;
   beneficiaryName?: string;
   ownerScope?: string;
@@ -104,6 +102,7 @@ export interface PaymentTransaction {
   claimedAt?: string;
   category: TaxHeadCategory;
   giftDate?: YmdDateString;
+  giftDetails?: GiftDetails;
   travelDetails?: TravelDetails;
   items: PaymentLineItem[];
   totalAmount: number;
@@ -132,6 +131,7 @@ export interface PaymentDraft {
   beneficiaryTin?: string;
   remarks?: string;
   travelDraft?: TravelDraftSnapshot;
+  giftDraft?: GiftDraftSnapshot;
   updatedAt: string;
 }
 

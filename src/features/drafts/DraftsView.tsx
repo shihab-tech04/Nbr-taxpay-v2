@@ -27,7 +27,8 @@ export const DraftsView: React.FC = () => {
   );
 
   const resumeDraft = (d: PaymentDraft) => {
-    navigate(d.category === 'travel_tax' ? '/travel-tax' : '/all-taxes', { state: { draftId: d.id } });
+    const targetRoute = d.category === 'travel_tax' ? '/travel-tax' : d.category === 'gift_tax' ? '/gift-tax' : '/all-taxes';
+    navigate(targetRoute, { state: { draftId: d.id } });
   };
 
   const columns: AppColumn<PaymentDraft>[] = [
@@ -50,7 +51,11 @@ export const DraftsView: React.FC = () => {
       accessor: (d) => d.items.length,
       cell: (d) => (
         <span className="font-mono text-slate-600 dark:text-slate-300">
-          {d.category === 'travel_tax' ? `${d.travelDraft?.passengers.length ?? 0} ${isBn ? 'জন যাত্রী' : 'passenger(s)'}` : `${d.items.length} ${isBn ? 'টি খাত' : 'head(s)'}`}
+          {d.category === 'travel_tax'
+            ? `${d.travelDraft?.passengers.length ?? 0} ${isBn ? 'জন যাত্রী' : 'passenger(s)'}`
+            : d.category === 'gift_tax'
+              ? `${d.giftDraft?.donor?.name ?? '—'} → ${d.giftDraft?.donee?.name ?? '—'}`
+              : `${d.items.length} ${isBn ? 'টি খাত' : 'head(s)'}`}
         </span>
       ),
     },
@@ -134,6 +139,11 @@ export const DraftsView: React.FC = () => {
               {linkedDraft.travelDraft && (
                 <div className="pt-1 border-t border-slate-200 dark:border-slate-700">
                   {linkedDraft.travelDraft.travelMode} · {linkedDraft.travelDraft.departurePort || '—'} → {linkedDraft.travelDraft.destination || '—'} ({linkedDraft.travelDraft.passengers.length} {isBn ? 'জন' : 'passenger(s)'})
+                </div>
+              )}
+              {linkedDraft.giftDraft && (
+                <div className="pt-1 border-t border-slate-200 dark:border-slate-700">
+                  {linkedDraft.giftDraft.donor?.name ?? '—'} → {linkedDraft.giftDraft.donee?.name ?? '—'} ({linkedDraft.giftDraft.donee?.relationshipTag || linkedDraft.giftDraft.donee?.relationship || '—'})
                 </div>
               )}
             </div>

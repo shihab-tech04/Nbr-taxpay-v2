@@ -102,14 +102,25 @@ export const CertificatePaper: React.FC<CertificatePaperProps> = ({
         <div><span className="text-slate-500 block">{isBn ? 'প্রদানকারী' : 'Payer'}</span><strong className="break-words">{cert.taxpayerName || (isBn ? 'ওয়াক-ইন করদাতা' : 'Walk-In Taxpayer')}</strong></div>
         <div><span className="text-slate-500 block">{t('taxpayerTin')}</span><strong className="font-mono">{cert.taxpayerTin || 'Walk-In'}</strong></div>
         <div><span className="text-slate-500 block">{t('assessmentYear')}</span><strong className="font-mono">{cert.assessmentYears}</strong></div>
-        {cert.beneficiaryTin && (
-          <div className="col-span-2 sm:col-span-3">
-            <span className="text-slate-500 block">{isBn ? 'সুবিধাভোগী / প্রাপক' : 'Recipient / Beneficiary'}</span>
-            <strong className="break-words">{cert.beneficiaryName} (TIN: {cert.beneficiaryTin})</strong>
+        {cert.giftDetails ? (
+          <div data-testid="certificate-gift-details" className="col-span-2 sm:col-span-3 pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><span className="text-slate-500 block">{isBn ? 'ক্রেডিট ও পক্ষভুক্তি (দাতা / On Behalf Of)' : 'Credit Attribution & On Behalf Of (Donor)'}</span><strong>{cert.giftDetails.onBehalfOfName} ({cert.giftDetails.onBehalfOfTin})</strong></div>
+            <div><span className="text-slate-500 block">{isBn ? 'যার মাধ্যমে (গ্রহীতা / Through)' : 'Through (Donee & Relationship)'}</span><strong>{cert.giftDetails.throughName} ({cert.giftDetails.throughTin}) · {cert.giftDetails.relationshipTag}</strong></div>
+            <div><span className="text-slate-500 block">{isBn ? 'দানের মূল্য ও তারিখ' : 'Gift Value & Date'}</span><strong className="font-mono">৳ {cert.giftDetails.giftValue.toLocaleString()} · {cert.giftDetails.giftDate}</strong></div>
+            <div><span className="text-slate-500 block">{t('giftDescription')}</span><strong>{cert.giftDetails.description}{cert.giftDetails.remarks ? ` · ${cert.giftDetails.remarks}` : ''}</strong></div>
           </div>
-        )}
-        {cert.giftDate && (
-          <div><span className="text-slate-500 block">{t('giftDate')}</span><strong className="font-mono">{cert.giftDate}</strong></div>
+        ) : (
+          <>
+            {cert.beneficiaryTin && (
+              <div className="col-span-2 sm:col-span-3">
+                <span className="text-slate-500 block">{isBn ? 'সুবিধাভোগী / প্রাপক' : 'Recipient / Beneficiary'}</span>
+                <strong className="break-words">{cert.beneficiaryName} (TIN: {cert.beneficiaryTin})</strong>
+              </div>
+            )}
+            {cert.giftDate && (
+              <div><span className="text-slate-500 block">{t('giftDate')}</span><strong className="font-mono">{cert.giftDate}</strong></div>
+            )}
+          </>
         )}
         {cert.travelDetails && (
           <div className="col-span-2 sm:col-span-3">

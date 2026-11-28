@@ -98,12 +98,20 @@ export function resolveSecondaryStyle(options: {
       sx: (theme) => {
         const colors = getThemeColors(theme.palette.mode);
         return {
-          bgcolor: '#FFFFFF',
-          color: colors.home.accentText,
-          borderColor: colors.home.accentBorder,
+          bgcolor: colors.isLight ? '#FFFFFF' : colors.surface.paper,
+          color: colors.isLight ? colors.home.accentText : colors.text.primary,
+          borderColor: colors.isLight ? colors.home.accentBorder : colors.border.neutral,
           borderRadius: `${BUTTON_TOKENS.compactRadius}px`,
           minHeight: BUTTON_TOKENS.heightMedium,
-          '&:hover': { bgcolor: colors.home.accentBgHover, borderColor: colors.home.accentBorder },
+          '&:hover': {
+            bgcolor: colors.isLight ? colors.home.accentBgHover : colors.brand.softBg,
+            borderColor: colors.isLight ? colors.home.accentBorder : colors.border.hover,
+          },
+          '&.Mui-disabled': {
+            bgcolor: colors.isLight ? '#FFFFFF' : colors.surface.disabled,
+            color: colors.text.disabled,
+            borderColor: colors.border.neutral,
+          },
           ...geometrySx,
         };
       },

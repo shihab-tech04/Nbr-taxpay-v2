@@ -109,12 +109,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ open, onClose, trans
               </div>
             )}
           </div>
-          {transaction.beneficiaryTin && (
+          {transaction.giftDetails ? (
+            <div data-testid="receipt-gift-attribution" className="p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-200 dark:border-teal-800 text-xs grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div><span className="font-semibold text-teal-900 dark:text-teal-200 block">{isBn ? 'ক্রেডিট ও পক্ষভুক্তি (দাতা / On Behalf Of)' : 'Credit Attribution & On Behalf Of (Donor)'}</span><span className="text-slate-700 dark:text-slate-300 font-mono">{transaction.giftDetails.onBehalfOfName} ({transaction.giftDetails.onBehalfOfTin})</span></div>
+              <div><span className="font-semibold text-teal-900 dark:text-teal-200 block">{isBn ? 'যার মাধ্যমে (গ্রহীতা / Through)' : 'Through (Donee & Relationship)'}</span><span className="text-slate-700 dark:text-slate-300 font-mono">{transaction.giftDetails.throughName} ({transaction.giftDetails.throughTin}) · {transaction.giftDetails.relationshipTag}</span></div>
+              <div><span className="font-semibold text-teal-900 dark:text-teal-200 block">{isBn ? 'ঘোষিত দানের মূল্য' : 'Declared Gift Value'}</span><span className="font-mono">৳ {transaction.giftDetails.giftValue.toLocaleString()}</span></div>
+              <div><span className="font-semibold text-teal-900 dark:text-teal-200 block">{t('giftDescription')}</span><span>{transaction.giftDetails.description}{transaction.giftDetails.remarks ? ` · ${transaction.giftDetails.remarks}` : ''}</span></div>
+            </div>
+          ) : transaction.beneficiaryTin ? (
             <div className="p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-200 dark:border-teal-800 text-xs">
               <span className="font-semibold text-teal-900 dark:text-teal-200">{isBn ? 'প্রাপকের পক্ষে দাখিলকৃত: ' : 'Filed On Behalf Of Beneficiary: '}</span>
               <span className="text-slate-700 dark:text-slate-300">{transaction.beneficiaryName} (TIN: {transaction.beneficiaryTin})</span>
             </div>
-          )}
+          ) : null}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{isBn ? 'কর খাত বিভাজন' : 'Tax Head Allocations'}</h4>

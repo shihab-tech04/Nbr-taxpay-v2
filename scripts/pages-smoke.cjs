@@ -73,7 +73,7 @@ async function assertNoMobileNavbarOverflow(page, routeLabel) {
     await page.goto(base + '#/gift-tax', { waitUntil: 'networkidle' });
     await page.locator('main h1').first().waitFor({ state: 'visible' });
     assert.equal(await page.locator('main input').first().isDisabled(), true);
-    assert.equal(await page.getByRole('button', { name: /Proceed to Gift Details/i }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: /Next: Gift & Tax Information/i }).isDisabled(), true);
     await assertNoMobileNavbarOverflow(page, 'gift-tax-en');
 
     await page.goto(base + '#/travel-tax', { waitUntil: 'networkidle' });

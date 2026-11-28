@@ -1,4 +1,5 @@
 import { isValidYmd } from '../design-system/dates/dateUtils';
+import type { GiftDetails } from '../types/giftTax';
 import type { PaymentLineItem, PaymentTransaction, TravelDetails } from '../types/tax';
 import { resolveAccountStorageScope } from './accountSession';
 
@@ -15,6 +16,7 @@ export interface PaymentCertificateRecord {
   beneficiaryTin?: string;
   beneficiaryName?: string;
   giftDate?: string;
+  giftDetails?: GiftDetails;
   travelDetails?: TravelDetails;
   items: readonly PaymentLineItem[];
   assessmentYears: string;
@@ -61,6 +63,7 @@ export function buildPaymentCertificateRecord(
     beneficiaryTin: tx.beneficiaryTin,
     beneficiaryName: tx.beneficiaryName,
     giftDate: tx.giftDate && isValidYmd(tx.giftDate) ? tx.giftDate : undefined,
+    giftDetails: tx.giftDetails,
     travelDetails: tx.travelDetails,
     items: tx.items,
     assessmentYears: years.join(', ') || '—',
@@ -89,10 +92,16 @@ export function buildCertificatePdfLines(cert: PaymentCertificateRecord): string
     `Date: ${cert.createdAt} | Origin: ${cert.lifecycleMode === 'signed_in' ? 'Signed-In' : 'Walk-In'}`,
     `Payer: ${cert.taxpayerName || 'Walk-In Taxpayer'} (TIN: ${cert.taxpayerTin || 'Walk-In'})`,
   ];
-  if (cert.beneficiaryTin) {
+  if (cert.giftDetails) {
+    const g = cert.giftDetails;
+    lines.push(`Credit Attribution & On Behalf Of (Donor): ${g.onBehalfOfName} (TIN: ${g.onBehalfOfTin})`);
+    lines.push(`Through (Donee): ${g.throughName} (TIN: ${g.throughTin}) | Relationship: ${g.relationship} (${g.relationshipTag})`);
+    lines.push(`Gift Value: BDT ${g.giftValue.toLocaleString('en-US')} | Date of Gift: ${g.giftDate}`);
+    lines.push(`Gift Description: ${g.description}${g.remarks ? ` | Remarks: ${g.remarks}` : ''}`);
+  } else if (cert.beneficiaryTin) {
     lines.push(`Recipient: ${cert.beneficiaryName ?? 'Recipient'} (TIN: ${cert.beneficiaryTin})`);
   }
-  if (cert.giftDate) {
+  if (!cert.giftDetails && cert.giftDate) {
     lines.push(`Date of Gift: ${cert.giftDate}`);
   }
   if (cert.travelDetails) {

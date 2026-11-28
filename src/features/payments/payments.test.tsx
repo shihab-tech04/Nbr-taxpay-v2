@@ -102,9 +102,11 @@ test('allTaxCatalogue and allTaxLogic enforce 7 categories, max 5 frequent, Retu
 });
 
 test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, age rates, medical block, walk-in privacy)', () => {
-  assert.deepEqual(calculateGiftTaxAmount('250000'), { giftAmount: 250000, calculatedTax: 12500 });
-  assert.equal(validateGiftPartiesStep({ donorTin: '123', donorName: '', doneeTin: '991234567890', doneeName: 'Receiver' }, { invalidTin: 'Invalid TIN', requiredDonorName: 'Required', requiredDoneeName: 'Required' }).donorTin, 'Invalid TIN');
-  assert.equal(validateGiftValuationStep({ giftAmountInput: '500', description: '', giftDate: '2099-01-01' }, { amountMin: 'Min 1000', amountInvalid: 'Invalid', requiredDescription: 'Desc required', futureGiftDate: 'Future date blocked' }).giftAmount, 'Min 1000');
+  const gtCalc = calculateGiftTaxAmount('250000');
+  assert.equal(gtCalc.giftAmount, 250000);
+  assert.equal(gtCalc.calculatedTax, 11500);
+  assert.ok(validateGiftPartiesStep({ donor: { tin: '882349102384', name: 'Donor' }, donee: { tin: '882349102384', name: 'Donee' }, relationship: 'Mother', relationshipTag: 'Mother' }, 'en').donee);
+  assert.ok(validateGiftValuationStep({ giftAmountInput: '500', description: '', giftDate: '2099-01-01' }, 'en', '2026-11-28').giftAmount);
 
   assert.equal(LAND_PORTS.length, 16);
   assert.equal(BD_SAMPLE_PASSPORTS.length, 10);
@@ -317,10 +319,11 @@ test('AllTax, Gift Tax, and Travel Tax 3 stages render cleanly with shared chann
   const receiptHtml = renderPaymentsWithProviders(<ReceiptModal open disablePortal onClose={() => {}} transaction={{ ...giftTx, giftDate: '2026-04-10' }} />);
   assert.match(receiptHtml, /2026-04-10/);
   assert.throws(() => createExperimentalTransaction({ ...giftTx, giftDate: '2026-02-30' }), /Invalid giftDate/);
-  const valHtml = renderPaymentsWithProviders(<GiftTaxValuationStep giftAmountInput="500000" giftDate="2026-04-10" description="Land gift" calculatedTax={25000} errors={{}} onChangeAmount={() => {}} onChangeGiftDate={() => {}} onChangeDescription={() => {}} onBack={() => {}} onNext={() => {}} />);
-  assert.match(valHtml, /Sample Gift Tax Preview/);
-  const gpHtml = renderPaymentsWithProviders(<GiftTaxPreviewStep donorName="Donor" donorTin="882349102384" doneeName="Donee" doneeTin="992384102938" relationship="Mother" giftAmount={500000} giftDate="2026-04-10" calculatedTax={25000} onBack={() => {}} onPay={() => {}} />);
-  assert.match(gpHtml, /Sample Gift Tax Estimate/);
+  const calc = calculateGiftTaxAmount('500000');
+  const valHtml = renderPaymentsWithProviders(<GiftTaxValuationStep giftAmountInput="500000" giftDate="2026-04-10" description="Land gift" remarks="" calculation={calc} errors={{}} isAuthenticated={false} onChangeAmount={() => {}} onChangeGiftDate={() => {}} onChangeDescription={() => {}} onChangeRemarks={() => {}} onSaveDraft={() => {}} onBack={() => {}} onNext={() => {}} />);
+  assert.match(valHtml, /Illustrative Progressive Gift Tax Estimate/);
+  const gpHtml = renderPaymentsWithProviders(<GiftTaxPreviewStep donor={{ tin: '882349102384', name: 'Donor' }} donee={{ tin: '992384102938', name: 'Donee' }} relationship="Mother" relationshipTag="Mother" giftDate="2026-04-10" description="Land gift" remarks="" calculation={calc} paymentChannel="bKash" isAuthenticated={false} onChangeChannel={() => {}} onEditParties={() => {}} onEditValuation={() => {}} onSaveDraft={() => {}} onBack={() => {}} onPay={() => {}} />);
+  assert.match(gpHtml, /Illustrative Gift Tax Estimate/);
   assert.match(renderPaymentsWithProviders(<PaymentSuccessCard title="Sample" subtitle="Illustrative" onViewReceipt={() => {}} onReturnDashboard={() => {}} />), /View Sample Receipt/);
   assert.equal(isRestrictedOperationAllowed('payment_submit', true), false);
 });

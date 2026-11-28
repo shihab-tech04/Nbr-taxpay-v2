@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { AppNotification, Beneficiary, BeneficiaryList, CorrectionRequest, PaymentDraft, PaymentTransaction, SupportTicket, UnverifiedCorrectionInquiry } from '../types/tax';
-import { createExperimentalBeneficiary, createExperimentalBeneficiaryList, createExperimentalCorrection, createExperimentalDraft, createExperimentalSupportTicket, createExperimentalTransaction, createExperimentalUnverifiedInquiry } from './mockLedgerAdapter';
+import { createExperimentalBeneficiary, createExperimentalBeneficiaryList, createExperimentalDraft, createExperimentalSupportTicket, createExperimentalTransaction, createExperimentalUnverifiedInquiry } from './mockLedgerAdapter';
 import { resolveAccountStorageScope } from './accountSession';
 import { isRestrictedOperationAllowed } from './previewPolicy';
 import { hasCorruptScopedDomainStorage, readScopedDomainData, writeScopedDomainData, type ScopedDomainData } from './scopedDomainStorage';
 import { claimWalkInTransactionWithResult, type WalkInClaimResult } from './walkInClaim';
-import { buildCorrectionNotification, buildDraftNotification, buildPaymentNotification, prependScopedNotification, sortNotificationsNewest } from './domainNotifications';
-import { bulkDeleteBeneficiariesInDomain, bulkMoveBeneficiariesInDomain, deleteListFromDomain } from './domainMutations';
+import { buildDraftNotification, buildPaymentNotification, prependScopedNotification, sortNotificationsNewest } from './domainNotifications';
+import { appendVerifiedCorrectionSafely, bulkDeleteBeneficiariesInDomain, bulkMoveBeneficiariesInDomain, deleteListFromDomain } from './domainMutations';
 import { useSession } from './SessionContext';
 
 export interface DomainStateContextValue {
@@ -145,10 +145,11 @@ export const DomainStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const addCorrection = useCallback((cData: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>): CorrectionRequest | null => {
     if (!isRestrictedOperationAllowed('correction_write') || !isAuthenticated) return null;
-    const created = createExperimentalCorrection({ ...cData, ownerScope: cData.ownerScope ?? activeScope });
-    updateScoped((curr) => ({ ...curr, corrections: [created, ...curr.corrections], notifications: activeScope !== 'walkin' ? prependScopedNotification(curr.notifications, buildCorrectionNotification(activeScope, created)) : curr.notifications }));
+    const created = appendVerifiedCorrectionSafely(currentData, cData, activeScope, isAuthenticated).created;
+    if (!created) return null;
+    updateScoped((curr) => appendVerifiedCorrectionSafely(curr, cData, activeScope, isAuthenticated, created).next);
     return created;
-  }, [activeScope, isAuthenticated, updateScoped]);
+  }, [activeScope, currentData, isAuthenticated, updateScoped]);
 
   const addUnverifiedInquiry = useCallback((inqData: Omit<UnverifiedCorrectionInquiry, 'id' | 'ticketNumber' | 'createdAt' | 'status' | 'ownerScope'>): UnverifiedCorrectionInquiry | null => {
     if (!isRestrictedOperationAllowed('correction_write')) return null;

@@ -1,7 +1,9 @@
 import type { CorrectionRequest, Language, PaymentTransaction } from '../types/tax';
+import { lookupTinIdentity } from './accountSession';
 import { TAX_HEADS } from './mockData';
 
 export const CORRECTION_ASSESSMENT_YEARS = ['2024-2025', '2025-2026', '2026-2027'] as const;
+export const INQUIRY_REFERENCE_REGEX = /^[A-Za-z0-9][A-Za-z0-9._/-]{5,79}$/;
 const ACTIVE_CORRECTION_STATUSES = new Set<CorrectionRequest['status']>(['Submitted', 'Under Review']);
 
 export function isTransactionCorrectionEligible(
@@ -16,9 +18,33 @@ export function isTransactionCorrectionEligible(
   return true;
 }
 
+export function deriveActualCurrentCircle(params: {
+  transaction: PaymentTransaction | null | undefined;
+  allocationIndex?: number | null;
+  userCircle?: string;
+  userTin?: string;
+}): string {
+  const { transaction, allocationIndex, userCircle, userTin } = params;
+  if (!transaction) return '';
+  const idx = allocationIndex !== null && allocationIndex !== undefined && Number.isInteger(allocationIndex) ? allocationIndex : 0;
+  const item = transaction.items[idx];
+  const clean = (val?: string) => { const trimmed = (val ?? '').trim(); return trimmed && trimmed !== '—' ? trimmed : ''; };
+  const direct = clean(item?.circle) || clean(transaction.circle);
+  if (direct) return direct;
+  const targetTin = clean(item?.taxpayerTin) || clean(transaction.taxpayerTin);
+  if (targetTin && userTin && targetTin === userTin.trim()) {
+    const ownCircle = clean(userCircle);
+    if (ownCircle) return ownCircle;
+  }
+  const dirCircle = targetTin ? clean(lookupTinIdentity(targetTin)?.profile.circle) : '';
+  if (dirCircle) return dirCircle;
+  return userTin && clean(transaction.taxpayerTin) === userTin.trim() ? clean(userCircle) : '';
+}
+
 export interface VerifiedCorrectionInput {
   transaction: PaymentTransaction | null | undefined;
-  allocationIndex: number;
+  trustedTransactions?: readonly PaymentTransaction[];
+  allocationIndex: number | null | undefined;
   currentCircle: string;
   proposedAssessmentYear: string;
   proposedCircle: string;
@@ -36,11 +62,18 @@ export type VerifiedCorrectionResult =
 
 export function validateVerifiedCorrection(input: VerifiedCorrectionInput): VerifiedCorrectionResult {
   const isBn = input.lang === 'bn';
-  if (!isTransactionCorrectionEligible(input.transaction, input.activeScope, input.isAuthenticated)) {
+  const candidateTx = input.transaction;
+  const tx = input.trustedTransactions && candidateTx
+    ? input.trustedTransactions.find((t) => t.id === candidateTx.id || t.transactionRef === candidateTx.transactionRef) ?? null
+    : candidateTx ?? null;
+  if (!isTransactionCorrectionEligible(tx, input.activeScope, input.isAuthenticated) || !tx) {
     return { ok: false, code: 'unauthorized', error: isBn ? 'শুধুমাত্র আপনার নিজের সম্পন্ন লেনদেনের জন্য সংশোধনের আবেদন করা যাবে।' : 'Only signed-in, completed transactions belonging to your account are eligible for correction.' };
   }
-  const tx = input.transaction!;
-  const item = tx.items[input.allocationIndex];
+  if (tx.items.length > 1 && (input.allocationIndex === null || input.allocationIndex === undefined || !Number.isInteger(input.allocationIndex))) {
+    return { ok: false, code: 'invalid_allocation', error: isBn ? 'সমন্বিত পেমেন্ট থেকে একটি নির্দিষ্ট বরাদ্দ নির্বাচন করুন।' : 'Please select a specific combined payment allocation item.' };
+  }
+  const resolvedIndex = input.allocationIndex ?? 0;
+  const item = Number.isInteger(resolvedIndex) ? tx.items[resolvedIndex] : undefined;
   if (!item) {
     return { ok: false, code: 'invalid_allocation', error: isBn ? 'একটি বৈধ কর খাত বরাদ্দ নির্বাচন করুন।' : 'Please select a valid payment allocation item.' };
   }
@@ -48,11 +81,11 @@ export function validateVerifiedCorrection(input: VerifiedCorrectionInput): Veri
   if (!proposedHead) {
     return { ok: false, code: 'invalid_head', error: isBn ? 'একটি বৈধ প্রস্তাবিত কর খাত নির্বাচন করুন।' : 'Please select a valid proposed payment head.' };
   }
-  const cleanCurrentCircle = input.currentCircle.trim() || 'Circle-112 (Company)';
-  const cleanProposedCircle = input.proposedCircle.trim() || cleanCurrentCircle;
+  const cleanCurrentCircle = input.currentCircle.trim() === '—' ? '' : input.currentCircle.trim();
+  const rawProposedCircle = input.proposedCircle.trim() === '—' ? '' : input.proposedCircle.trim();
   const cleanProposedAy = input.proposedAssessmentYear.trim() || item.assessmentYear;
   const ayChanged = cleanProposedAy !== item.assessmentYear;
-  const circleChanged = cleanProposedCircle !== cleanCurrentCircle;
+  const circleChanged = Boolean(rawProposedCircle) && rawProposedCircle !== cleanCurrentCircle;
   const headChanged = proposedHead.code !== item.headCode;
 
   if (!ayChanged && !circleChanged && !headChanged) {
@@ -65,17 +98,18 @@ export function validateVerifiedCorrection(input: VerifiedCorrectionInput): Veri
   const duplicate = input.existingCorrections.some(
     (c) =>
       ACTIVE_CORRECTION_STATUSES.has(c.status) &&
-      c.challanNumber === tx.challanNumber &&
-      (c.allocationIndex ?? 0) === input.allocationIndex &&
+      (c.challanNumber === tx.challanNumber || c.transactionId === tx.id) &&
+      (c.allocationIndex ?? 0) === resolvedIndex &&
       (!c.ownerScope || c.ownerScope === input.activeScope)
   );
   if (duplicate) {
     return { ok: false, code: 'duplicate', error: isBn ? 'এই চালান ও বরাদ্দের জন্য একটি সক্রিয় সংশোধন আবেদন ইতিমধ্যেই জমা রয়েছে।' : 'An active correction request is already pending for this challan and allocation.' };
   }
 
+  const cleanProposedCircle = rawProposedCircle || cleanCurrentCircle;
   const changes: string[] = [];
   if (ayChanged) changes.push(`AY ${item.assessmentYear} -> ${cleanProposedAy}`);
-  if (circleChanged) changes.push(`Circle ${cleanCurrentCircle} -> ${cleanProposedCircle}`);
+  if (circleChanged) changes.push(`Circle ${cleanCurrentCircle || 'Unassigned'} -> ${cleanProposedCircle}`);
   if (headChanged) changes.push(`Head ${item.headCode} -> ${proposedHead.code}`);
 
   return {
@@ -85,14 +119,14 @@ export function validateVerifiedCorrection(input: VerifiedCorrectionInput): Veri
       transactionId: tx.id,
       transactionRef: tx.transactionRef,
       challanNumber: tx.challanNumber,
-      allocationIndex: input.allocationIndex,
+      allocationIndex: resolvedIndex,
       taxpayerTin: item.taxpayerTin || tx.taxpayerTin,
       currentAssessmentYear: item.assessmentYear,
-      currentCircle: cleanCurrentCircle,
+      currentCircle: cleanCurrentCircle || undefined,
       currentHeadCode: item.headCode,
       currentHeadName: isBn ? item.headNameBn : item.headNameEn,
       proposedAssessmentYear: cleanProposedAy,
-      proposedCircle: cleanProposedCircle,
+      proposedCircle: cleanProposedCircle || undefined,
       proposedHeadCode: proposedHead.code,
       proposedHeadName: isBn ? proposedHead.nameBn : proposedHead.nameEn,
       reason: changes.join(' · '),
@@ -122,8 +156,10 @@ export function validateUnverifiedInquiry(input: {
   const evidenceNote = input.evidenceNote.replace(/\r\n/g, '\n').trim();
   const errors: UnverifiedInquiryValidationErrors = {};
 
-  if (originalReference.length < 6 || originalReference.length > 80) {
-    errors.originalReference = isBn ? 'মূল রেফারেন্স ৬ থেকে ৮০ অক্ষরের মধ্যে হতে হবে।' : 'Original reference must be between 6 and 80 characters.';
+  if (!INQUIRY_REFERENCE_REGEX.test(originalReference)) {
+    errors.originalReference = isBn
+      ? 'মূল রেফারেন্স ৬–৮০ অক্ষরের হতে হবে, বর্ণ বা সংখ্যা দিয়ে শুরু হতে হবে এবং কেবল বর্ণ, সংখ্যা, ., _, /, বা - ব্যবহার করা যাবে।'
+      : 'Original reference must be 6–80 characters, start with a letter or digit, and use only letters, digits, ., _, /, or -.';
   }
   if (reason.length < 10 || reason.length > 1000) {
     errors.reason = isBn ? 'অনুসন্ধানের কারণ ১০ থেকে ১,০০০ অক্ষরের মধ্যে হতে হবে।' : 'Reason must be between 10 and 1,000 characters.';
@@ -145,8 +181,8 @@ export function formatCorrectionChanges(c: CorrectionRequest, isBn = false): str
   if (c.currentAssessmentYear && c.proposedAssessmentYear && c.currentAssessmentYear !== c.proposedAssessmentYear) {
     parts.push(`${isBn ? 'কর বর্ষ' : 'AY'}: ${c.currentAssessmentYear} → ${c.proposedAssessmentYear}`);
   }
-  if (c.currentCircle && c.proposedCircle && c.currentCircle !== c.proposedCircle) {
-    parts.push(`${isBn ? 'সার্কেল' : 'Circle'}: ${c.currentCircle} → ${c.proposedCircle}`);
+  if (c.proposedCircle && c.currentCircle !== c.proposedCircle) {
+    parts.push(`${isBn ? 'সার্কেল' : 'Circle'}: ${c.currentCircle || (isBn ? 'অনির্ধারিত' : 'Not recorded')} → ${c.proposedCircle}`);
   }
   if (c.currentHeadCode && c.proposedHeadCode && c.currentHeadCode !== c.proposedHeadCode) {
     parts.push(`${isBn ? 'খাত' : 'Head'}: ${c.currentHeadCode} → ${c.proposedHeadCode}`);

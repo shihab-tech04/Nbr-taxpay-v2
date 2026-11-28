@@ -42,4 +42,11 @@ export const bnExtras = {
   requestedChangesLabel: 'প্রস্তাবিত পরিবর্তন',
   submissionDateLabel: 'জমার তারিখ',
   viewDetailsLabel: 'বিস্তারিত দেখুন',
+  giftTaxModalSubtitle: '৪ ধাপের দানকর ঘোষণা · ২০,০০০ টাকা অব্যাহতি সীমা · প্রগতিশীল প্রাক্কলন',
+  giftSummaryTitle: 'দান ও কর সারাংশ',
+  giftRemarksOptional: 'মন্তব্য (ঐচ্ছিক)',
+  giftRemarksPlaceholder: 'দলিল বা দান সংক্রান্ত ঐচ্ছিক নোট লিখুন',
+  giftValueBdt: 'দানের মূল্য (টাকা)',
+  giftTaxDonorCreditNote: 'কর ক্রেডিট দাতার নামে নথিভুক্ত হবে (পক্ষে: দাতা; মাধ্যমে: গ্রহীতা)।',
+  giftTaxNonStatutoryDisclaimer: 'এটি কেবল উদাহরণমূলক প্রাক্কলন — কোনো যাচাইকৃত সরকারি বা বিধিবদ্ধ কর দায় নয়।',
 };

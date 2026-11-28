@@ -3,7 +3,7 @@ import type { AppColumn, TableSortState, TablePaginationState } from './tableTyp
 import { sortTableData, paginateTableData, resolveValidPage } from './tableUtils';
 
 export interface UseTableStateOptions<T> {
-  initialSort?: TableSortState<string>;
+  initialSort?: TableSortState<string> | null;
   initialRowsPerPage?: number;
   columns?: readonly AppColumn<T>[];
 }

@@ -33,6 +33,7 @@ export interface SharedPayTaxProgressiveModalProps {
   summaryTotalValidated?: boolean;
   summaryPendingTotalText?: string;
   summaryFooterNote?: string;
+  summaryCustomContent?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -58,6 +59,7 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
   summaryTotalValidated = true,
   summaryPendingTotalText,
   summaryFooterNote,
+  summaryCustomContent,
   children,
 }) => {
   const { t, i18n } = useTranslation();
@@ -81,8 +83,9 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
           ))}
         </div>
       )}
+      {summaryCustomContent}
       {summaryLines.length === 0 ? (
-        <p className="text-slate-500 dark:text-slate-400">{summaryEmptyText}</p>
+        !summaryCustomContent && <p className="text-slate-500 dark:text-slate-400">{summaryEmptyText}</p>
       ) : (
         <div className="space-y-2 divide-y divide-slate-200/80 dark:divide-slate-700/80">
           {summaryLines.map((line) => (
@@ -150,7 +153,7 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
 
       <div
         data-testid="progressive-modal-mobile-footer"
-        className="lg:hidden sticky -bottom-6 -mx-6 mt-6 px-4 py-3 bg-slate-50 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 z-10 space-y-3"
+        className="lg:hidden sticky -bottom-6 -mx-6 mt-6 px-4 py-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-10 space-y-3 shadow-[0_-6px_18px_rgba(15,23,42,0.08)]"
       >
         {mobileExpanded && (
           <div data-testid="progressive-mobile-summary-expanded" className="pb-2 border-b border-slate-200 dark:border-slate-800">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, Info } from 'lucide-react';
 import { useApp } from '../../../shared/AppContext';
@@ -25,10 +25,12 @@ export const UnverifiedInquiryDialog: React.FC<UnverifiedInquiryDialogProps> = (
   const [evidenceNote, setEvidenceNote] = useState('');
   const [errors, setErrors] = useState<UnverifiedInquiryValidationErrors>({});
   const [submitted, setSubmitted] = useState<UnverifiedCorrectionInquiry | null>(null);
+  const submitLockRef = useRef(false);
 
   const isDirty = Boolean(!submitted && (originalReference.trim() || reason.trim() || requestedOutcome.trim() || evidenceNote.trim()));
 
   const handleClose = () => {
+    submitLockRef.current = false;
     setOriginalReference('');
     setReason('');
     setRequestedOutcome('');
@@ -40,6 +42,7 @@ export const UnverifiedInquiryDialog: React.FC<UnverifiedInquiryDialogProps> = (
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (submitLockRef.current || submitted) return;
     const res = validateUnverifiedInquiry({
       originalReference,
       reason,
@@ -51,8 +54,12 @@ export const UnverifiedInquiryDialog: React.FC<UnverifiedInquiryDialogProps> = (
       setErrors(res.errors);
       return;
     }
+    submitLockRef.current = true;
     const created = addUnverifiedInquiry(res.normalized);
-    if (!created) return;
+    if (!created) {
+      submitLockRef.current = false;
+      return;
+    }
     setErrors({});
     setSubmitted(created);
   };
@@ -107,7 +114,7 @@ export const UnverifiedInquiryDialog: React.FC<UnverifiedInquiryDialogProps> = (
             value={originalReference}
             onChange={(e) => { setOriginalReference(e.target.value); if (errors.originalReference) setErrors((p) => ({ ...p, originalReference: undefined })); }}
             error={Boolean(errors.originalReference)}
-            helperText={errors.originalReference || (isBn ? 'চালান বা পেমেন্ট রেফারেন্স নম্বর' : 'Enter payment or challan reference')}
+            helperText={errors.originalReference || (isBn ? 'বর্ণ বা সংখ্যা দিয়ে শুরু; শুধুমাত্র A-Z, 0-9, ., _, /, - ব্যবহারযোগ্য' : 'Starts with letter/digit; allowed: A-Z, 0-9, ., _, /, - (6–80 chars)')}
             required
             slotProps={{ htmlInput: { maxLength: 80, className: 'font-mono' } }}
           />

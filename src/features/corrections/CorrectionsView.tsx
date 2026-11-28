@@ -74,11 +74,11 @@ export const CorrectionsView: React.FC = () => {
     { key: 'createdAt', header: t('submissionDateLabel'), sortable: true, accessor: (c) => c.createdAt, cell: (c) => <span className="font-mono">{c.createdAt}</span> },
     {
       key: 'status', header: t('status'), sortable: true, accessor: (c) => c.status,
-      cell: (c) => <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-medium">{c.status}</span>,
+      cell: (c) => <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-medium">{c.status}</span>,
     },
     {
       key: 'actions', header: t('actions'), align: 'right',
-      cell: (c) => <AppButton actionType="secondary" size="small" startIcon={<Eye size={14} />} onClick={() => setSelectedCorrection(c)}>{t('viewDetailsLabel')}</AppButton>,
+      cell: (c) => <AppButton actionType="secondary" size="small" className="whitespace-nowrap" startIcon={<Eye size={14} />} onClick={() => setSelectedCorrection(c)}>{t('viewDetailsLabel')}</AppButton>,
     },
   ];
 

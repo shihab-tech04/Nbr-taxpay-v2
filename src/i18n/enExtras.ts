@@ -42,4 +42,11 @@ export const enExtras = {
   requestedChangesLabel: 'Requested Changes',
   submissionDateLabel: 'Submission Date',
   viewDetailsLabel: 'View Details',
+  giftTaxModalSubtitle: '4-stage structured declaration · Exempt allowance ৳20,000 · Progressive estimate',
+  giftSummaryTitle: 'Gift & Tax Summary',
+  giftRemarksOptional: 'Remarks (Optional)',
+  giftRemarksPlaceholder: 'Optional notes about gift instrument, deed, or exemption context',
+  giftValueBdt: 'Gift Value (BDT)',
+  giftTaxDonorCreditNote: 'Donor receives Tax Credit attribution (On Behalf Of: Donor; Through: Donee).',
+  giftTaxNonStatutoryDisclaimer: 'Illustrative estimate only — never verified statutory liability or official NBR calculation.',
 };

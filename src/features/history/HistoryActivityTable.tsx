@@ -4,15 +4,15 @@ import { Award, Eye, FileEdit, RotateCcw } from 'lucide-react';
 import { isTransactionCorrectionEligible } from '../../shared/correctionLogic';
 import type { PaymentTransaction } from '../../types/tax';
 import { AppButton } from '../../design-system/buttons';
-import { AppTable, type AppColumn, type TablePaginationConfig, type TableSortState } from '../../design-system/tables';
+import { AppTable, type AppColumn, type TablePaginationState, type TableSortState } from '../../design-system/tables';
 import { formatTxAySummary, formatTxBeneficiarySummary, formatTxHeadSummary } from './historyLogic';
 
 interface HistoryActivityTableProps {
   columns: AppColumn<PaymentTransaction>[];
   pagedData: PaymentTransaction[];
-  sortState: TableSortState;
+  sortState: TableSortState | null;
   onSort: (columnKey: string) => void;
-  pagination: TablePaginationConfig;
+  pagination: TablePaginationState;
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rowsPerPage: number) => void;
   totalRows: number;

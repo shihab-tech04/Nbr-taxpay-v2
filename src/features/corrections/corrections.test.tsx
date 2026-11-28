@@ -10,13 +10,16 @@ import { AppDateLocalizationProvider } from '../../design-system/dates';
 import i18n from '../../i18n/i18n';
 import { AppProvider } from '../../shared/AppContext';
 import {
+  deriveActualCurrentCircle,
   formatCorrectionChanges,
   isTransactionCorrectionEligible,
   validateUnverifiedInquiry,
   validateVerifiedCorrection,
 } from '../../shared/correctionLogic';
-import { INITIAL_CORRECTIONS, INITIAL_TRANSACTIONS, TAX_HEADS } from '../../shared/mockData';
+import { appendVerifiedCorrectionSafely } from '../../shared/domainMutations';
+import { INITIAL_CORRECTIONS, INITIAL_TRANSACTIONS, INITIAL_USER, TAX_HEADS } from '../../shared/mockData';
 import { createExperimentalUnverifiedInquiry } from '../../shared/mockLedgerAdapter';
+import type { ScopedDomainData } from '../../shared/scopedDomainSeeds';
 import type { PaymentTransaction } from '../../types/tax';
 import { CorrectionRequestModal } from '../../components/corrections/CorrectionRequestModal';
 import { DashboardCorrectionSummary } from '../dashboard/components/DashboardCorrectionSummary';
@@ -34,27 +37,47 @@ function renderWithProviders(node: React.ReactElement): string {
   );
 }
 
-test('Verified challan correction eligibility, duplicate/no-change/reason guards, and combined allocations', () => {
+test('Verified challan correction safeguards: trusted records, derived circle, explicit allocation, duplicate & ledger immutability', () => {
   const ownedTx = INITIAL_TRANSACTIONS[0];
   assert.equal(isTransactionCorrectionEligible(ownedTx, 'acct_882349102384', true), true);
   assert.equal(isTransactionCorrectionEligible(ownedTx, 'acct_882349102384', false), false);
   assert.equal(isTransactionCorrectionEligible(ownedTx, 'acct_112233445566', true), false);
+
+  // Derived circle checks: never invent 'Circle-112 (Company)'
   assert.equal(
-    isTransactionCorrectionEligible({ ...ownedTx, status: 'Pending' }, 'acct_882349102384', true),
-    false
+    deriveActualCurrentCircle({ transaction: { ...ownedTx, taxpayerTin: '112233445566', items: [{ ...ownedTx.items[0], taxpayerTin: '112233445566' }] } }),
+    'Circle-019'
   );
   assert.equal(
-    isTransactionCorrectionEligible({ ...ownedTx, ownerScope: 'walkin', originMode: 'walk_in' }, 'walkin', false),
-    false
+    deriveActualCurrentCircle({ transaction: { ...ownedTx, taxpayerTin: '999999999999', items: [{ ...ownedTx.items[0], taxpayerTin: '999999999999' }] } }),
+    ''
   );
   assert.equal(
-    isTransactionCorrectionEligible({ ...ownedTx, originMode: 'walk_in', claimedByTin: '882349102384' }, 'acct_882349102384', true),
-    true
+    deriveActualCurrentCircle({ transaction: { ...ownedTx, circle: 'Circle-055 (Sylhet)' } }),
+    'Circle-055 (Sylhet)'
   );
+
+  // Forged/untrusted transaction rejected when trustedTransactions is provided
+  const forgedCheck = validateVerifiedCorrection({
+    transaction: { ...ownedTx, id: 'tx-forged-123', transactionRef: 'FORGED-999' },
+    trustedTransactions: INITIAL_TRANSACTIONS,
+    allocationIndex: 0,
+    currentCircle: 'Circle-112 (Company)',
+    proposedAssessmentYear: '2026-2027',
+    proposedCircle: 'Circle-112 (Company)',
+    proposedHeadId: TAX_HEADS[0].id,
+    reason: 'Attempted submission on forged client-side transaction object.',
+    activeScope: 'acct_882349102384',
+    isAuthenticated: true,
+    existingCorrections: INITIAL_CORRECTIONS,
+  });
+  assert.equal(forgedCheck.ok, false);
+  if (!forgedCheck.ok) assert.equal(forgedCheck.code, 'unauthorized');
 
   // Duplicate active submission on allocation 0 blocked
   const dupRes = validateVerifiedCorrection({
     transaction: ownedTx,
+    trustedTransactions: INITIAL_TRANSACTIONS,
     allocationIndex: 0,
     currentCircle: 'Circle-112 (Company)',
     proposedAssessmentYear: '2026-2027',
@@ -68,47 +91,34 @@ test('Verified challan correction eligibility, duplicate/no-change/reason guards
   assert.equal(dupRes.ok, false);
   if (!dupRes.ok) assert.equal(dupRes.code, 'duplicate');
 
-  // No-change submission blocked even without existing active request
   const combinedTx: PaymentTransaction = {
     ...ownedTx,
     id: 'tx-combined',
     challanNumber: 'NBR-CHL-2026-999001',
     items: [ownedTx.items[0], { ...ownedTx.items[0], headId: TAX_HEADS[1].id, headCode: TAX_HEADS[1].code, headNameEn: TAX_HEADS[1].nameEn }],
   };
-  const unchangedRes = validateVerifiedCorrection({
-    transaction: combinedTx,
-    allocationIndex: 1,
-    currentCircle: 'Circle-112 (Company)',
-    proposedAssessmentYear: '2025-2026',
-    proposedCircle: 'Circle-112 (Company)',
-    proposedHeadId: TAX_HEADS[1].id,
-    reason: 'Valid long explanation reason.',
-    activeScope: 'acct_882349102384',
-    isAuthenticated: true,
-    existingCorrections: INITIAL_CORRECTIONS,
-  });
-  assert.equal(unchangedRes.ok, false);
-  if (!unchangedRes.ok) assert.equal(unchangedRes.code, 'no_change');
 
-  // Short reason blocked
-  const shortReason = validateVerifiedCorrection({
+  // Multi-allocation transaction MUST require explicit combined allocation selection
+  const unselectedAlloc = validateVerifiedCorrection({
     transaction: combinedTx,
-    allocationIndex: 1,
+    trustedTransactions: [combinedTx],
+    allocationIndex: null,
     currentCircle: 'Circle-112 (Company)',
     proposedAssessmentYear: '2026-2027',
     proposedCircle: 'Circle-112 (Company)',
     proposedHeadId: TAX_HEADS[1].id,
-    reason: 'Too short',
+    reason: 'Attempted submit without picking an allocation item.',
     activeScope: 'acct_882349102384',
     isAuthenticated: true,
     existingCorrections: INITIAL_CORRECTIONS,
   });
-  assert.equal(shortReason.ok, false);
-  if (!shortReason.ok) assert.equal(shortReason.code, 'reason_length');
+  assert.equal(unselectedAlloc.ok, false);
+  if (!unselectedAlloc.ok) assert.equal(unselectedAlloc.code, 'invalid_allocation');
 
-  // Valid correction on combined allocation 1 succeeds
+  // Valid correction on combined allocation 1 succeeds and appendVerifiedCorrectionSafely never mutates transactions
   const validRes = validateVerifiedCorrection({
     transaction: combinedTx,
+    trustedTransactions: [combinedTx],
     allocationIndex: 1,
     currentCircle: 'Circle-112 (Company)',
     proposedAssessmentYear: '2026-2027',
@@ -121,28 +131,46 @@ test('Verified challan correction eligibility, duplicate/no-change/reason guards
   });
   assert.equal(validRes.ok, true);
   if (validRes.ok) {
-    assert.equal(validRes.payload.allocationIndex, 1);
-    assert.equal(validRes.payload.proposedAssessmentYear, '2026-2027');
-    assert.equal(validRes.payload.proposedHeadCode, TAX_HEADS[2].code);
+    const seedDomain: ScopedDomainData = {
+      beneficiaryLists: [],
+      beneficiaries: [],
+      drafts: [],
+      transactions: [combinedTx],
+      corrections: INITIAL_CORRECTIONS,
+      unverifiedInquiries: [],
+      supportTickets: [],
+      notifications: [],
+    };
+    const snapshotBefore = JSON.stringify(seedDomain.transactions);
+    const firstWrite = appendVerifiedCorrectionSafely(seedDomain, validRes.payload, 'acct_882349102384', true);
+    assert.ok(firstWrite.created);
+    const committed = appendVerifiedCorrectionSafely(seedDomain, validRes.payload, 'acct_882349102384', true, firstWrite.created);
+    assert.equal(committed.created?.id, firstWrite.created.id);
+    assert.equal(committed.created?.ticketNumber, firstWrite.created.ticketNumber);
+    assert.equal(firstWrite.next.transactions, seedDomain.transactions);
+    assert.equal(JSON.stringify(firstWrite.next.transactions), snapshotBefore);
+
+    // Second write for same challan + allocation blocked cleanly
+    const secondWrite = appendVerifiedCorrectionSafely(firstWrite.next, validRes.payload, 'acct_882349102384', true);
+    assert.equal(secondWrite.created, null);
   }
 
   assert.match(formatCorrectionChanges(INITIAL_CORRECTIONS[0], false), /2024-2025 → 2025-2026/);
 });
 
-test('Unverified inquiry boundary validation and history formatting helpers', () => {
-  const invalidInq = validateUnverifiedInquiry({
-    originalReference: '12345',
-    reason: 'short',
-    requestedOutcome: 'short',
-    evidenceNote: 'x'.repeat(2001),
-  });
-  assert.equal(invalidInq.ok, false);
-  if (!invalidInq.ok) {
-    assert.ok(invalidInq.errors.originalReference && invalidInq.errors.reason && invalidInq.errors.requestedOutcome && invalidInq.errors.evidenceNote);
+test('Unverified inquiry regex boundary validation and history formatting helpers', () => {
+  for (const badRef of ['12345', '-ABC123', '.ABC123', 'ABC 1234', 'ABC#1234']) {
+    const badRes = validateUnverifiedInquiry({
+      originalReference: badRef,
+      reason: 'Walk-in challan printed with wrong tax year on guest receipt.',
+      requestedOutcome: 'Please log inquiry for manual verification at helpdesk.',
+      evidenceNote: '',
+    });
+    assert.equal(badRes.ok, false, `Expected invalid ref rejection for "${badRef}"`);
   }
 
   const validInq = validateUnverifiedInquiry({
-    originalReference: 'WALKIN-REF-123456',
+    originalReference: 'A1._/-',
     reason: 'Walk-in challan printed with wrong tax year on guest receipt.',
     requestedOutcome: 'Please log inquiry for manual verification at helpdesk.',
     evidenceNote: 'Guest counter slip #441',
@@ -162,25 +190,53 @@ test('Unverified inquiry boundary validation and history formatting helpers', ()
   assert.equal(matchesHistorySearch(giftTx, 'SOHO-2026-88342', false), true);
 });
 
-test('Corrections views and modals render cleanly in SSR', () => {
-  const viewHtml = renderWithProviders(
-    <AppProvider>
-      <MemoryRouter initialEntries={['/corrections']}>
-        <CorrectionsView />
-      </MemoryRouter>
-    </AppProvider>
-  );
-  assert.match(viewHtml, /Unverified Correction Inquiry/);
+test('Corrections views and modals enforce account authentication and render cleanly in SSR', () => {
+  const prevWindow = (globalThis as unknown as { window?: unknown }).window;
+  const localMap = new Map<string, string>([
+    ['sohojkor_auth', 'true'],
+    ['sohojkor_user', JSON.stringify(INITIAL_USER)],
+  ]);
+  (globalThis as unknown as { window: unknown }).window = {
+    localStorage: {
+      getItem: (k: string) => localMap.get(k) ?? null,
+      setItem: (k: string, v: string) => { localMap.set(k, v); },
+      removeItem: (k: string) => { localMap.delete(k); },
+    },
+    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+  };
+  try {
+    const viewHtml = renderWithProviders(
+      <AppProvider>
+        <MemoryRouter initialEntries={['/corrections']}>
+          <CorrectionsView />
+        </MemoryRouter>
+      </AppProvider>
+    );
+    assert.match(viewHtml, /Unverified Correction Inquiry/);
 
-  const modalHtml = renderWithProviders(
-    <AppProvider>
-      <MemoryRouter initialEntries={['/history']}>
-        <CorrectionRequestModal open disablePortal onClose={() => {}} initialTransaction={INITIAL_TRANSACTIONS[0]} />
-      </MemoryRouter>
-    </AppProvider>
-  );
-  assert.match(modalHtml, /NBR-CHL-2026-881920/);
-  assert.match(modalHtml, /Proposed Assessment Year/);
+    const modalHtml = renderWithProviders(
+      <AppProvider>
+        <MemoryRouter initialEntries={['/history']}>
+          <CorrectionRequestModal open disablePortal onClose={() => {}} initialTransaction={INITIAL_TRANSACTIONS[0]} />
+        </MemoryRouter>
+      </AppProvider>
+    );
+    assert.match(modalHtml, /NBR-CHL-2026-881920/);
+    assert.match(modalHtml, /Proposed Assessment Year/);
+
+    // Untrusted/foreign initialTransaction must not open as an editable form
+    const foreignModalHtml = renderWithProviders(
+      <AppProvider>
+        <MemoryRouter initialEntries={['/history']}>
+          <CorrectionRequestModal open disablePortal onClose={() => {}} initialTransaction={{ ...INITIAL_TRANSACTIONS[0], id: 'tx-foreign', transactionRef: 'FOREIGN-1', ownerScope: 'acct_112233445566' }} />
+        </MemoryRouter>
+      </AppProvider>
+    );
+    assert.match(foreignModalHtml, /correction-unavailable-alert/);
+  } finally {
+    if (prevWindow === undefined) delete (globalThis as unknown as { window?: unknown }).window;
+    else (globalThis as unknown as { window: unknown }).window = prevWindow;
+  }
 
   const dashSummaryHtml = renderWithProviders(
     <MemoryRouter>

@@ -119,6 +119,20 @@ test('AppTable renders loading, error, empty, EN and BN pagination states correc
   assert.match(dataHtml, /Zebra/);
   assert.match(dataHtml, /of 3/);
 
+  const nullableSortHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <AppTable
+        columns={columns}
+        data={testData}
+        keyExtractor={(r) => r.id}
+        sortState={null}
+        pagination={{ page: 0, rowsPerPage: 2 }}
+        totalRows={3}
+      />
+    </I18nextProvider>
+  );
+  assert.match(nullableSortHtml, /Apple/);
+
   await i18n.changeLanguage('bn');
   const bnHtml = renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>

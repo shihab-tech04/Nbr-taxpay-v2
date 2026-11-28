@@ -264,5 +264,17 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **Remaining Outside-Sandbox Steps**:
   - Commit/push Cycle 11–12 changes, run GitHub Actions deployment, verify external `1bda46f` backup bundle, and confirm live GitHub Pages SHA from a git-connected environment (this container has no `.git` directory or GitHub remote).
 
-
+## Cycle 17 — CI Repair, Correction Safeguards, & Gift Tax (দানকর) Rebuild
+- **CI Type & Table Contract Repair**:
+  - Restored strongly typed `TablePaginationState` and nullable `TableSortState | null` contract across `src/design-system/tables/useTableState.ts`, `HistoryActivityTable.tsx`, and `tables.test.tsx`.
+  - Eliminated circular dependencies and resolved all 4 TypeScript strict compilation errors (`giftTax.ts` / `tax.ts` boundary split, `isValidYmd` narrowing).
+- **Correction Safeguards (`src/shared/correctionLogic.ts`, `domainMutations.ts`, `DomainStateContext.tsx`, `CorrectionRequestModal.tsx`, `UnverifiedInquiryDialog.tsx`)**:
+  - Derived actual current tax circle strictly from account-scoped/record metadata (`deriveActualCurrentCircle`) without invented fallback defaults, enforced trusted `eligibleTxs`, required explicit combined allocation selection when `items.length > 1`, reset proposed fields (`proposedAy`, `proposedCircle`, `proposedHeadId`) on transaction/allocation switch, enforced `INQUIRY_REFERENCE_REGEX` (`^[A-Za-z0-9][A-Za-z0-9._/-]{5,79}$`), prevented duplicate submissions (preserving exact preflight `id` & `ticketNumber` in `appendVerifiedCorrectionSafely`), and guaranteed `transactions` ledger immutability.
+- **Gift Tax Rebuild (`src/features/gift-tax/`, `SharedPayTaxProgressiveModal`, `ReceiptModal`, `PaymentCertificateDialog`, `DraftsView`)**:
+  - Delivered the 4-stage Gift Tax flow inside `SharedPayTaxProgressiveModal`: Stage 1 empty initial Donor/Donee TIN lookup (`AppTinLookupField` + `AppTinResultCard`), distinct TIN enforcement, required 1–80 char relationship tag, and Right Rail `Edit`/`Remove`/`Undo`; Stage 2 four equal-width fields (`Gift Value (BDT)`, `Gift Description`, `Date of Gift`, `Remarks (Optional)`), below-allowance & future-date validation, and non-statutory progressive estimate (`৳20,000` allowance, `5%`/`10%`/`15%`/`20%` brackets); Stage 3 Final Preview attributing tax credit & `On Behalf Of` to Donor and `Through` to Donee with shared payment channel selector; Stage 4 Challan, Certificate (`PaymentCertificateDialog`), Download/Print, walk-in recovery, signed-in draft save/resume, `Pay Again` allocation preservation, dark-mode contrast fixes, and updated CI smoke scripts (`scripts/pages-smoke.cjs`, `scripts/ci-interactive-browser.cjs`).
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`: PASSED (`0` violations across `253` TypeScript files, `237` implementation files all `<=200` lines, `16` test files, `0` cycles, `0` orphaned files).
+  - `npm run typecheck`, `compile_applet`, and `lint_applet`: all succeeded (`0` errors, `0` warnings).
+  - `npm run test`: `68/68` unit & SSR tests passing (`0` failures).
+  - Headless Chromium E2E (`playwright-cli`): verified walk-in and signed-in Gift Tax Stages 1–4, drafts save/resume, `Pay Again`, Challan/Certificate attribution, correction safeguards (account isolation, derived circle, duplicate guard, reload persistence, inquiry regex), History sorting, EN/BN localization, Light/Dark themes, mobile `320px`/`390px` zero-overflow layouts, and `NODE_ENV=production` compiled GitHub Pages preview (`/Nbr-taxpay-v2/`, `PUBLIC_PREVIEW = true`) with `0` console/page errors.
 

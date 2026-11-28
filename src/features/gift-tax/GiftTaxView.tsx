@@ -1,195 +1,178 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Gift } from 'lucide-react';
-import { getDhakaTodayYmd, isValidYmd } from '../../design-system/forms';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
-import { useApp } from '../../shared/AppContext';
-import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
-import type { PaymentTransaction } from '../../types/tax';
-import { PaymentStepHeader } from '../../components/payments/PaymentStepHeader';
-import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard';
+import { SharedPayTaxProgressiveModal } from '../../components/payments/SharedPayTaxProgressiveModal';
+import { SharedPaymentResultStep } from '../../components/payments/SharedPaymentResultStep';
 import { GiftTaxPartiesStep } from './components/GiftTaxPartiesStep';
 import { GiftTaxPreviewStep } from './components/GiftTaxPreviewStep';
+import { GiftTaxRightRailExtras } from './components/GiftTaxRightRailExtras';
 import { GiftTaxValuationStep } from './components/GiftTaxValuationStep';
-import {
-  calculateGiftTaxAmount,
-  resolveGiftTaxReuseSeed,
-  validateGiftPartiesStep,
-  validateGiftValuationStep,
-  type GiftFormErrors,
-} from './giftTaxLogic';
+import { useGiftTaxFlow } from './useGiftTaxFlow';
 
 export const GiftTaxView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const { user, isAuthenticated, activeScope, transactions, addTransaction } = useApp();
-  const [seed] = useState(() =>
-    resolveGiftTaxReuseSeed({
-      routeState: (location.state ?? null) as { reuseTxRef?: string; reuseTx?: unknown } | null,
-      reuseRefParam: searchParams.get('reuseRef'),
-      transactions,
-      activeScope,
-    })
-  );
+  const flow = useGiftTaxFlow();
 
-  const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
-  const [donorTin, setDonorTin] = useState(seed.tx?.taxpayerTin || (isAuthenticated ? user.tin : ''));
-  const [donorName, setDonorName] = useState(seed.tx?.taxpayerName || (isAuthenticated ? user.name : ''));
-  const [doneeTin, setDoneeTin] = useState(seed.tx?.beneficiaryTin || '992384102938');
-  const [doneeName, setDoneeName] = useState(seed.tx?.beneficiaryName || 'Mrs. Fatema Begum');
-  const [relationship, setRelationship] = useState('Mother');
-  const [giftAmountInput, setGiftAmountInput] = useState<string>(seed.tx ? String(Math.round(seed.tx.totalAmount / 0.05)) : '500000');
-  const [giftDate, setGiftDate] = useState<string>(() => getDhakaTodayYmd());
-  const [description, setDescription] = useState(seed.tx?.items[0]?.remarks || 'Residential land transfer as family gift');
-  const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
-  const [certOpen, setCertOpen] = useState(false);
-  const [errors, setErrors] = useState<GiftFormErrors>({});
+  const bnStageDigits = ['০', '১', '২', '৩', '৪'][flow.stage] ?? String(flow.stage);
+  const stepLabel = flow.stage === 4
+    ? (isBn ? 'ধাপ ৪ / ৪ · সম্পন্ন' : 'Stage 4 of 4 · Complete')
+    : isBn ? `ধাপ ${bnStageDigits} / ৪` : `Stage ${flow.stage} of 4`;
 
-  const { giftAmount, calculatedTax } = calculateGiftTaxAmount(giftAmountInput);
-
-  const handleNext = () => {
-    if (!isRestrictedOperationAllowed('payment_submit')) return;
-    if (stage === 1) {
-      const nextErrors = validateGiftPartiesStep(
-        { donorTin, donorName, doneeTin, doneeName },
-        { invalidTin: t('invalidTinError'), requiredDonorName: t('requiredDonorNameError'), requiredDoneeName: t('requiredDoneeNameError') }
-      );
-      if (Object.keys(nextErrors).length > 0) { setErrors(nextErrors); return; }
-      setErrors({}); setStage(2);
-    } else if (stage === 2) {
-      const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, {
-        amountMin: t('amountMinError', { amount: '1,000' }), amountInvalid: t('amountInvalidError'), requiredDescription: t('requiredGiftDescriptionError'), requiredGiftDate: t('dateRequiredError'), invalidGiftDate: t('giftDateInvalidError'), futureGiftDate: t('giftDateFutureError'),
-      });
-      if (Object.keys(nextErrors).length > 0) { setErrors(nextErrors); return; }
-      setErrors({}); setStage(3);
-    }
+  const handleModalBack = () => {
+    if (flow.stage === 2) { flow.setStage(1); return; }
+    if (flow.stage === 3) { flow.setStage(2); return; }
+    flow.goDashboard();
   };
 
-  const handlePay = () => {
-    if (!isRestrictedOperationAllowed('payment_submit')) return;
-    const valuationMessages = {
-      amountMin: t('amountMinError', { amount: '1,000' }),
-      amountInvalid: t('amountInvalidError'),
-      requiredDescription: t('requiredGiftDescriptionError'),
-      requiredGiftDate: t('dateRequiredError'),
-      invalidGiftDate: t('giftDateInvalidError'),
-      futureGiftDate: t('giftDateFutureError'),
-    };
-    const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
-    if (Object.keys(nextErrors).length > 0 || !isValidYmd(giftDate)) {
-      setErrors(
-        isValidYmd(giftDate) ? nextErrors : { ...nextErrors, giftDate: valuationMessages.invalidGiftDate }
-      );
-      setStage(2);
-      return;
-    }
-    const tx = addTransaction({
-      taxpayerTin: donorTin,
-      taxpayerName: donorName,
-      ownerScope: activeScope,
-      originMode: isAuthenticated ? 'signed_in' : 'walk_in',
-      beneficiaryTin: doneeTin,
-      beneficiaryName: doneeName,
-      category: 'gift_tax',
-      giftDate,
-      items: [
+  const summaryLines = flow.hasValidatedEstimate
+    ? [
         {
-          headId: 'h6',
-          headCode: '0130',
-          headNameEn: `Gift Tax (দানকর) - Donee: ${doneeName} (${relationship})`,
-          headNameBn: `দানকর - ${doneeName}`,
-          assessmentYear: '2025-2026',
-          amount: calculatedTax,
-          remarks: description.trim(),
+          id: 'gift-value',
+          label: isBn ? 'ঘোষিত দানের মূল্য' : 'Declared Gift Value',
+          meta: flow.giftDate || undefined,
+          amountText: `৳ ${flow.calculation.giftAmount.toLocaleString()}`,
         },
-      ],
-      totalAmount: calculatedTax,
-      paymentChannel: 'bKash',
-      status: 'Completed',
-    });
-    setCompletedTx(tx);
-    setStage(4);
-  };
+        {
+          id: 'gift-tax-est',
+          label: isBn ? 'উদাহরণমূলক দানকর' : 'Illustrative Tax Estimate',
+          meta: isBn ? 'অব্যাহতি: ৳ ২০,০০০' : 'Allowance: ৳ 20,000',
+          amountText: `৳ ${flow.calculation.calculatedTax.toLocaleString()}`,
+        },
+      ]
+    : [];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
-      <div className="max-w-3xl mx-auto space-y-8">
-        <PaymentStepHeader
-          title={<><Gift className="text-teal-700" size={28} /> {t('giftTax')}</>}
-          subtitle="4-Stage structured gift tax declaration and payment with donor/donee mapping."
-          stepIndicator={`Stage ${stage} of 4`}
-        />
-        {seed.rejected && (
-          <div role="alert" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
-            {isBn ? 'অনুরোধকৃত দানকর লেনদেনটি বর্তমান অ্যাকাউন্টের সাথে মেলে না বা অবৈধ।' : 'Requested transaction reference is unavailable or does not belong to the active account.'}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-12">
+      <SharedPayTaxProgressiveModal
+        open
+        disablePortal
+        onClose={flow.goDashboard}
+        onBack={handleModalBack}
+        isDirty={flow.isDirty}
+        icon={<Gift className="text-teal-700" size={20} />}
+        title={t('giftTax')}
+        subtitle={t('giftTaxModalSubtitle')}
+        stepIndicator={stepLabel}
+        summaryTitle={t('giftSummaryTitle')}
+        summaryMetaBadges={[isBn ? 'খাত 0130 · দানকর' : 'Code 0130 · Gift Tax']}
+        summaryCustomContent={
+          flow.stage < 4 ? (
+            <GiftTaxRightRailExtras
+              donor={flow.donor}
+              donee={flow.donee}
+              relationship={flow.relationship}
+              relationshipTag={flow.relationshipTag}
+              undoParty={flow.undoParty}
+              onEditParty={flow.handleEditParty}
+              onRemoveParty={flow.handleRemoveParty}
+              onUndoRemove={flow.handleUndoRemove}
+            />
+          ) : undefined
+        }
+        summaryLines={summaryLines}
+        summaryEmptyText={isBn ? 'ধাপ ১-এ দাতা ও গ্রহীতা যোগ করুন।' : 'Add Donor & Donee in Stage 1.'}
+        summaryTotalLabel={isBn ? 'প্রাক্কলিত দানকর' : 'Estimated Tax'}
+        summaryTotalAmount={flow.completedTx?.totalAmount ?? flow.calculation.calculatedTax}
+        summaryTotalValidated={flow.hasValidatedEstimate}
+        summaryFooterNote={t('giftTaxNonStatutoryDisclaimer')}
+      >
+        {flow.seedRejected && (
+          <div role="alert" className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+            {isBn ? 'অনুরোধকৃত দানকর লেনদেন বা খসড়া বর্তমান অ্যাকাউন্টে অনুপলব্ধ।' : 'Requested Gift Tax record or draft is unavailable for this account.'}
           </div>
         )}
 
-        {stage === 1 && (
+        {flow.stage === 1 && (
           <GiftTaxPartiesStep
-            donorTin={donorTin}
-            donorName={donorName}
-            doneeTin={doneeTin}
-            doneeName={doneeName}
-            relationship={relationship}
-            errors={errors}
-            onChangeDonorTin={(val) => { setDonorTin(val); if (errors.donorTin) setErrors((p) => ({ ...p, donorTin: undefined })); }}
-            onChangeDonorName={(val) => { setDonorName(val); if (errors.donorName) setErrors((p) => ({ ...p, donorName: undefined })); }}
-            onChangeDoneeTin={(val) => { setDoneeTin(val); if (errors.doneeTin) setErrors((p) => ({ ...p, doneeTin: undefined })); }}
-            onChangeDoneeName={(val) => { setDoneeName(val); if (errors.doneeName) setErrors((p) => ({ ...p, doneeName: undefined })); }}
-            onChangeRelationship={setRelationship}
-            onNext={handleNext}
+            donor={flow.donor}
+            donee={flow.donee}
+            donorTinInput={flow.donorTinInput}
+            doneeTinInput={flow.doneeTinInput}
+            donorLookupResult={flow.donorLookupResult}
+            doneeLookupResult={flow.doneeLookupResult}
+            donorLookupError={flow.donorLookupError}
+            doneeLookupError={flow.doneeLookupError}
+            relationship={flow.relationship}
+            relationshipTag={flow.relationshipTag}
+            undoParty={flow.undoParty}
+            errors={flow.errors}
+            isAuthenticated={flow.isAuthenticated}
+            onChangeDonorTin={(v) => { flow.setDonorTinInput(v); flow.setDonorLookupResult(null); flow.setDonorLookupError(''); }}
+            onChangeDoneeTin={(v) => { flow.setDoneeTinInput(v); flow.setDoneeLookupResult(null); flow.setDoneeLookupError(''); }}
+            onSearchDonor={flow.handleSearchDonor}
+            onSearchDonee={flow.handleSearchDonee}
+            onAddDonor={flow.handleAddDonor}
+            onAddDonee={flow.handleAddDonee}
+            onEditParty={flow.handleEditParty}
+            onRemoveParty={flow.handleRemoveParty}
+            onUndoRemove={flow.handleUndoRemove}
+            onSelectRelationship={flow.handleSelectRelationship}
+            onChangeRelationshipTag={flow.handleChangeRelationshipTag}
+            onSaveDraft={flow.handleSaveDraft}
+            onNext={flow.handleProceedStage1}
           />
         )}
 
-        {stage === 2 && (
+        {flow.stage === 2 && (
           <GiftTaxValuationStep
-            giftAmountInput={giftAmountInput}
-            giftDate={giftDate}
-            description={description}
-            calculatedTax={calculatedTax}
-            errors={errors}
-            onChangeAmount={(val) => { setGiftAmountInput(val); if (errors.giftAmount) setErrors((p) => ({ ...p, giftAmount: undefined })); }}
-            onChangeGiftDate={(val) => { setGiftDate(val); if (errors.giftDate) setErrors((p) => ({ ...p, giftDate: undefined })); }}
-            onChangeDescription={(val) => { setDescription(val); if (errors.description) setErrors((p) => ({ ...p, description: undefined })); }}
-            onBack={() => setStage(1)}
-            onNext={handleNext}
+            giftAmountInput={flow.giftAmountInput}
+            description={flow.description}
+            giftDate={flow.giftDate}
+            remarks={flow.remarks}
+            calculation={flow.calculation}
+            errors={flow.errors}
+            isAuthenticated={flow.isAuthenticated}
+            onChangeAmount={(v) => { flow.setGiftAmountInput(v); if (flow.errors.giftAmount) flow.setErrors((p) => ({ ...p, giftAmount: undefined })); }}
+            onChangeDescription={(v) => { flow.setDescription(v); if (flow.errors.description) flow.setErrors((p) => ({ ...p, description: undefined })); }}
+            onChangeGiftDate={(v) => { flow.setGiftDate(v); if (flow.errors.giftDate) flow.setErrors((p) => ({ ...p, giftDate: undefined })); }}
+            onChangeRemarks={(v) => { flow.setRemarks(v); if (flow.errors.remarks) flow.setErrors((p) => ({ ...p, remarks: undefined })); }}
+            onSaveDraft={flow.handleSaveDraft}
+            onBack={() => flow.setStage(1)}
+            onNext={flow.handleProceedStage2}
           />
         )}
 
-        {stage === 3 && (
+        {flow.stage === 3 && flow.donor && flow.donee && flow.relationship && (
           <GiftTaxPreviewStep
-            donorName={donorName}
-            donorTin={donorTin}
-            doneeName={doneeName}
-            doneeTin={doneeTin}
-            relationship={relationship}
-            giftAmount={giftAmount}
-            giftDate={giftDate}
-            calculatedTax={calculatedTax}
-            onBack={() => setStage(2)}
-            onPay={handlePay}
+            donor={flow.donor}
+            donee={flow.donee}
+            relationship={flow.relationship}
+            relationshipTag={flow.relationshipTag}
+            giftDate={flow.giftDate}
+            description={flow.description}
+            remarks={flow.remarks}
+            calculation={flow.calculation}
+            paymentChannel={flow.paymentChannel}
+            isAuthenticated={flow.isAuthenticated}
+            onChangeChannel={flow.setPaymentChannel}
+            onEditParties={() => flow.setStage(1)}
+            onEditValuation={() => flow.setStage(2)}
+            onSaveDraft={flow.handleSaveDraft}
+            onBack={() => flow.setStage(2)}
+            onPay={flow.handlePay}
           />
         )}
 
-        {stage === 4 && completedTx && (
-          <PaymentSuccessCard
-            title="Sample Gift Tax Preview Recorded"
-            subtitle={`Illustrative prototype record for donor ${donorName} and donee ${doneeName} (not an official payment or challan).`}
-            onViewReceipt={() => setCompletedTx(completedTx)}
-            onViewCertificate={() => setCertOpen(true)}
-            onReturnDashboard={() => navigate('/dashboard')}
+        {flow.stage === 4 && flow.completedTx && (
+          <SharedPaymentResultStep
+            transaction={flow.completedTx}
+            isAuthenticated={flow.isAuthenticated}
+            onViewReceipt={() => flow.setShowReceipt(true)}
+            onViewCertificate={() => flow.setCertOpen(true)}
+            onSignInToClaim={() => navigate(`/login?returnTo=${encodeURIComponent(`/history?claimRef=${flow.completedTx!.transactionRef}`)}`)}
+            onContinueWalkIn={flow.resetWalkIn}
+            onReturnDashboard={flow.goDashboard}
           />
         )}
-      </div>
+      </SharedPayTaxProgressiveModal>
 
-      <ReceiptModal open={Boolean(completedTx && stage === 4 && !certOpen)} onClose={() => navigate('/dashboard')} transaction={completedTx} isAuthenticated={isAuthenticated} />
-      <PaymentCertificateDialog open={certOpen} onClose={() => setCertOpen(false)} transaction={completedTx} isAuthenticated={isAuthenticated} />
+      <ReceiptModal open={Boolean(flow.completedTx && flow.stage === 4 && flow.showReceipt && !flow.certOpen)} onClose={() => flow.setShowReceipt(false)} transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated} />
+      <PaymentCertificateDialog open={flow.certOpen} onClose={() => flow.setCertOpen(false)} transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated} />
     </div>
   );
 };

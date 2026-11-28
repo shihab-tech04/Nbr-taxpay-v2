@@ -1,3 +1,7 @@
+import type { CorrectionRequest } from '../types/tax';
+import { isTransactionCorrectionEligible } from './correctionLogic';
+import { buildCorrectionNotification, prependScopedNotification } from './domainNotifications';
+import { createExperimentalCorrection } from './mockLedgerAdapter';
 import type { ScopedDomainData } from './scopedDomainSeeds';
 
 export function deleteListFromDomain(
@@ -60,3 +64,54 @@ export function bulkDeleteBeneficiariesInDomain(
   });
   return { next: { ...curr, beneficiaries }, removedCount };
 }
+
+export function appendVerifiedCorrectionSafely(
+  curr: ScopedDomainData,
+  cData: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>,
+  activeScope: string,
+  isAuthenticated: boolean,
+  prepared?: CorrectionRequest
+): { next: ScopedDomainData; created: CorrectionRequest | null } {
+  const tx = curr.transactions.find(
+    (item) => item.id === cData.transactionId || item.challanNumber === cData.challanNumber
+  );
+  if (!isTransactionCorrectionEligible(tx, activeScope, isAuthenticated) || !tx) {
+    return { next: curr, created: null };
+  }
+  const idx = cData.allocationIndex ?? (tx.items.length === 1 ? 0 : -1);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= tx.items.length) {
+    return { next: curr, created: null };
+  }
+  const hasActiveDuplicate = curr.corrections.some(
+    (c) =>
+      (c.status === 'Submitted' || c.status === 'Under Review') &&
+      (c.challanNumber === tx.challanNumber || c.transactionId === tx.id) &&
+      (c.allocationIndex ?? 0) === idx &&
+      (!c.ownerScope || c.ownerScope === activeScope)
+  );
+  if (hasActiveDuplicate) {
+    return { next: curr, created: null };
+  }
+  const created =
+    prepared ??
+    createExperimentalCorrection({
+      ...cData,
+      ownerScope: activeScope,
+      transactionId: tx.id,
+      transactionRef: tx.transactionRef,
+      challanNumber: tx.challanNumber,
+      allocationIndex: idx,
+    });
+  return {
+    created,
+    next: {
+      ...curr,
+      corrections: [created, ...curr.corrections],
+      notifications:
+        activeScope !== 'walkin'
+          ? prependScopedNotification(curr.notifications, buildCorrectionNotification(activeScope, created))
+          : curr.notifications,
+    },
+  };
+}
+

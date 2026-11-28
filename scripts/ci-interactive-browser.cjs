@@ -148,35 +148,46 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     assert.equal(await page.locator('[data-testid="payment-certificates-section"] tbody tr').count(), 0);
     assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
 
-    // 4. Gift Tax route (walk-in): starts with empty donor fields; invalid date blocks Stage 3; valid date preserves giftDate
+    // 4. Gift Tax route (walk-in): empty initial parties, Donor/Donee distinct TIN lookup, Stage 2 invalid/future date rejection, Stage 3/4 Attribution
     await page.goto(`${baseUrl}/gift-tax`, { waitUntil: 'networkidle' });
-    assert.equal(await page.getByLabel(/Donor TIN/i).inputValue(), '');
-    await page.getByLabel(/Donor TIN/i).fill('882349102384');
-    await page.getByLabel(/Donor Name/i).fill('Md. Rafiqul Islam');
-    await page.getByRole('button', { name: /Proceed to Gift Details/i }).click();
-    await page.getByText('Stage 2: Gift & Valuation Information').waitFor({ state: 'visible' });
-    await page.getByText(/Sample Gift Tax Preview/i).waitFor({ state: 'visible' });
+    assert.equal(await page.getByTestId('gift-donor-confirmed').count(), 0);
+    assert.equal(await page.getByTestId('gift-donee-confirmed').count(), 0);
+    await page.getByTestId('gift-donor-tin-input').fill('882349102384');
+    await page.getByRole('button', { name: /Search Donor TIN/i }).click();
+    await page.getByTestId('gift-add-donor-btn').click();
+    await page.getByTestId('gift-donee-tin-input').fill('992384102938');
+    await page.getByRole('button', { name: /Search Donee TIN/i }).click();
+    await page.getByTestId('gift-add-donee-btn').click();
+    await page.getByRole('combobox', { name: /Relationship/i }).click();
+    await page.getByRole('option', { name: /^Mother$/i }).click();
+    await page.getByLabel(/Donee Tag/i).fill('Mother - Homestead Gift');
+    await page.getByRole('button', { name: /Next: Gift & Tax Information/i }).click();
+    await page.getByTestId('gift-stage-2').waitFor({ state: 'visible' });
 
-    const giftGroup = page.locator('main [role="group"]').first();
+    await page.getByLabel(/Gift Value \(BDT\)/i).fill('520000');
+    await page.getByLabel(/Gift Description/i).fill('Gift plot');
+    const giftGroup = page.locator('[data-testid="gift-stage-2"] [role="group"]').first();
     await giftGroup.locator('[role="spinbutton"]').first().click();
     await page.keyboard.type('30022026');
-    await page.getByRole('button', { name: /Proceed to Preview/i }).click();
-    await page.getByText('Stage 2: Gift & Valuation Information').waitFor({ state: 'visible' });
-    await page.getByText(/valid date|valid gift date/i).first().waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Next: Final Preview/i }).click();
+    await page.getByTestId('gift-stage-2').waitFor({ state: 'visible' });
+    await page.getByText(/valid date|future/i).first().waitFor({ state: 'visible' });
 
     await giftGroup.locator('[role="spinbutton"]').first().click();
     await page.keyboard.type('10042026');
-    await page.getByRole('button', { name: /Proceed to Preview/i }).click();
-    await page.getByText('Stage 3: Final Payment Preview').waitFor({ state: 'visible' });
-    await page.getByText(/Sample Gift Tax Estimate \(Not Official\):/i).waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Next: Final Preview/i }).click();
+    await page.getByTestId('gift-stage-3').waitFor({ state: 'visible' });
+    await page.getByText(/Illustrative Gift Tax Estimate \(Not Official\):/i).waitFor({ state: 'visible' });
     assert.match(await page.locator('main').innerText(), /10 Apr 2026/);
-    await page.getByRole('button', { name: /Confirm/i }).click();
-    await page.getByText('Sample Gift Tax Preview Recorded').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Confirm & Pay/i }).click();
+    const walkinGiftResult = page.getByTestId('walkin-payment-result');
+    await walkinGiftResult.waitFor({ state: 'visible' });
+    await walkinGiftResult.getByRole('button', { name: /Challan Details & Print/i }).click();
     await page.locator('[role="dialog"]').getByText('Sample challan — not valid for payment').waitFor({ state: 'visible' });
     assert.match(await page.locator('[role="dialog"] [data-testid="receipt-gift-date"]').innerText(), /2026-04-10/);
 
     await page.keyboard.press('Escape');
-    await page.locator('[role="dialog"]').waitFor({ state: 'hidden', timeout: 3000 });
+    await page.getByTestId('receipt-gift-attribution').waitFor({ state: 'hidden', timeout: 3000 });
 
     // 5. All Tax Payments (F-21 walk-in): 7 categories, taxpayer step, Return single-AY guard, sort/remove by originalIndex, remarks & Walk-in Claim option
     await page.goto(`${baseUrl}/all-taxes`, { waitUntil: 'networkidle' });
