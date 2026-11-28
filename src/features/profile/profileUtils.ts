@@ -1,53 +1,40 @@
 import type { UserProfile } from '../../types/tax';
+import { maskFirstThreeDigits, maskHiddenEmailDomain } from '../../shared/accountSession';
 import { INITIAL_USER } from '../../shared/mockData';
 import { SAMPLE_TAXPAYER_PROFILE_24 } from './profileData';
 import type { TaxpayerProfile24 } from './profileTypes';
 
-export function isSensitiveMaskValue(value: string): boolean {
+export interface ResolvedTaxpayerProfile {
+  profile: TaxpayerProfile24;
+  isSampleIdentity: boolean;
+  registrationNotLinked: boolean;
+}
+
+export function isSensitiveMaskValue(value: string, key?: keyof TaxpayerProfile24 | string): boolean {
   const trimmed = value.trim();
   if (!trimmed || trimmed === '—' || trimmed.toUpperCase() === 'N/A') return false;
-  return trimmed.replace(/\D/g, '').length >= 4 || trimmed.includes('@');
+  const digitCount = trimmed.match(/[0-9]/g)?.length ?? 0;
+  if (key === 'tin' || key === 'previousTin') return digitCount >= 8;
+  if (key === 'mobileNumber' || key === 'taxOfficePhone') return digitCount >= 6;
+  if (key === 'emailAddress') return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed);
+  return digitCount >= 6 || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed);
 }
 
 export function maskProfileTin(tin: string): string {
-  const digits = tin.replace(/\D/g, '');
-  if (digits.length < 4) {
-    const trimmed = tin.trim();
-    return trimmed === 'N/A' || trimmed === '—' || trimmed === '' ? trimmed || '—' : '••••';
-  }
-  return `${digits.slice(0, 3)}${'•'.repeat(digits.length - 3)}`;
+  return maskFirstThreeDigits(tin, 8);
 }
 
 export function maskProfilePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 4) {
-    const trimmed = phone.trim();
-    return trimmed === 'N/A' || trimmed === '—' || trimmed === '' ? trimmed || '—' : '••••';
-  }
-  return `${digits.slice(0, 3)}${'•'.repeat(digits.length - 3)}`;
+  return maskFirstThreeDigits(phone, 6);
 }
 
 export function maskProfileEmail(email: string): string {
   const trimmed = email.trim();
   if (!trimmed || trimmed === '—' || trimmed.toUpperCase() === 'N/A') return trimmed || '—';
-  const parts = trimmed.split('@');
-  if (parts.length !== 2) return '••••@••••';
-  const [local, domain] = parts;
-  const visibleLocal = local.length > 2 ? local.slice(0, 2) : local.slice(0, 1);
-  const domainLabels = domain.split('.');
-  const firstLabel = domainLabels[0] ?? '';
-  const visibleDomainHead = firstLabel.slice(0, 1);
-  const maskedDomainLabels = domainLabels.map((label, idx) =>
-    idx === 0 ? `${visibleDomainHead}••••` : '•'.repeat(Math.max(2, label.length))
-  );
-  return `${visibleLocal}••••@${maskedDomainLabels.join('.')}`;
+  return maskHiddenEmailDomain(trimmed);
 }
 
-export function formatProfileValue(
-  key: string,
-  value: string,
-  revealed: boolean
-): string {
+export function formatProfileValue(key: string, value: string, revealed: boolean): string {
   if (!value.trim()) return '—';
   if (revealed) return value;
   if (key === 'tin' || key === 'previousTin') return maskProfileTin(value);
@@ -60,17 +47,19 @@ export function resolveTaxpayerProfile(
   user: UserProfile,
   isAuthenticated: boolean,
   publicPreview: boolean
-): { profile: TaxpayerProfile24; isSampleIdentity: boolean } {
-  const useSampleFixture =
-    publicPreview || !isAuthenticated || user.tin === INITIAL_USER.tin;
+): ResolvedTaxpayerProfile | null {
+  if (!isAuthenticated || publicPreview || !user.tin.trim()) {
+    return null;
+  }
 
-  if (useSampleFixture) {
+  if (user.tin === INITIAL_USER.tin) {
     return {
       isSampleIdentity: true,
+      registrationNotLinked: false,
       profile: {
         ...SAMPLE_TAXPAYER_PROFILE_24,
         taxpayerName: user.name || SAMPLE_TAXPAYER_PROFILE_24.taxpayerName,
-        tin: user.tin || SAMPLE_TAXPAYER_PROFILE_24.tin,
+        tin: user.tin,
         tinType: user.taxpayerType || SAMPLE_TAXPAYER_PROFILE_24.tinType,
         taxesCircle: user.circle || SAMPLE_TAXPAYER_PROFILE_24.taxesCircle,
         registeredOn: user.registeredDate || SAMPLE_TAXPAYER_PROFILE_24.registeredOn,
@@ -83,6 +72,7 @@ export function resolveTaxpayerProfile(
 
   return {
     isSampleIdentity: false,
+    registrationNotLinked: true,
     profile: {
       taxpayerName: user.name || '—',
       tin: user.tin || '—',
@@ -90,7 +80,7 @@ export function resolveTaxpayerProfile(
       taxesCircle: user.circle || '—',
       registeredOn: user.registeredDate || '—',
       lastLoginAt: 'Active session',
-      taxpayerStatus: '—',
+      taxpayerStatus: user.taxpayerType || '—',
       tinSubtype: '—',
       userType: '—',
       localTaxpayer: '—',
@@ -102,12 +92,12 @@ export function resolveTaxpayerProfile(
       taxesRange: '—',
       district: '—',
       country: '—',
+      previousTin: '—',
       certificateIssuedOn: '—',
       certificateLastUpdatedOn: '—',
       issuingOfficer: '—',
       taxOfficeAddress: '—',
       taxOfficePhone: '—',
-      previousTin: '—',
     },
   };
 }

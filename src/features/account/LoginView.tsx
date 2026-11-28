@@ -1,32 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, RotateCw, ShieldAlert, UserCheck } from 'lucide-react';
+import { LogOut, RotateCw, ShieldAlert, UserCheck } from 'lucide-react';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import { AppButton } from '../../design-system/buttons';
-import { AppNumberField, validateTin } from '../../design-system/forms';
-import { AppRadioGroup } from '../../design-system/selection';
+import { AppNumberField } from '../../design-system/forms';
 import {
   lookupTinIdentity,
   sanitizeReturnPath,
+  verifyDemoCredentials,
   verifySimulationOtp,
   type OtpDeliveryChannel,
   type TinLookupResult,
 } from './accountAdapter';
+import { LoginCredentialsPanel } from './LoginCredentialsPanel';
 
 export const LoginView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { completeOtpSignIn } = useApp();
+  const { user, isAuthenticated, completeOtpSignIn, signOutClean } = useApp();
 
-  const [tin, setTin] = useState('882349102384');
-  const [otp, setOtp] = useState('123456');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'tin' | 'otp'>('tin');
   const [channel, setChannel] = useState<OtpDeliveryChannel>('sms');
-  const [lookupResult, setLookupResult] = useState<TinLookupResult | null>(() => lookupTinIdentity('882349102384'));
+  const [lookupResult, setLookupResult] = useState<TinLookupResult | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
   const [tinError, setTinError] = useState('');
   const [otpError, setOtpError] = useState('');
   const [resendCount, setResendCount] = useState(0);
@@ -40,32 +43,40 @@ export const LoginView: React.FC = () => {
     return () => clearTimeout(id);
   }, [cooldownSec]);
 
-  const handleTinChange = (nextTin: string) => {
-    setTin(nextTin);
+  const handleIdentifierChange = (nextId: string) => {
+    setIdentifier(nextId);
     if (tinError) setTinError('');
-    setLookupResult(lookupTinIdentity(nextTin));
+    setLookupResult(lookupTinIdentity(nextId));
   };
 
-  const handleTinSubmit = (e: React.FormEvent) => {
+  const handleFillDemo = (userId: string) => {
+    setIdentifier(userId);
+    setPassword(userId);
+    setTinError('');
+    setLookupResult(lookupTinIdentity(userId));
+  };
+
+  const handleCredentialsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isRestrictedOperationAllowed('sign_in')) return;
-    const validation = validateTin(tin);
-    const resolved = lookupTinIdentity(tin);
-    if (!validation.valid || !resolved) {
-      setTinError(t('invalidTinError'));
+    if (isAuthenticated) {
+      setTinError(isBn ? 'আগে বর্তমান অ্যাকাউন্ট থেকে সাইন আউট করুন।' : 'Sign out of the current account before switching users.');
       return;
     }
-    setLookupResult(resolved);
+    const matchedDirectory = lookupTinIdentity(identifier);
+    if (!matchedDirectory) {
+      setTinError(isBn ? 'টিআইএন বা ইউজার আইডি পাওয়া যায়নি। অনুমোদিত ডেমো আইডি দিন।' : 'Unknown TIN or User ID. Enter an approved demo TIN or User ID (user1 / user2).');
+      return;
+    }
+    const verified = verifyDemoCredentials(identifier, password);
+    if (!verified) {
+      setTinError(isBn ? 'ইউজার আইডি/টিআইএন অথবা পাসওয়ার্ড সঠিক নয়।' : 'Incorrect User ID/TIN or password.');
+      return;
+    }
+    setLookupResult(verified);
     setTinError('');
     setOtpError('');
     setStep('otp');
-  };
-
-  const handleResendOtp = () => {
-    if (!isRestrictedOperationAllowed('sign_in') || cooldownSec > 0) return;
-    setResendCount((prev) => prev + 1);
-    setCooldownSec(5);
-    setOtpError('');
   };
 
   const handleOtpSubmit = (e: React.FormEvent) => {
@@ -76,13 +87,11 @@ export const LoginView: React.FC = () => {
       setOtpError(
         check.reason === 'format'
           ? t('invalidOtpError')
-          : isBn
-          ? 'ওটিপি মেলেনি। প্রদর্শনী কোড 123456 ব্যবহার করুন।'
-          : 'Incorrect OTP code. Use demo code 123456 to continue.'
+          : isBn ? 'ওটিপি মেলেনি। প্রদর্শনী কোড 111111 বা 123456 ব্যবহার করুন।' : 'Incorrect OTP code. Use demo code 111111 or 123456 to continue.'
       );
       return;
     }
-    const targetProfile = (lookupResult ?? lookupTinIdentity(tin))?.profile;
+    const targetProfile = (lookupResult ?? verifyDemoCredentials(identifier, password))?.profile;
     if (!targetProfile) return;
     setOtpError('');
     completeOtpSignIn(targetProfile);
@@ -99,60 +108,42 @@ export const LoginView: React.FC = () => {
           <div className="w-12 h-12 rounded-xl bg-teal-700 text-white flex items-center justify-center mx-auto font-bold text-lg">সহ</div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{isBn ? 'করদাতা সাইন ইন' : 'Citizen Taxpayer Sign In'}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isBn ? '১২-অঙ্কের টিআইএন এবং গোপনীয় ওটিপি দিয়ে সাইন ইন করুন' : 'Verify identity with 12-digit TIN and masked OTP channel'}
+            {isBn ? 'ইউজার আইডি/টিআইএন, পাসওয়ার্ড ও ওটিপি দিয়ে সাইন ইন করুন' : 'Sign in using approved User ID or 12-digit TIN, password, and OTP'}
           </p>
         </div>
 
-        {activeError && (
-          <div role="alert" className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300">
-            {activeError}
+        {isAuthenticated && (
+          <div role="status" className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3">
+            <span>{isBn ? `${user.name} হিসেবে সাইন ইন করা আছে।` : `Signed in as ${user.name}. Sign out first to switch users.`}</span>
+            <AppButton type="button" actionType="secondary" size="small" startIcon={<LogOut size={14} />} onClick={signOutClean}>{t('signOut')}</AppButton>
           </div>
         )}
 
+        {activeError && (
+          <div role="alert" className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300">{activeError}</div>
+        )}
+
         {step === 'tin' ? (
-          <form onSubmit={handleTinSubmit} noValidate className="space-y-4">
-            <AppNumberField
-              label={t('taxpayerTin')}
-              maxLength={12}
-              value={tin}
-              onChange={(e) => handleTinChange(e.target.value)}
-              placeholder={t('tinPlaceholder')}
-              required
-              error={Boolean(tinError)}
-              helperText={tinError || t('tinHelperText')}
-              slotProps={{ htmlInput: { autoComplete: 'username' } }}
-            />
-            {lookupResult && (
-              <div data-testid="login-masked-contacts" className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                <div className="font-semibold text-slate-700 dark:text-slate-200">{lookupResult.maskedNameHint}</div>
-                <AppRadioGroup
-                  orientation="horizontal"
-                  name="otp-channel"
-                  label={isBn ? 'ওটিপি পাঠানোর মাধ্যম' : 'Select masked contact'}
-                  value={channel}
-                  onChange={(_, val) => setChannel(val as OtpDeliveryChannel)}
-                  options={[
-                    { value: 'sms', label: `SMS (${lookupResult.maskedSms})` },
-                    { value: 'email', label: `Email (${lookupResult.maskedEmail})` },
-                  ]}
-                />
-              </div>
-            )}
-            <AppButton type="submit" actionType="primary" size="large" fullWidth previewRestricted endIcon={<ArrowRight size={16} />}>
-              Continue with OTP
-            </AppButton>
-          </form>
+          <LoginCredentialsPanel
+            identifier={identifier}
+            password={password}
+            showRecovery={showRecovery}
+            lookupResult={lookupResult}
+            channel={channel}
+            fieldError={tinError}
+            isAuthenticated={isAuthenticated}
+            onChangeIdentifier={handleIdentifierChange}
+            onChangePassword={(val) => { setPassword(val); if (tinError) setTinError(''); }}
+            onToggleRecovery={() => setShowRecovery((prev) => !prev)}
+            onSelectChannel={setChannel}
+            onFillDemo={handleFillDemo}
+            onSubmit={handleCredentialsSubmit}
+          />
         ) : (
           <form onSubmit={handleOtpSubmit} noValidate className="space-y-4">
             <div className="p-3 bg-teal-50 dark:bg-teal-950/40 rounded-lg text-xs text-teal-800 dark:text-teal-200 space-y-1">
-              <div>
-                OTP sent via <strong className="uppercase">{channel}</strong> to <strong className="font-mono">{activeChannelMask}</strong> (Simulation: <span className="font-mono font-bold">123456</span>)
-              </div>
-              {resendCount > 0 && (
-                <div data-testid="otp-resent-status" className="font-semibold text-emerald-700 dark:text-emerald-300">
-                  {isBn ? `পুনরায় ওটিপি পাঠানো হয়েছে (#${resendCount})` : `OTP resent (#${resendCount})`}
-                </div>
-              )}
+              <div>OTP sent via <strong className="uppercase">{channel}</strong> to <strong className="font-mono">{activeChannelMask}</strong> (Demo: <span className="font-mono font-bold">111111</span> / <span className="font-mono font-bold">123456</span>)</div>
+              {resendCount > 0 && <div data-testid="otp-resent-status" className="font-semibold text-emerald-700 dark:text-emerald-300">{isBn ? `পুনরায় ওটিপি পাঠানো হয়েছে (#${resendCount})` : `OTP resent (#${resendCount})`}</div>}
             </div>
             <AppNumberField
               label={t('otpLabel')}
@@ -166,7 +157,7 @@ export const LoginView: React.FC = () => {
               slotProps={{ htmlInput: { autoComplete: 'one-time-code', className: 'text-center font-mono tracking-widest text-lg' } }}
             />
             <div className="flex items-center justify-between text-xs">
-              <AppButton type="button" actionType="secondary" surface="ghost" size="small" previewRestricted disabled={cooldownSec > 0} startIcon={<RotateCw size={14} />} onClick={handleResendOtp}>
+              <AppButton type="button" actionType="secondary" surface="ghost" size="small" previewRestricted disabled={cooldownSec > 0} startIcon={<RotateCw size={14} />} onClick={() => { if (!isRestrictedOperationAllowed('sign_in') || cooldownSec > 0) return; setResendCount((p) => p + 1); setCooldownSec(5); setOtpError(''); }}>
                 {cooldownSec > 0 ? (isBn ? `${cooldownSec}সে পরে` : `Resend (${cooldownSec}s)`) : isBn ? 'পুনরায় পাঠান' : 'Resend OTP'}
               </AppButton>
               <AppButton type="button" actionType="secondary" surface="ghost" size="small" onClick={() => { setOtpError(''); setStep('tin'); }}>
@@ -174,12 +165,8 @@ export const LoginView: React.FC = () => {
               </AppButton>
             </div>
             <div className="flex gap-3">
-              <AppButton type="button" actionType="secondary" onClick={() => { setOtpError(''); setStep('tin'); }} sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>
-                {t('back')}
-              </AppButton>
-              <AppButton type="submit" actionType="primary" previewRestricted endIcon={<UserCheck size={16} />} sx={{ width: '66.667%', borderRadius: '12px', py: 1.5 }}>
-                Verify & Sign In
-              </AppButton>
+              <AppButton type="button" actionType="secondary" onClick={() => { setOtpError(''); setStep('tin'); }} sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>{t('back')}</AppButton>
+              <AppButton type="submit" actionType="primary" previewRestricted endIcon={<UserCheck size={16} />} sx={{ width: '66.667%', borderRadius: '12px', py: 1.5 }}>Verify & Sign In</AppButton>
             </div>
           </form>
         )}
@@ -187,7 +174,7 @@ export const LoginView: React.FC = () => {
         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5 text-center text-xs text-slate-500">
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
             <ShieldAlert size={13} className="text-amber-600 shrink-0" />
-            <span>{isBn ? 'শুধু টিআইএন লিখলে কোনো ব্যক্তিগত তথ্য উন্মুক্ত হয় না।' : 'Entering a TIN never grants access without OTP verification.'}</span>
+            <span>{isBn ? 'এটি একটি ফ্রন্টএন্ড প্রোটোটাইপ সিমুলেশন; প্রকৃত এনবিআর সাইন-ইন নয়।' : 'Frontend prototype simulation only — not live NBR authentication.'}</span>
           </div>
           <AppButton actionType="secondary" surface="outlined" size="small" fullWidth onClick={() => navigate('/all-taxes')}>
             {isBn ? 'সাইন-ইন ছাড়া ওয়াক-ইন হিসেবে পেমেন্ট করুন' : 'Continue as Walk-In Taxpayer'}

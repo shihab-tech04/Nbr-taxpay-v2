@@ -12,32 +12,45 @@ import {
   getNoticesForTin,
   ISOLATED_SECONDARY_USER,
   lookupTinIdentity,
+  resolveAccountStorageScope,
   sanitizeReturnPath,
+  verifyDemoCredentials,
   verifySimulationOtp,
 } from './accountAdapter';
 import { LoginView } from './LoginView';
 import { FirstLoginNoticeDialog } from '../../components/account/FirstLoginNoticeDialog';
 
-test('lookupTinIdentity reveals masked contacts only and isolates unrelated TIN identities', () => {
+test('lookupTinIdentity fails closed on unknown TINs and restores * and @****.*** masks', () => {
   assert.equal(lookupTinIdentity('12345'), null);
+  assert.equal(lookupTinIdentity('998877665544'), null);
+  assert.deepEqual(getNoticesForTin('998877665544'), []);
 
-  const primary = lookupTinIdentity('882349102384');
+  const primary = lookupTinIdentity('user1');
   assert.ok(primary);
-  assert.equal(primary.directoryMatched, true);
-  assert.equal(primary.maskedSms, '880••••••••••');
-  assert.equal(primary.maskedEmail, 'ra••••@e••••.•••');
+  assert.equal(primary.tin, '882349102384');
+  assert.equal(primary.maskedSms, '+880**********');
+  assert.equal(primary.maskedEmail, 'ra***********@****.***');
   assert.doesNotMatch(primary.maskedNameHint, /Rafiqul/);
-
-  const unknown = lookupTinIdentity('998877665544');
-  assert.ok(unknown);
-  assert.equal(unknown.directoryMatched, false);
-  assert.equal(unknown.profile.circle, '—');
-  assert.doesNotMatch(unknown.profile.name, /Rafiqul/);
 
   const secondary = lookupTinIdentity(ISOLATED_SECONDARY_USER.tin);
   assert.ok(secondary);
   assert.equal(secondary.profile.name, 'Tasnim Chowdhury');
   assert.notDeepEqual(getNoticesForTin('882349102384'), getNoticesForTin(ISOLATED_SECONDARY_USER.tin));
+
+  assert.ok(verifyDemoCredentials('user1', 'user1'));
+  assert.ok(verifyDemoCredentials('user2', 'user2'));
+  assert.equal(verifyDemoCredentials('user1', 'wrong'), null);
+  assert.equal(verifyDemoCredentials('998877665544', '998877665544'), null);
+});
+
+test('resolveAccountStorageScope isolates signed-in users and walk-in session completely', () => {
+  assert.equal(resolveAccountStorageScope(false, '882349102384'), 'walkin');
+  assert.equal(resolveAccountStorageScope(true, '882349102384'), 'acct_882349102384');
+  assert.equal(resolveAccountStorageScope(true, '112233445566'), 'acct_112233445566');
+  assert.notEqual(
+    resolveAccountStorageScope(true, '882349102384'),
+    resolveAccountStorageScope(true, '112233445566')
+  );
 });
 
 test('verifySimulationOtp and sanitizeReturnPath enforce validation and open-redirect protection', () => {
@@ -54,7 +67,7 @@ test('verifySimulationOtp and sanitizeReturnPath enforce validation and open-red
   assert.equal(sanitizeReturnPath(null), '/dashboard');
 });
 
-test('LoginView and FirstLoginNoticeDialog render masked OTP channel controls and sequential queued notice', async () => {
+test('LoginView starts unprefilled with password/recovery/walk-in and FirstLoginNoticeDialog queues notices', async () => {
   await i18n.changeLanguage('en');
   const loginHtml = renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>
@@ -67,9 +80,9 @@ test('LoginView and FirstLoginNoticeDialog render masked OTP channel controls an
       </AppProvider>
     </I18nextProvider>
   );
-  assert.match(loginHtml, /data-testid="login-masked-contacts"/);
-  assert.match(loginHtml, /880••••••••••/);
-  assert.match(loginHtml, /ra••••@e••••\.•••/);
+  assert.doesNotMatch(loginHtml, /value="882349102384"/);
+  assert.match(loginHtml, /TIN or User ID/);
+  assert.match(loginHtml, /Recover Account/);
   assert.match(loginHtml, /Continue with OTP/);
   assert.match(loginHtml, /Continue as Walk-In Taxpayer/);
 

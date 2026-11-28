@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { ArrowRight, Award, Plus, User } from 'lucide-react';
+import { ArrowRight, Award, LogIn, Plus, User } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
-import { FirstLoginNoticeDialog } from '../../components/account/FirstLoginNoticeDialog';
 import { PaymentTransaction } from '../../types/tax';
 import { AppButton } from '../../design-system/buttons';
+import { AppStateView } from '../../design-system/feedback';
+import { PUBLIC_PREVIEW } from '../../shared/previewMode';
 import { DashboardMetrics } from './components/DashboardMetrics';
 import { RecentPaymentsTable } from './components/RecentPaymentsTable';
 
@@ -14,8 +15,38 @@ export const DashboardView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { user, isAuthenticated, unseenNotices, acknowledgeNotice, transactions, beneficiaries, drafts } = useApp();
+  const { user, isAuthenticated, transactions, beneficiaries, drafts } = useApp();
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-14 px-6">
+        <div className="max-w-2xl mx-auto">
+          <AppStateView
+            variant="empty"
+            title={isBn ? 'অ্যাকাউন্ট ড্যাশবোর্ড দেখতে সাইন ইন করুন' : 'Sign in to view your account dashboard'}
+            description={
+              isBn
+                ? 'সাইন-ইন ছাড়া কোনো নমুনা করদাতার তথ্য বা লেনদেন দেখানো হয় না। আপনি ওয়াক-ইন হিসেবে কর প্রদান করতে পারেন।'
+                : 'Sample taxpayer records, beneficiaries, and drafts stay isolated behind sign-in. You can still make a walk-in tax payment.'
+            }
+            action={
+              <div className="flex flex-wrap justify-center gap-3">
+                {!PUBLIC_PREVIEW && (
+                  <AppButton actionType="primary" startIcon={<LogIn size={16} />} onClick={() => navigate('/login?returnTo=/dashboard')}>
+                    {t('signIn')}
+                  </AppButton>
+                )}
+                <AppButton actionType="secondary" surface="outlined" onClick={() => navigate('/all-taxes')}>
+                  {isBn ? 'ওয়াক-ইন পেমেন্ট করুন' : 'Continue as Walk-In Taxpayer'}
+                </AppButton>
+              </div>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   const totalPaid = transactions
     .filter((tx) => tx.status === 'Completed')
@@ -33,7 +64,7 @@ export const DashboardView: React.FC = () => {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold">{user.name}</h1>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold">
-                  Sample taxpayer
+                  {isBn ? 'নমুনা করদাতা' : 'Sample taxpayer'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -43,43 +74,16 @@ export const DashboardView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <AppButton
-              actionType="secondary"
-              surface="outlined"
-              size="small"
-              startIcon={<User size={16} />}
-              onClick={() => navigate('/profile')}
-              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
-            >
+            <AppButton actionType="secondary" surface="outlined" size="small" startIcon={<User size={16} />} onClick={() => navigate('/profile')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
               {t('profile') || 'View Profile'}
             </AppButton>
-            <AppButton
-              actionType="primary"
-              size="small"
-              previewRestricted
-              startIcon={<Plus size={16} />}
-              onClick={() => navigate('/all-taxes')}
-              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
-            >
+            <AppButton actionType="primary" size="small" previewRestricted startIcon={<Plus size={16} />} onClick={() => navigate('/all-taxes')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
               New Tax Payment
             </AppButton>
-            <AppButton
-              actionType="secondary"
-              surface="soft"
-              size="small"
-              onClick={() => navigate('/beneficiaries')}
-              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
-            >
-              Beneficiaries
+            <AppButton actionType="secondary" surface="soft" size="small" onClick={() => navigate('/beneficiaries')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
+              {t('beneficiaries')}
             </AppButton>
-            <AppButton
-              actionType="secondary"
-              surface="soft"
-              size="small"
-              startIcon={<Award size={16} />}
-              onClick={() => navigate('/certificates')}
-              sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
-            >
+            <AppButton actionType="secondary" surface="soft" size="small" startIcon={<Award size={16} />} onClick={() => navigate('/certificates')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
               {isBn ? 'সনদসমূহ' : 'Certificates'}
             </AppButton>
           </div>
@@ -95,33 +99,20 @@ export const DashboardView: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Payment Activities</h3>
-              <p className="text-xs text-slate-500">Latest completed tax challans and transaction references.</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('recentActivity')}</h3>
+              <p className="text-xs text-slate-500">
+                {isBn ? 'সাম্প্রতিক সম্পন্ন নমুনা কর চালান ও লেনদেন রেফারেন্স।' : 'Latest completed tax challans and transaction references.'}
+              </p>
             </div>
-            <AppButton
-              actionType="secondary"
-              surface="ghost"
-              size="small"
-              endIcon={<ArrowRight size={14} />}
-              onClick={() => navigate('/history')}
-              sx={{ color: 'primary.main', '&:hover': { bgcolor: 'action.hover', textDecoration: 'underline' } }}
-            >
-              View All History
+            <AppButton actionType="secondary" surface="ghost" size="small" endIcon={<ArrowRight size={14} />} onClick={() => navigate('/history')} sx={{ color: 'primary.main', '&:hover': { bgcolor: 'action.hover', textDecoration: 'underline' } }}>
+              {isBn ? 'সম্পূর্ণ ইতিহাস দেখুন' : 'View All History'}
             </AppButton>
           </div>
-
           <RecentPaymentsTable transactions={transactions} onSelectTx={setSelectedTx} />
         </div>
       </div>
 
-      <ReceiptModal
-        open={Boolean(selectedTx)}
-        onClose={() => setSelectedTx(null)}
-        transaction={selectedTx}
-        isAuthenticated={isAuthenticated}
-      />
-
-      <FirstLoginNoticeDialog notices={unseenNotices} onAcknowledge={acknowledgeNotice} />
+      <ReceiptModal open={Boolean(selectedTx)} onClose={() => setSelectedTx(null)} transaction={selectedTx} isAuthenticated={isAuthenticated} />
     </div>
   );
 };

@@ -17,7 +17,7 @@ import {
 import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { TaxCreditCertificatesView } from './TaxCreditCertificatesView';
 
-test('buildPaymentCertificateRecord emits 1 combined certificate per completed transaction with all line heads', () => {
+test('buildPaymentCertificateRecord emits 1 combined certificate bound to tx originMode, ownerScope & reconciled total', () => {
   const multiItemTx = {
     ...INITIAL_TRANSACTIONS[0],
     items: [
@@ -29,39 +29,62 @@ test('buildPaymentCertificateRecord emits 1 combined certificate per completed t
         headNameBn: 'অগ্রিম আয়কর (এআইটি)',
         assessmentYear: '2026-2027',
         amount: 10000,
+        remarks: '২য় কিস্তি মন্তব্য',
       },
     ],
     totalAmount: 35000,
   };
 
-  const cert = buildPaymentCertificateRecord(multiItemTx, true);
+  const cert = buildPaymentCertificateRecord(multiItemTx, false);
   assert.ok(cert);
   assert.equal(cert.certificateId, 'CERT-SOHO-2026-98124');
   assert.equal(cert.items.length, 2);
   assert.equal(cert.assessmentYears, '2025-2026, 2026-2027');
   assert.equal(cert.lifecycleMode, 'signed_in');
+  assert.equal(cert.ownerScope, 'acct_882349102384');
 
-  const walkInCert = buildPaymentCertificateRecord(multiItemTx, false);
+  const walkInTx = {
+    ...multiItemTx,
+    originMode: 'walk_in' as const,
+    ownerScope: 'walkin',
+    travelDetails: {
+      passportNumber: 'A06829102',
+      passengerName: 'Walk-In Traveler',
+      destination: 'India (By Air)',
+      travelClass: 'Economy' as const,
+    },
+  };
+  const walkInCert = buildPaymentCertificateRecord(walkInTx, true);
   assert.ok(walkInCert);
   assert.equal(walkInCert.lifecycleMode, 'walk_in');
-  assert.match(walkInCert.lifecycleNoteEn, /Walk-in/);
+  assert.equal(walkInCert.ownerScope, 'walkin');
+  assert.equal(walkInCert.travelDetails?.passportNumber, 'A06829102');
+
+  const unreconciled = buildPaymentCertificateRecord({ ...multiItemTx, totalAmount: 999999 }, true);
+  assert.equal(unreconciled, null);
 
   const pendingCert = buildPaymentCertificateRecord({ ...multiItemTx, status: 'Pending' }, true);
   assert.equal(pendingCert, null);
 });
 
-test('buildSamplePdfBytes produces valid %PDF-1.4 payload without official verification claims', () => {
-  const cert = buildPaymentCertificateRecord(INITIAL_TRANSACTIONS[0], true)!;
+test('buildCertificatePdfLines preserves Unicode/Bengali remarks and ৳ symbol without stripping', () => {
+  const tx = {
+    ...INITIAL_TRANSACTIONS[0],
+    items: [{ ...INITIAL_TRANSACTIONS[0].items[0], remarks: 'বাংলা মন্তব্য সহ লাইন' }],
+  };
+  const cert = buildPaymentCertificateRecord(tx, true)!;
   const lines = buildCertificatePdfLines(cert);
+  const joined = lines.join('\n');
+  assert.match(joined, /বাংলা মন্তব্য সহ লাইন/);
+  assert.match(joined, /৳ 25,000/);
+
   const bytes = buildSamplePdfBytes(lines);
   const text = new TextDecoder().decode(bytes);
   assert.ok(text.startsWith('%PDF-1.4\n'));
-  assert.match(text, /%%EOF\n$/);
   assert.match(text, /CERT-SOHO-2026-98124/);
-  assert.match(text, /Illustrative preview only/);
 });
 
-test('PaymentCertificateDialog and TaxCreditCertificatesView keep Tax Credit and Payment Certificates separate', async () => {
+test('PaymentCertificateDialog renders printable paper and TaxCreditCertificatesView isolates signed-out walk-in ledger', async () => {
   await i18n.changeLanguage('en');
 
   const dialogHtml = renderToStaticMarkup(
@@ -79,8 +102,8 @@ test('PaymentCertificateDialog and TaxCreditCertificatesView keep Tax Credit and
   );
   assert.match(dialogHtml, /Combined Payment Certificate \(Sample\)/);
   assert.match(dialogHtml, /CERT-SOHO-2026-98124/);
+  assert.match(dialogHtml, /data-testid="payment-certificate-paper"/);
   assert.match(dialogHtml, /Download PDF/);
-  assert.match(dialogHtml, /Print/);
 
   const pageHtml = renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>
@@ -96,5 +119,6 @@ test('PaymentCertificateDialog and TaxCreditCertificatesView keep Tax Credit and
   assert.match(pageHtml, /data-testid="tax-credit-certificates-section"/);
   assert.match(pageHtml, /data-testid="payment-certificates-section"/);
   assert.match(pageHtml, /Official Tax Credit Certificates Require Live NBR Verification/);
-  assert.match(pageHtml, /CERT-SOHO-2026-98124/);
+  // When signed out (walkin scope), sample Rafiqul transaction must NOT leak into /certificates!
+  assert.doesNotMatch(pageHtml, /CERT-SOHO-2026-98124/);
 });

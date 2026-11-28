@@ -21,10 +21,10 @@ import {
 export const TravelTaxView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, addTransaction } = useApp();
+  const { user, isAuthenticated, activeScope, addTransaction } = useApp();
 
   const [passportNumber, setPassportNumber] = useState('A06829102');
-  const [passengerName, setPassengerName] = useState(user.name);
+  const [passengerName, setPassengerName] = useState(isAuthenticated ? user.name : '');
   const [destination, setDestination] = useState('India (By Air)');
   const [travelClass, setTravelClass] = useState<TravelClass>('Economy');
   const [amount, setAmount] = useState<number>(2000);
@@ -54,9 +54,17 @@ export const TravelTaxView: React.FC = () => {
   const handlePay = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
     const tx = addTransaction({
-      taxpayerTin: user.tin,
-      taxpayerName: user.name,
+      taxpayerTin: isAuthenticated ? user.tin : '',
+      taxpayerName: isAuthenticated ? user.name : passengerName,
+      ownerScope: activeScope,
+      originMode: isAuthenticated ? 'signed_in' : 'walk_in',
       category: 'travel_tax',
+      travelDetails: {
+        passportNumber,
+        passengerName,
+        destination,
+        travelClass,
+      },
       items: [
         {
           headId: 'h5',

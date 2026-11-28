@@ -135,43 +135,24 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
       await page.setViewportSize({ width: 1280, height: 900 });
     }
 
-    // 3. History route: inclusive range, reversed range fails closed, Clear resets, Escape closes calendar
-    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
-    const initialRows = await page.locator('tbody tr').count();
-    assert.ok(initialRows >= 2);
+    // 3. Signed-out isolation checks before signing in: Profile auth gate & isolated empty Certificates
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    await page.getByTestId('profile-auth-gate').waitFor({ state: 'visible' });
+    assert.match(await page.getByTestId('profile-auth-gate').innerText(), /Sign in to view your profile\./);
+    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 0);
+    assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
 
-    const historyGroups = page.locator('main [role="group"]');
-    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
-    await page.keyboard.type('10042026');
-    await historyGroups.nth(1).locator('[role="spinbutton"]').first().click();
-    await page.keyboard.type('10042026');
-    assert.equal(await page.locator('tbody tr').count(), 1);
-    assert.match(await page.locator('tbody').innerText(), /SOHO-2026-98124/);
+    await page.goto(`${baseUrl}/certificates`, { waitUntil: 'networkidle' });
+    await page.getByTestId('tax-credit-certificates-section').waitFor({ state: 'visible' });
+    await page.getByTestId('payment-certificates-section').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-testid="payment-certificates-section"] tbody tr').count(), 0);
+    assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
 
-    // Reversed range: fail closed (0 rows) + inline error
-    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
-    await page.keyboard.type('20042026');
-    assert.equal(await page.locator('tbody tr').count(), 0);
-    await page.getByText('End date cannot be earlier than start date.').waitFor({ state: 'visible' });
-
-    // Malformed bound fails closed (0 rows)
-    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
-    await page.keyboard.type('30022026');
-    assert.equal(await page.locator('tbody tr').count(), 0);
-
-    // Clear restores rows
-    await page.getByTestId('date-range-clear').click();
-    assert.equal(await page.locator('tbody tr').count(), initialRows);
-
-    // Calendar button opens popper and Escape dismisses it
-    await page.locator('main button[aria-label*="Choose date"]').first().click();
-    const calendar = page.locator('.MuiDateCalendar-root').first();
-    await calendar.waitFor({ state: 'visible' });
-    await page.keyboard.press('Escape');
-    await calendar.waitFor({ state: 'hidden', timeout: 2000 });
-
-    // 4. Gift Tax route: invalid date prevents stale valid Stage 3 progress; valid date preserves giftDate
+    // 4. Gift Tax route (walk-in): starts with empty donor fields; invalid date blocks Stage 3; valid date preserves giftDate
     await page.goto(`${baseUrl}/gift-tax`, { waitUntil: 'networkidle' });
+    assert.equal(await page.getByLabel(/Donor TIN/i).inputValue(), '');
+    await page.getByLabel(/Donor TIN/i).fill('882349102384');
+    await page.getByLabel(/Donor Name/i).fill('Md. Rafiqul Islam');
     await page.getByRole('button', { name: /Proceed to Gift Details/i }).click();
     await page.getByText('Stage 2: Gift & Valuation Information').waitFor({ state: 'visible' });
     await page.getByText(/Sample Gift Tax Preview/i).waitFor({ state: 'visible' });
@@ -197,132 +178,85 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.keyboard.press('Escape');
     await page.locator('[role="dialog"]').waitFor({ state: 'hidden', timeout: 3000 });
 
-    // 5. History AppTable sorting + EN/BN pagination + Receipt modal inner table sort & focus restore
-    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
-    const amountHeaderBtn = page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]');
-    await amountHeaderBtn.click(); // asc: 12,500 first
-    assert.match(await page.locator('tbody tr').first().innerText(), /SOHO-2026-88342/);
-    await amountHeaderBtn.click(); // desc: 25,000 first (Gift Tax or sample row)
-    assert.match(await page.locator('tbody tr').first().innerText(), /৳ 25,000/);
-    await page.getByText(/1–3 of 3/).waitFor({ state: 'visible' });
-
-    await page.locator('header button[title*="Language"]').click();
-    await page.getByText(/প্রতি পৃষ্ঠায় সারি:/).waitFor({ state: 'visible' });
-    await page.locator('header button[title*="Language"]').click();
-
-    const firstReceiptBtn = page.locator('tbody tr').first().getByRole('button', { name: /Receipt/i });
-    await firstReceiptBtn.click();
-    const receiptDialog = page.locator('[role="dialog"]');
-    await receiptDialog.waitFor({ state: 'visible' });
-    assert.match(await receiptDialog.innerText(), /Tax Head Allocations/);
-    await page.keyboard.press('Escape');
-    await receiptDialog.waitFor({ state: 'hidden', timeout: 3000 });
-    assert.equal(await firstReceiptBtn.evaluate((el) => document.activeElement === el), true);
-
-    // 6. Beneficiaries: sort, search, dirty-close guard, focus restore, and AppConfirmDialog delete
-    await page.goto(`${baseUrl}/beneficiaries`, { waitUntil: 'networkidle' });
-    await page.locator('table').waitFor({ state: 'visible' });
-    assert.equal(await page.locator('tbody tr').count(), 3);
-    assert.match(await page.locator('tbody tr').first().innerText(), /GreenCorp Ltd\./);
-
-    // Sort Name & TIN desc -> Tanvir Islam first
-    await page.locator('thead th', { hasText: /Name & TIN/i }).locator('[role="button"]').click();
-    assert.match(await page.locator('tbody tr').first().innerText(), /Tanvir Islam/);
-
-    // Search filters down & restores
-    const benSearch = page.getByLabel(/Search Beneficiaries/i);
-    await benSearch.fill('Fatema');
-    assert.equal(await page.locator('tbody tr').count(), 1);
-    assert.match(await page.locator('tbody tr').first().innerText(), /Mrs\. Fatema Begum/);
-    await page.getByRole('button', { name: /Clear search/i }).click();
-    assert.equal(await page.locator('tbody tr').count(), 3);
-
-    // Open Add modal -> unfinished edit -> Escape shows dirty guard -> Keep editing -> Close -> Discard closes & restores focus
-    const addBenBtn = page.getByRole('button', { name: /Add New Beneficiary/i });
-    await addBenBtn.click();
-    const benDialog = page.locator('[role="dialog"]');
-    await benDialog.waitFor({ state: 'visible' });
-    await benDialog.getByLabel(/Name/i).fill('Unsaved Person');
-    await page.keyboard.press('Escape');
-    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
-    await page.getByRole('button', { name: /Keep editing/i }).click();
-    assert.equal(await benDialog.isVisible(), true);
-    await benDialog.getByRole('button', { name: /Close dialog/i }).click();
-    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
-    await page.getByRole('button', { name: /Discard/i }).click();
-    await benDialog.waitFor({ state: 'hidden', timeout: 3000 });
-    assert.equal(await addBenBtn.evaluate((el) => document.activeElement === el), true);
-
-    // Delete Tanvir Islam via AppConfirmDialog -> row count drops & toast shows
-    await page.getByRole('button', { name: 'Delete Tanvir Islam' }).click();
-    const confirmDialog = page.locator('[role="dialog"]');
-    await confirmDialog.waitFor({ state: 'visible' });
-    assert.match(await confirmDialog.innerText(), /Delete Beneficiary\?/);
-    await confirmDialog.getByRole('button', { name: /^Delete$/i }).click();
-    await confirmDialog.waitFor({ state: 'hidden', timeout: 3000 });
-    assert.equal(await page.locator('tbody tr').count(), 2);
-    await page.getByText('Beneficiary removed').waitFor({ state: 'visible' });
-
-    // 7. Corrections: table + dirty-close guard on CorrectionFormDialog
-    await page.goto(`${baseUrl}/corrections`, { waitUntil: 'networkidle' });
-    await page.locator('table').waitFor({ state: 'visible' });
-    assert.ok((await page.locator('tbody tr').count()) >= 1);
-    await page.getByRole('button', { name: /Apply for Correction/i }).click();
-    const corrDialog = page.locator('[role="dialog"]');
-    await corrDialog.waitFor({ state: 'visible' });
-    await corrDialog.getByLabel(/Challan Number/i).fill('NBR-TEST-999');
-    await corrDialog.getByRole('button', { name: /Close dialog/i }).click();
-    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
-    await page.getByRole('button', { name: /Discard/i }).click();
-    await corrDialog.waitFor({ state: 'hidden', timeout: 3000 });
-
-    // 8. Drafts: table + AppConfirmDialog delete cancellation preserves row
-    await page.goto(`${baseUrl}/drafts`, { waitUntil: 'networkidle' });
-    await page.locator('table').waitFor({ state: 'visible' });
-    const initialDrafts = await page.locator('tbody tr').count();
-    assert.ok(initialDrafts >= 1);
-    await page.locator('tbody tr').first().getByRole('button', { name: /Delete draft/i }).click();
-    const draftConfirm = page.locator('[role="dialog"]');
-    await draftConfirm.waitFor({ state: 'visible' });
-    await draftConfirm.getByRole('button', { name: /Cancel/i }).click();
-    await draftConfirm.waitFor({ state: 'hidden', timeout: 3000 });
-    assert.equal(await page.locator('tbody tr').count(), initialDrafts);
-
-    // 9. All Tax Items table: sorting + removing sorted row deletes exact item by originalIndex
+    // 5. All Tax Payments (F-21 walk-in): 7 categories, taxpayer step, Return single-AY guard, sort/remove by originalIndex, remarks & Walk-in Claim option
     await page.goto(`${baseUrl}/all-taxes`, { waitUntil: 'networkidle' });
-    await page.locator('main button', { hasText: /Other Tax/i }).first().click();
-    assert.equal(await page.locator('tbody tr').count(), 1);
+    await page.getByTestId('all-tax-category-grid').waitFor({ state: 'visible' });
+    assert.equal(
+      await page.locator('[data-testid="all-tax-category-grid"] > [data-testid^="all-tax-category-"]').count(),
+      7
+    );
+    assert.equal(await page.getByTestId('frequent-tax-categories').count(), 0);
+
+    await page.getByTestId('all-tax-category-other_tax').click();
+    await page.getByRole('radio', { name: /Facilitation/i }).click();
+    await page.getByRole('textbox', { name: /Taxpayer TIN/i }).fill('882349102384');
+    await page.getByPlaceholder(/Taxpayer Name/i).fill('Taxpayer A');
+    await page.getByRole('button', { name: /Use \/ Add TIN/i }).click();
+    await page.getByRole('textbox', { name: /Taxpayer TIN/i }).fill('992384102938');
+    await page.getByPlaceholder(/Taxpayer Name/i).fill('Taxpayer B');
+    await page.getByRole('button', { name: /Use \/ Add TIN/i }).click();
+    await page.getByRole('button', { name: /Continue to Payment Head/i }).click();
+
+    assert.equal(await page.getByRole('button', { name: /Save as Draft/i }).count(), 0);
+    await page.getByLabel(/Tax Head/i).click();
+    await page.getByRole('option', { name: /0111/i }).click();
+    await page.getByLabel(/Amount \(BDT\)/i).fill('5000');
+    await page.getByLabel(/Remarks/i).fill('Line 1 note\nবাংলা চালান মন্তব্য');
+    await page.getByRole('button', { name: /Add Tax Head/i }).click();
+
+    // Same-taxpayer mixing of Return (0111) + non-Return (0112) is blocked
     await page.getByLabel(/Tax Head/i).click();
     await page.getByRole('option', { name: /0112/i }).click();
     await page.getByLabel(/Amount \(BDT\)/i).fill('1000');
     await page.getByRole('button', { name: /Add Tax Head/i }).click();
+    await page.getByRole('alert').first().waitFor({ state: 'visible' });
+    assert.equal(await page.locator('tbody tr').count(), 1);
+
+    // Switching to Taxpayer B allows Taxpayer A Return + Taxpayer B Advance in the same transaction
+    await page.getByLabel(/Taxpayer for this Line Item/i).click();
+    await page.getByRole('option', { name: /992384102938/i }).click();
+    await page.getByRole('button', { name: /Add Tax Head/i }).click();
 
     assert.equal(await page.locator('tbody tr').count(), 2);
-    // Sort by Amount asc -> 1000 (Advance Income Tax 0112, originalIndex 1) moves to visual row 0; removing it preserves 0111 (originalIndex 0)!
+    // Sort by Amount asc -> 1000 (Advance Income Tax 0112, originalIndex 1) moves to visual row 0; removing it preserves 0111!
     await page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]').click();
     assert.match(await page.locator('tbody tr').first().innerText(), /Advance Income Tax/);
     await page.getByRole('button', { name: /Remove Advance Income Tax/i }).click();
     assert.equal(await page.locator('tbody tr').count(), 1);
     assert.match(await page.locator('tbody tr').first().innerText(), /Income Tax with Return/);
 
-    // 10. Taxpayer Profile (24 fields): exact grouping, first-3-digit masking, email domain mask, no duplicates
-    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
-    for (const key of ['taxpayerName', 'tin', 'tinType', 'taxesCircle', 'registeredOn', 'lastLoginAt', 'mobileNumber', 'emailAddress', 'taxOfficePhone', 'previousTin']) {
-      await page.getByTestId(`profile-field-${key}`).waitFor({ state: 'visible' });
-    }
-    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
-    assert.equal(await page.locator('[data-testid="profile-field-taxesCircle"]').count(), 1);
-    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882•••••••••/);
-    assert.match(await page.getByTestId('profile-field-previousTin').innerText(), /654•••••••/);
-    assert.match(await page.getByTestId('profile-field-emailAddress').innerText(), /ra••••@e••••\.•••/);
-    assert.match(await page.getByTestId('profile-field-taxOfficePhone').innerText(), /880••••••••/);
-    assert.equal(await page.getByRole('button', { name: /Reveal TIN/i }).isDisabled(), true);
-    assert.equal(await page.getByRole('button', { name: /Copy TIN/i }).isDisabled(), true);
+    await page.getByRole('button', { name: /Proceed to Preview/i }).click();
+    assert.match(await page.locator('main').innerText(), /বাংলা চালান মন্তব্য/);
+    await page.getByRole('button', { name: /Confirm & Pay/i }).click();
+    const walkinResult = page.getByTestId('walkin-payment-result');
+    await walkinResult.waitFor({ state: 'visible' });
+    await walkinResult.getByRole('button', { name: /Challan Details & Print/i }).waitFor({ state: 'visible' });
+    await walkinResult.getByRole('button', { name: /View Payment Certificate/i }).waitFor({ state: 'visible' });
+    await walkinResult.getByRole('button', { name: /Continue without signing in/i }).waitFor({ state: 'visible' });
+    await walkinResult.getByRole('button', { name: /Sign in to Claim Payment/i }).click();
+    await page.waitForURL('**/login?returnTo=*');
 
-    // 11. Auth & Account journey: masked contacts, wrong-OTP validation, Resend OTP, ?returnTo=, sequential FirstLoginNoticeDialog
+    // 6. Auth & Account journey (User1 / Rafiqul): unknown TIN fail-closed, wrong password, masked contacts, Resend, OTP, ?returnTo=, sequential FirstLoginNoticeDialog
     await page.goto(`${baseUrl}/login?returnTo=/dashboard`, { waitUntil: 'networkidle' });
+    assert.equal(await page.getByLabel(/TIN or User ID/i).inputValue(), '');
+    assert.equal(await page.getByTestId('login-masked-contacts').count(), 0);
+
+    await page.getByLabel(/TIN or User ID/i).fill('998877665544');
+    await page.getByLabel(/^Password/i).fill('badpass');
+    assert.equal(await page.getByTestId('login-masked-contacts').count(), 0);
+    await page.getByRole('button', { name: /Continue with OTP/i }).click();
+    await page.getByRole('alert').filter({ hasText: /Unknown TIN or User ID/i }).waitFor({ state: 'visible' });
+
+    await page.getByRole('button', { name: 'user1', exact: true }).click();
     await page.getByTestId('login-masked-contacts').waitFor({ state: 'visible' });
-    assert.match(await page.getByTestId('login-masked-contacts').innerText(), /880••••••••••/);
+    assert.match(await page.getByTestId('login-masked-contacts').innerText(), /\+880\*{10}/);
+    assert.match(await page.getByTestId('login-masked-contacts').innerText(), /ra\*{11}@\*{4}\.\*{3}/);
+
+    await page.getByLabel(/^Password/i).fill('wrongpass');
+    await page.getByRole('button', { name: /Continue with OTP/i }).click();
+    await page.getByRole('alert').filter({ hasText: /Incorrect User ID\/TIN or password/i }).waitFor({ state: 'visible' });
+
+    await page.getByLabel(/^Password/i).fill('user1');
     await page.getByRole('radio', { name: /Email/i }).click();
     await page.getByRole('button', { name: /Continue with OTP/i }).click();
 
@@ -345,9 +279,143 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await noticeDialog.getByRole('button', { name: /^Acknowledge$/i }).click();
     await noticeDialog.waitFor({ state: 'hidden', timeout: 3000 });
 
-    // Navigate to Profile: reveal TIN, copy toast, Sample Certificate modal, then switch to Account B for isolation
-    await page.getByRole('button', { name: /Taxpayer Profile/i }).click();
-    await page.waitForURL('**/profile');
+    // 7. Signed-in User1 History (isolated from walk-in records), inclusive date bounds, sort, Receipt modal, Pay Again
+    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
+    const initialRows = await page.locator('tbody tr').count();
+    assert.equal(initialRows, 2);
+
+    const historyGroups = page.locator('main [role="group"]');
+    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
+    await page.keyboard.type('10042026');
+    await historyGroups.nth(1).locator('[role="spinbutton"]').first().click();
+    await page.keyboard.type('10042026');
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    assert.match(await page.locator('tbody').innerText(), /SOHO-2026-98124/);
+
+    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
+    await page.keyboard.type('20042026');
+    assert.equal(await page.locator('tbody tr').count(), 0);
+    await page.getByText('End date cannot be earlier than start date.').waitFor({ state: 'visible' });
+
+    await historyGroups.nth(0).locator('[role="spinbutton"]').first().click();
+    await page.keyboard.type('30022026');
+    assert.equal(await page.locator('tbody tr').count(), 0);
+
+    await page.getByTestId('date-range-clear').click();
+    assert.equal(await page.locator('tbody tr').count(), initialRows);
+
+    await page.locator('main button[aria-label*="Choose date"]').first().click();
+    const calendar = page.locator('.MuiDateCalendar-root').first();
+    await calendar.waitFor({ state: 'visible' });
+    await page.keyboard.press('Escape');
+    await calendar.waitFor({ state: 'hidden', timeout: 2000 });
+
+    const amountHeaderBtn = page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]');
+    await amountHeaderBtn.click(); // asc: 12,500 first
+    assert.match(await page.locator('tbody tr').first().innerText(), /SOHO-2026-88342/);
+    await amountHeaderBtn.click(); // desc: 25,000 first
+    assert.match(await page.locator('tbody tr').first().innerText(), /SOHO-2026-98124/);
+    await page.getByText(/1–2 of 2/).waitFor({ state: 'visible' });
+
+    await page.locator('header button[title*="Language"]').click();
+    await page.getByText(/প্রতি পৃষ্ঠায় সারি:/).waitFor({ state: 'visible' });
+    await page.locator('header button[title*="Language"]').click();
+
+    const firstReceiptBtn = page.locator('tbody tr').first().getByRole('button', { name: /Receipt/i });
+    await firstReceiptBtn.click();
+    const receiptDialog = page.locator('[role="dialog"]');
+    await receiptDialog.waitFor({ state: 'visible' });
+    assert.match(await receiptDialog.innerText(), /Tax Head Allocations/);
+    await page.keyboard.press('Escape');
+    await receiptDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await firstReceiptBtn.evaluate((el) => document.activeElement === el), true);
+
+    await page.locator('tbody tr').first().getByRole('button', { name: /Pay Again/i }).click();
+    await page.waitForURL('**/all-taxes');
+    assert.ok((await page.locator('tbody tr').count()) >= 1);
+
+    // 8. Signed-in Beneficiaries, Corrections, & Drafts Resume
+    await page.goto(`${baseUrl}/beneficiaries`, { waitUntil: 'networkidle' });
+    await page.locator('table').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('tbody tr').count(), 3);
+    assert.match(await page.locator('tbody tr').first().innerText(), /GreenCorp Ltd\./);
+
+    await page.locator('thead th', { hasText: /Name & TIN/i }).locator('[role="button"]').click();
+    assert.match(await page.locator('tbody tr').first().innerText(), /Tanvir Islam/);
+
+    const benSearch = page.getByLabel(/Search Beneficiaries/i);
+    await benSearch.fill('Fatema');
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    assert.match(await page.locator('tbody tr').first().innerText(), /Mrs\. Fatema Begum/);
+    await page.getByRole('button', { name: /Clear search/i }).click();
+    assert.equal(await page.locator('tbody tr').count(), 3);
+
+    const addBenBtn = page.getByRole('button', { name: /Add New Beneficiary/i });
+    await addBenBtn.click();
+    const benDialog = page.locator('[role="dialog"]');
+    await benDialog.waitFor({ state: 'visible' });
+    await benDialog.getByLabel(/Name/i).fill('Unsaved Person');
+    await page.keyboard.press('Escape');
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Keep editing/i }).click();
+    assert.equal(await benDialog.isVisible(), true);
+    await benDialog.getByRole('button', { name: /Close dialog/i }).click();
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Discard/i }).click();
+    await benDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await addBenBtn.evaluate((el) => document.activeElement === el), true);
+
+    await page.getByRole('button', { name: 'Delete Tanvir Islam' }).click();
+    const confirmDialog = page.locator('[role="dialog"]');
+    await confirmDialog.waitFor({ state: 'visible' });
+    assert.match(await confirmDialog.innerText(), /Delete Beneficiary\?/);
+    await confirmDialog.getByRole('button', { name: /^Delete$/i }).click();
+    await confirmDialog.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await page.locator('tbody tr').count(), 2);
+    await page.getByText('Beneficiary removed').waitFor({ state: 'visible' });
+
+    await page.goto(`${baseUrl}/corrections`, { waitUntil: 'networkidle' });
+    await page.locator('table').waitFor({ state: 'visible' });
+    assert.ok((await page.locator('tbody tr').count()) >= 1);
+    await page.getByRole('button', { name: /Apply for Correction/i }).click();
+    const corrDialog = page.locator('[role="dialog"]');
+    await corrDialog.waitFor({ state: 'visible' });
+    await corrDialog.getByLabel(/Challan Number/i).fill('NBR-TEST-999');
+    await corrDialog.getByRole('button', { name: /Close dialog/i }).click();
+    await page.getByTestId('modal-dirty-guard').waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: /Discard/i }).click();
+    await corrDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
+    await page.goto(`${baseUrl}/drafts`, { waitUntil: 'networkidle' });
+    await page.locator('table').waitFor({ state: 'visible' });
+    const initialDrafts = await page.locator('tbody tr').count();
+    assert.ok(initialDrafts >= 1);
+    await page.locator('tbody tr').first().getByRole('button', { name: /Delete draft/i }).click();
+    const draftConfirm = page.locator('[role="dialog"]');
+    await draftConfirm.waitFor({ state: 'visible' });
+    await draftConfirm.getByRole('button', { name: /Cancel/i }).click();
+    await draftConfirm.waitFor({ state: 'hidden', timeout: 3000 });
+    assert.equal(await page.locator('tbody tr').count(), initialDrafts);
+
+    await page.locator('tbody tr').first().getByRole('button', { name: /Resume/i }).click();
+    await page.waitForURL('**/all-taxes');
+    assert.match(await page.locator('tbody').innerText(), /Advance Income Tax/);
+
+    // 9. Signed-in 24-Field Profile parity & Certificates Unicode PDF export
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    for (const key of ['taxpayerName', 'tin', 'tinType', 'taxesCircle', 'registeredOn', 'lastLoginAt', 'mobileNumber', 'emailAddress', 'taxOfficePhone', 'previousTin']) {
+      await page.getByTestId(`profile-field-${key}`).waitFor({ state: 'visible' });
+    }
+    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
+    assert.equal(await page.locator('[data-testid="profile-field-taxesCircle"]').count(), 1);
+    assert.equal(await page.getByTestId('profile-field-taxesCircle').getAttribute('data-source'), 'certificate');
+    assert.equal(await page.getByTestId('profile-field-taxpayerStatus').getAttribute('data-source'), 'certificate');
+    assert.equal(await page.locator('[data-testid="profile-group-certificate"] [data-testid^="profile-field-"]').first().getAttribute('data-testid'), 'profile-field-previousTin');
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882\*{9}/);
+    assert.match(await page.getByTestId('profile-field-previousTin').innerText(), /654\*{7}/);
+    assert.match(await page.getByTestId('profile-field-emailAddress').innerText(), /ra\*{11}@\*{4}\.\*{3}/);
+    assert.match(await page.getByTestId('profile-field-taxOfficePhone').innerText(), /\+?880-\*-\*{7}/);
+
     await page.getByRole('button', { name: /Reveal TIN/i }).click();
     assert.match(await page.getByTestId('profile-field-tin').innerText(), /882349102384/);
     await page.getByRole('button', { name: /Copy TIN/i }).click();
@@ -363,7 +431,6 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     assert.equal(await certBtn.evaluate((el) => document.activeElement === el), true);
     await assertMobileNavbar(page, 'profile-en');
 
-    // 12. Certificates separation & Combined Payment Certificate modal
     await page.goto(`${baseUrl}/certificates`, { waitUntil: 'networkidle' });
     await page.getByTestId('tax-credit-certificates-section').waitFor({ state: 'visible' });
     await page.getByTestId('payment-certificates-section').waitFor({ state: 'visible' });
@@ -377,8 +444,51 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.keyboard.press('Escape');
     await payCertDialog.waitFor({ state: 'hidden', timeout: 3000 });
 
+    // 10. User1 -> User2 -> User1 Account Isolation, Reveal Reset, Switching Guard, & Acknowledged Notice Retention
+    await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle' });
+    await page.getByText(/Signed in as Md\. Rafiqul Islam/i).waitFor({ state: 'visible' });
+    assert.equal(await page.getByRole('button', { name: /Continue with OTP/i }).isDisabled(), true);
+    await page.getByRole('main').getByRole('button', { name: /Sign Out/i }).click();
+
+    await page.getByRole('button', { name: 'user2', exact: true }).click();
+    await page.getByRole('button', { name: /Continue with OTP/i }).click();
+    await page.getByLabel(/One-Time Password|OTP/i).fill('111111');
+    await page.getByRole('button', { name: /Verify & Sign In/i }).click();
+    await page.waitForURL('**/dashboard');
+    await noticeDialog.waitFor({ state: 'visible' });
+    assert.match(await noticeDialog.innerText(), /Chattogram Zone Notice/);
+    await noticeDialog.getByRole('button', { name: /^Acknowledge$/i }).click();
+    await noticeDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
+    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
+    assert.equal(await page.locator('tbody tr').count(), 1);
+    assert.match(await page.locator('tbody').innerText(), /SOHO-2026-44109/);
+    assert.equal(await page.getByText('SOHO-2026-98124').count(), 0);
+
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    await page.getByTestId('registration-not-linked').waitFor({ state: 'visible' });
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /112\*{9}/);
+    assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
+
+    await page.locator('header button[aria-haspopup="menu"]').click();
+    await page.getByRole('menuitem', { name: /Sign Out/i }).click();
+    await page.goto(`${baseUrl}/login?returnTo=/dashboard`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'user1', exact: true }).click();
+    await page.getByRole('button', { name: /Continue with OTP/i }).click();
+    await page.getByLabel(/One-Time Password|OTP/i).fill('123456');
+    await page.getByRole('button', { name: /Verify & Sign In/i }).click();
+    await page.waitForURL('**/dashboard');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.equal(await page.locator('[role="dialog"]').count(), 0);
+
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    assert.match(await page.getByTestId('profile-field-tin').innerText(), /882\*{9}/);
+    await page.goto(`${baseUrl}/history`, { waitUntil: 'networkidle' });
+    assert.match(await page.locator('tbody').innerText(), /SOHO-2026-98124/);
+    assert.equal(await page.getByText('SOHO-2026-44109').count(), 0);
+
     assert.deepEqual(errors, []);
-    return 'CI interactive browser checks (Cycle 10-11: Profile 24 parity, Tables/Modals, Combined Payment Certificates & Tax Credit separation, Auth OTP/Resend/First-Login Queue) PASS';
+    return 'CI interactive browser checks (Cycle 11-12: Account Isolation User1->User2->User1, 24-Field Profile, F-21 All Taxes, Unicode Certificate PDF, Tables & Modals) PASS';
   } finally {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);

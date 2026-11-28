@@ -23,11 +23,11 @@ import {
 export const GiftTaxView: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, addTransaction } = useApp();
+  const { user, isAuthenticated, activeScope, addTransaction } = useApp();
 
   const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
-  const [donorTin, setDonorTin] = useState(user.tin);
-  const [donorName, setDonorName] = useState(user.name);
+  const [donorTin, setDonorTin] = useState(isAuthenticated ? user.tin : '');
+  const [donorName, setDonorName] = useState(isAuthenticated ? user.name : '');
   const [doneeTin, setDoneeTin] = useState('992384102938');
   const [doneeName, setDoneeName] = useState('Mrs. Fatema Begum');
   const [relationship, setRelationship] = useState('Mother');
@@ -90,6 +90,8 @@ export const GiftTaxView: React.FC = () => {
     const tx = addTransaction({
       taxpayerTin: donorTin,
       taxpayerName: donorName,
+      ownerScope: activeScope,
+      originMode: isAuthenticated ? 'signed_in' : 'walk_in',
       beneficiaryTin: doneeTin,
       beneficiaryName: doneeName,
       category: 'gift_tax',

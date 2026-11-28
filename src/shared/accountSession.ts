@@ -14,7 +14,8 @@ export interface FirstLoginNotice {
 
 export interface TinLookupResult {
   tin: string;
-  directoryMatched: boolean;
+  userId: string;
+  directoryMatched: true;
   maskedNameHint: string;
   maskedSms: string;
   maskedEmail: string;
@@ -22,24 +23,44 @@ export interface TinLookupResult {
 }
 
 interface DirectoryRecord {
+  userId: string;
+  password: string;
   profile: UserProfile;
   notices: FirstLoginNotice[];
 }
 
-function maskTinDigitsOnly(val: string): string {
-  const digits = val.replace(/\D/g, '');
-  if (digits.length < 4) return '••••';
-  return `${digits.slice(0, 3)}${'•'.repeat(digits.length - 3)}`;
+export function maskFirstThreeDigits(value: string, minDigits = 6): string {
+  const digitCount = value.match(/[0-9]/g)?.length ?? 0;
+  if (digitCount < minDigits) return value.trim() || '—';
+  const visibleDigits = digitCount > 3 ? 3 : 0;
+  let seen = 0;
+  return [...value]
+    .map((char) => {
+      if (!/[0-9]/.test(char)) return char;
+      seen += 1;
+      return seen <= visibleDigits ? char : '*';
+    })
+    .join('');
 }
 
-function maskEmailValue(email: string): string {
-  const parts = email.split('@');
-  if (parts.length !== 2) return '••••@••••.•••';
-  const [local, domain] = parts;
-  const visibleLocal = local.length > 2 ? local.slice(0, 2) : local.slice(0, 1);
-  const labels = domain.split('.');
-  return `${visibleLocal}••••@${labels.map((l, i) => (i === 0 ? `${l.slice(0, 1)}••••` : '•••')).join('.')}`;
+export function maskHiddenEmailDomain(email: string): string {
+  const trimmed = email.trim();
+  if (!trimmed || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) return '****';
+  const at = trimmed.indexOf('@');
+  const local = trimmed.slice(0, at);
+  return `${local.slice(0, 2)}${'*'.repeat(Math.max(3, local.length - 2))}@****.***`;
 }
+
+export const WALKIN_GUEST_USER: UserProfile = {
+  tin: '',
+  name: 'Walk-In Taxpayer',
+  circle: '—',
+  zone: '—',
+  email: '',
+  phone: '',
+  registeredDate: '—',
+  taxpayerType: 'Individual',
+};
 
 export const ISOLATED_SECONDARY_USER: UserProfile = {
   tin: '112233445566',
@@ -54,6 +75,8 @@ export const ISOLATED_SECONDARY_USER: UserProfile = {
 
 const DIRECTORY_RECORDS: readonly DirectoryRecord[] = [
   {
+    userId: 'user1',
+    password: 'user1',
     profile: INITIAL_USER,
     notices: [
       {
@@ -79,6 +102,8 @@ const DIRECTORY_RECORDS: readonly DirectoryRecord[] = [
     ],
   },
   {
+    userId: 'user2',
+    password: 'user2',
     profile: ISOLATED_SECONDARY_USER,
     notices: [
       {
@@ -97,54 +122,46 @@ const DIRECTORY_RECORDS: readonly DirectoryRecord[] = [
 
 export const VALID_DEMO_OTPS = new Set(['123456', '111111']);
 
-export function lookupTinIdentity(rawTin: string): TinLookupResult | null {
-  const tin = rawTin.trim();
-  if (!/^\d{12}$/.test(tin)) return null;
-
-  const matched = DIRECTORY_RECORDS.find((entry) => entry.profile.tin === tin);
-  if (matched) {
-    return {
-      tin,
-      directoryMatched: true,
-      maskedNameHint: `${matched.profile.name.slice(0, 2)}•••• (${matched.profile.zone})`,
-      maskedSms: maskTinDigitsOnly(matched.profile.phone),
-      maskedEmail: maskEmailValue(matched.profile.email),
-      profile: matched.profile,
-    };
+export function resolveAccountStorageScope(isAuthenticated: boolean, tin?: string): string {
+  const cleanTin = tin?.trim() ?? '';
+  if (!isAuthenticated || !/^\d{12,13}$/.test(cleanTin)) {
+    return 'walkin';
   }
+  return `acct_${cleanTin}`;
+}
+
+export function lookupTinIdentity(rawIdentifier: string): TinLookupResult | null {
+  const query = rawIdentifier.trim().toLowerCase();
+  if (!query) return null;
+  const matched = DIRECTORY_RECORDS.find(
+    (entry) => entry.profile.tin === query || entry.userId.toLowerCase() === query
+  );
+  if (!matched) return null;
 
   return {
-    tin,
-    directoryMatched: false,
-    maskedNameHint: `TIN ${maskTinDigitsOnly(tin)}`,
-    maskedSms: '017••••••••',
-    maskedEmail: 'tp••••@s••••.•••',
-    profile: {
-      tin,
-      name: `Taxpayer ${maskTinDigitsOnly(tin)}`,
-      circle: '—',
-      zone: '—',
-      email: '',
-      phone: '',
-      registeredDate: '—',
-      taxpayerType: 'Individual',
-    },
+    tin: matched.profile.tin,
+    userId: matched.userId,
+    directoryMatched: true,
+    maskedNameHint: `${matched.profile.name.slice(0, 2)}**** (${matched.profile.zone})`,
+    maskedSms: maskFirstThreeDigits(matched.profile.phone, 6),
+    maskedEmail: maskHiddenEmailDomain(matched.profile.email),
+    profile: matched.profile,
   };
+}
+
+export function verifyDemoCredentials(rawIdentifier: string, password: string): TinLookupResult | null {
+  const query = rawIdentifier.trim().toLowerCase();
+  const matched = DIRECTORY_RECORDS.find(
+    (entry) => entry.profile.tin === query || entry.userId.toLowerCase() === query
+  );
+  if (!matched) return null;
+  if (password !== matched.password && password !== matched.profile.tin) return null;
+  return lookupTinIdentity(matched.profile.tin);
 }
 
 export function getNoticesForTin(tin: string): FirstLoginNotice[] {
   const matched = DIRECTORY_RECORDS.find((entry) => entry.profile.tin === tin);
-  if (matched) return matched.notices;
-  return [
-    {
-      id: `notice-generic-${tin}`,
-      titleEn: 'First-Login Security Reminder',
-      titleBn: 'প্রথম লগইন নিরাপত্তা বার্তা',
-      bodyEn: 'Sensitive TIN fields stay masked by default. Entering a TIN alone never unlocks private records.',
-      bodyBn: 'সংবেদনশীল টিআইএন তথ্য ডিফল্টভাবে গোপন থাকে। শুধুমাত্র টিআইএন টাইপ করলে ব্যক্তিগত তথ্য উন্মুক্ত হয় না।',
-      issuedAt: '2026-11-27',
-    },
-  ];
+  return matched ? matched.notices : [];
 }
 
 export function verifySimulationOtp(

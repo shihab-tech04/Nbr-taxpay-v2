@@ -12,6 +12,7 @@ import { getTheme } from './design-system/theme';
 import { AppDateLocalizationProvider } from './design-system/dates';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { FirstLoginNoticeDialog } from './components/account/FirstLoginNoticeDialog';
 import { HomePage } from './features/home';
 import { LoginView } from './features/account/LoginView';
 import { DashboardView } from './features/dashboard/DashboardView';
@@ -35,6 +36,7 @@ const previewView = (view: React.ReactNode) => PUBLIC_PREVIEW ? (
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
+  const { isAuthenticated, unseenNotices, acknowledgeNotice } = useApp();
   const isHomeRoute = location.pathname === '/';
 
   const previewBanner = PUBLIC_PREVIEW && (
@@ -76,6 +78,9 @@ const AppRoutes: React.FC = () => {
         </Routes>
       </main>
       <Footer />
+      {isAuthenticated && !PUBLIC_PREVIEW && (
+        <FirstLoginNoticeDialog notices={unseenNotices} onAcknowledge={acknowledgeNotice} />
+      )}
     </div>
   );
 };

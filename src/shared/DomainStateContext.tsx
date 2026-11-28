@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type {
   Beneficiary,
   CorrectionRequest,
@@ -7,23 +7,24 @@ import type {
   SupportTicket,
 } from '../types/tax';
 import {
-  INITIAL_BENEFICIARIES,
-  INITIAL_CORRECTIONS,
-  INITIAL_DRAFTS,
-  INITIAL_SUPPORT,
-  INITIAL_TRANSACTIONS,
-} from './mockData';
-import {
   createExperimentalBeneficiary,
   createExperimentalCorrection,
   createExperimentalDraft,
   createExperimentalSupportTicket,
   createExperimentalTransaction,
 } from './mockLedgerAdapter';
+import { resolveAccountStorageScope } from './accountSession';
 import { isRestrictedOperationAllowed } from './previewPolicy';
-import { readJsonStorage, writeAppStorage } from './storageAdapter';
+import {
+  claimWalkInTransactionInStorage,
+  readScopedDomainData,
+  writeScopedDomainData,
+  type ScopedDomainData,
+} from './scopedDomainStorage';
+import { useSession } from './SessionContext';
 
 export interface DomainStateContextValue {
+  activeScope: string;
   beneficiaries: Beneficiary[];
   addBeneficiary: (b: Omit<Beneficiary, 'id' | 'createdAt'>) => void;
   deleteBeneficiary: (id: string) => void;
@@ -31,6 +32,7 @@ export interface DomainStateContextValue {
   addTransaction: (
     tx: Omit<PaymentTransaction, 'id' | 'createdAt' | 'transactionRef' | 'challanNumber' | 'bankRef'>
   ) => PaymentTransaction;
+  claimWalkInTransaction: (tx: PaymentTransaction, targetTin: string, targetName: string) => PaymentTransaction | null;
   drafts: PaymentDraft[];
   saveDraft: (draft: Omit<PaymentDraft, 'id' | 'updatedAt'>) => void;
   deleteDraft: (id: string) => void;
@@ -42,123 +44,144 @@ export interface DomainStateContextValue {
 
 const DomainStateContext = createContext<DomainStateContextValue | undefined>(undefined);
 
+interface ScopedStateSlice {
+  scope: string;
+  data: ScopedDomainData;
+}
+
 export const DomainStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(() =>
-    readJsonStorage('sohojkor_beneficiaries', INITIAL_BENEFICIARIES)
-  );
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>(() =>
-    readJsonStorage('sohojkor_transactions', INITIAL_TRANSACTIONS)
-  );
-  const [drafts, setDrafts] = useState<PaymentDraft[]>(() =>
-    readJsonStorage('sohojkor_drafts', INITIAL_DRAFTS)
-  );
-  const [corrections, setCorrections] = useState<CorrectionRequest[]>(() =>
-    readJsonStorage('sohojkor_corrections', INITIAL_CORRECTIONS)
-  );
-  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() =>
-    readJsonStorage('sohojkor_support', INITIAL_SUPPORT)
+  const { user, isAuthenticated } = useSession();
+  const activeScope = resolveAccountStorageScope(isAuthenticated, user.tin);
+  const [slice, setSlice] = useState<ScopedStateSlice>(() => ({
+    scope: activeScope,
+    data: readScopedDomainData(activeScope),
+  }));
+
+  const currentData = useMemo(
+    () => (slice.scope === activeScope ? slice.data : readScopedDomainData(activeScope)),
+    [activeScope, slice]
   );
 
-  useEffect(() => {
-    writeAppStorage('sohojkor_beneficiaries', JSON.stringify(beneficiaries));
-  }, [beneficiaries]);
+  const updateScoped = useCallback(
+    (updater: (current: ScopedDomainData) => ScopedDomainData) => {
+      setSlice((prev) => {
+        const base = prev.scope === activeScope ? prev.data : readScopedDomainData(activeScope);
+        const next = updater(base);
+        writeScopedDomainData(activeScope, next);
+        return { scope: activeScope, data: next };
+      });
+    },
+    [activeScope]
+  );
 
-  useEffect(() => {
-    writeAppStorage('sohojkor_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+  const addBeneficiary = useCallback(
+    (b: Omit<Beneficiary, 'id' | 'createdAt'>) => {
+      if (!isRestrictedOperationAllowed('beneficiary_write')) return;
+      updateScoped((curr) => ({ ...curr, beneficiaries: [createExperimentalBeneficiary(b), ...curr.beneficiaries] }));
+    },
+    [updateScoped]
+  );
 
-  useEffect(() => {
-    writeAppStorage('sohojkor_drafts', JSON.stringify(drafts));
-  }, [drafts]);
-
-  useEffect(() => {
-    writeAppStorage('sohojkor_corrections', JSON.stringify(corrections));
-  }, [corrections]);
-
-  useEffect(() => {
-    writeAppStorage('sohojkor_support', JSON.stringify(supportTickets));
-  }, [supportTickets]);
-
-  const addBeneficiary = useCallback((b: Omit<Beneficiary, 'id' | 'createdAt'>) => {
-    if (!isRestrictedOperationAllowed('beneficiary_write')) return;
-    setBeneficiaries((prev) => [createExperimentalBeneficiary(b), ...prev]);
-  }, []);
-
-  const deleteBeneficiary = useCallback((id: string) => {
-    if (!isRestrictedOperationAllowed('beneficiary_write')) return;
-    setBeneficiaries((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  const deleteBeneficiary = useCallback(
+    (id: string) => {
+      if (!isRestrictedOperationAllowed('beneficiary_write')) return;
+      updateScoped((curr) => ({ ...curr, beneficiaries: curr.beneficiaries.filter((item) => item.id !== id) }));
+    },
+    [updateScoped]
+  );
 
   const addTransaction = useCallback(
     (
-      txData: Omit<
-        PaymentTransaction,
-        'id' | 'createdAt' | 'transactionRef' | 'challanNumber' | 'bankRef'
-      >
+      txData: Omit<PaymentTransaction, 'id' | 'createdAt' | 'transactionRef' | 'challanNumber' | 'bankRef'>
     ): PaymentTransaction => {
       if (!isRestrictedOperationAllowed('payment_submit')) {
         throw new Error('Payment submission is disabled in public preview.');
       }
-      const newTx = createExperimentalTransaction(txData);
-      setTransactions((prev) => [newTx, ...prev]);
+      const newTx = createExperimentalTransaction({
+        ...txData,
+        ownerScope: txData.ownerScope ?? activeScope,
+        originMode: txData.originMode ?? (isAuthenticated ? 'signed_in' : 'walk_in'),
+      });
+      updateScoped((curr) => ({ ...curr, transactions: [newTx, ...curr.transactions] }));
       return newTx;
     },
-    []
+    [activeScope, isAuthenticated, updateScoped]
   );
 
-  const saveDraft = useCallback((draftData: Omit<PaymentDraft, 'id' | 'updatedAt'>) => {
-    if (!isRestrictedOperationAllowed('draft_write')) return;
-    setDrafts((prev) => [createExperimentalDraft(draftData), ...prev]);
-  }, []);
+  const claimWalkInTransaction = useCallback(
+    (tx: PaymentTransaction, targetTin: string, targetName: string): PaymentTransaction | null => {
+      if (!isRestrictedOperationAllowed('payment_submit')) return null;
+      const claimed = claimWalkInTransactionInStorage(tx, targetTin, targetName);
+      if (claimed && activeScope === `acct_${targetTin}`) {
+        setSlice({ scope: activeScope, data: readScopedDomainData(activeScope) });
+      }
+      return claimed;
+    },
+    [activeScope]
+  );
 
-  const deleteDraft = useCallback((id: string) => {
-    if (!isRestrictedOperationAllowed('draft_write')) return;
-    setDrafts((prev) => prev.filter((item) => item.id !== id));
-  }, []);
+  const saveDraft = useCallback(
+    (draftData: Omit<PaymentDraft, 'id' | 'updatedAt'>) => {
+      if (!isRestrictedOperationAllowed('draft_write') || !isAuthenticated) return;
+      updateScoped((curr) => ({ ...curr, drafts: [createExperimentalDraft(draftData), ...curr.drafts] }));
+    },
+    [isAuthenticated, updateScoped]
+  );
+
+  const deleteDraft = useCallback(
+    (id: string) => {
+      if (!isRestrictedOperationAllowed('draft_write')) return;
+      updateScoped((curr) => ({ ...curr, drafts: curr.drafts.filter((item) => item.id !== id) }));
+    },
+    [updateScoped]
+  );
 
   const addCorrection = useCallback(
     (cData: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>) => {
       if (!isRestrictedOperationAllowed('correction_write')) return;
-      setCorrections((prev) => [createExperimentalCorrection(cData), ...prev]);
+      updateScoped((curr) => ({ ...curr, corrections: [createExperimentalCorrection(cData), ...curr.corrections] }));
     },
-    []
+    [updateScoped]
   );
 
   const addSupportTicket = useCallback(
     (sData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => {
       if (!isRestrictedOperationAllowed('support_ticket_write')) return;
-      setSupportTickets((prev) => [createExperimentalSupportTicket(sData), ...prev]);
+      updateScoped((curr) => ({
+        ...curr,
+        supportTickets: [createExperimentalSupportTicket(sData), ...curr.supportTickets],
+      }));
     },
-    []
+    [updateScoped]
   );
 
   const value = useMemo<DomainStateContextValue>(
     () => ({
-      beneficiaries,
+      activeScope,
+      beneficiaries: currentData.beneficiaries,
       addBeneficiary,
       deleteBeneficiary,
-      transactions,
+      transactions: currentData.transactions,
       addTransaction,
-      drafts,
+      claimWalkInTransaction,
+      drafts: currentData.drafts,
       saveDraft,
       deleteDraft,
-      corrections,
+      corrections: currentData.corrections,
       addCorrection,
-      supportTickets,
+      supportTickets: currentData.supportTickets,
       addSupportTicket,
     }),
     [
-      beneficiaries,
+      activeScope,
+      currentData,
       addBeneficiary,
       deleteBeneficiary,
-      transactions,
       addTransaction,
-      drafts,
+      claimWalkInTransaction,
       saveDraft,
       deleteDraft,
-      corrections,
       addCorrection,
-      supportTickets,
       addSupportTicket,
     ]
   );

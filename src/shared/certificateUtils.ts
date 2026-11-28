@@ -1,4 +1,6 @@
-import type { PaymentLineItem, PaymentTransaction } from '../types/tax';
+import { isValidYmd } from '../design-system/dates/dateUtils';
+import type { PaymentLineItem, PaymentTransaction, TravelDetails } from '../types/tax';
+import { resolveAccountStorageScope } from './accountSession';
 
 export interface PaymentCertificateRecord {
   certificateId: string;
@@ -7,11 +9,13 @@ export interface PaymentCertificateRecord {
   bankRef: string;
   createdAt: string;
   paymentChannel: PaymentTransaction['paymentChannel'];
+  ownerScope: string;
   taxpayerTin: string;
   taxpayerName: string;
   beneficiaryTin?: string;
   beneficiaryName?: string;
   giftDate?: string;
+  travelDetails?: TravelDetails;
   items: readonly PaymentLineItem[];
   assessmentYears: string;
   totalAmount: number;
@@ -20,13 +24,25 @@ export interface PaymentCertificateRecord {
   lifecycleNoteBn: string;
 }
 
+export function isTransactionReconciled(tx: PaymentTransaction): boolean {
+  if (!tx.items.length || !Number.isFinite(tx.totalAmount) || tx.totalAmount <= 0) return false;
+  const itemsTotal = tx.items.reduce((sum, item) => sum + item.amount, 0);
+  return Math.round(itemsTotal * 100) === Math.round(tx.totalAmount * 100);
+}
+
 export function buildPaymentCertificateRecord(
   tx: PaymentTransaction,
-  isAuthenticated: boolean
+  fallbackAuthenticated = false
 ): PaymentCertificateRecord | null {
   if (tx.status !== 'Completed') return null;
+  if (!tx.transactionRef.trim() || !tx.challanNumber.trim() || !tx.bankRef.trim()) return null;
+  if (!isTransactionReconciled(tx)) return null;
+
   const years = Array.from(new Set(tx.items.map((item) => item.assessmentYear))).filter(Boolean);
-  const mode = isAuthenticated ? 'signed_in' : 'walk_in';
+  const mode: 'signed_in' | 'walk_in' =
+    tx.originMode ?? (fallbackAuthenticated ? 'signed_in' : 'walk_in');
+  const ownerScope =
+    tx.ownerScope ?? resolveAccountStorageScope(mode === 'signed_in', tx.taxpayerTin);
 
   return {
     certificateId: `CERT-${tx.transactionRef}`,
@@ -35,50 +51,64 @@ export function buildPaymentCertificateRecord(
     bankRef: tx.bankRef,
     createdAt: tx.createdAt,
     paymentChannel: tx.paymentChannel,
+    ownerScope,
     taxpayerTin: tx.taxpayerTin,
     taxpayerName: tx.taxpayerName,
     beneficiaryTin: tx.beneficiaryTin,
     beneficiaryName: tx.beneficiaryName,
-    giftDate: tx.giftDate,
+    giftDate: tx.giftDate && isValidYmd(tx.giftDate) ? tx.giftDate : undefined,
+    travelDetails: tx.travelDetails,
     items: tx.items,
     assessmentYears: years.join(', ') || '—',
     totalAmount: tx.totalAmount,
     lifecycleMode: mode,
-    lifecycleNoteEn: isAuthenticated
-      ? 'Signed-in browser preview: combined payment certificate linked to current session ledger (official verification requires SQL/API backend).'
-      : 'Walk-in browser preview: combined payment certificate available for immediate print/download in this session without server account binding.',
-    lifecycleNoteBn: isAuthenticated
-      ? 'সাইন-ইন ব্রাউজার প্রিভিউ: এই সেশনের সম্মিলিত পেমেন্ট সনদ (সরকারি যাচাইয়ের জন্য ব্যাকএন্ড সংযোগ প্রয়োজন)।'
-      : 'ওয়াক-ইন ব্রাউজার প্রিভিউ: অ্যাকাউন্ট সংযোগ ছাড়াই এই সেশনে তাৎক্ষণিক প্রিন্ট বা ডাউনলোডের জন্য উপলব্ধ।',
+    lifecycleNoteEn:
+      mode === 'signed_in'
+        ? 'Signed-in browser preview: combined payment certificate linked to current account session ledger (official settlement requires live backend).'
+        : 'Walk-in browser preview: combined payment certificate created without account login and available for immediate print/download only.',
+    lifecycleNoteBn:
+      mode === 'signed_in'
+        ? 'সাইন-ইন ব্রাউজার প্রিভিউ: এই অ্যাকাউন্ট সেশনের সম্মিলিত পেমেন্ট সনদ (সরকারি নিষ্পত্তির জন্য লাইভ ব্যাকএন্ড প্রয়োজন)।'
+        : 'ওয়াক-ইন ব্রাউজার প্রিভিউ: অ্যাকাউন্ট লগইন ছাড়া তৈরি হয়েছে; তাৎক্ষণিক প্রিন্ট ও ডাউনলোডের জন্য উপলব্ধ।',
   };
-}
-
-function escapePdfText(input: string): string {
-  const asciiOnly = input.replace(/[^\x20-\x7E]/g, ' ');
-  return asciiOnly.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
 export function buildCertificatePdfLines(cert: PaymentCertificateRecord): string[] {
   const lines = [
-    'SOHOJKOR CITIZEN PORTAL - SAMPLE PAYMENT CERTIFICATE (UI PREVIEW)',
-    'Illustrative preview only. Not an official NBR or Tax Credit certificate.',
+    'SOHOJKOR CITIZEN PORTAL · সহজকর নাগরিক পোর্টাল — SAMPLE PAYMENT CERTIFICATE',
+    'Illustrative UI preview only. Never official NBR settlement or Tax Credit verification.',
     `Certificate ID: ${cert.certificateId}`,
     `Transaction Ref: ${cert.transactionRef} | Challan: ${cert.challanNumber}`,
     `Bank Ref: ${cert.bankRef} | Channel: ${cert.paymentChannel}`,
-    `Date: ${cert.createdAt} | Mode: ${cert.lifecycleMode === 'signed_in' ? 'Signed-In' : 'Walk-In'}`,
-    `Payer: ${cert.taxpayerName} (TIN: ${cert.taxpayerTin})`,
+    `Date: ${cert.createdAt} | Origin: ${cert.lifecycleMode === 'signed_in' ? 'Signed-In' : 'Walk-In'}`,
+    `Payer: ${cert.taxpayerName || 'Walk-In Taxpayer'} (TIN: ${cert.taxpayerTin || 'Walk-In'})`,
   ];
   if (cert.beneficiaryTin) {
-    lines.push(`Beneficiary: ${cert.beneficiaryName ?? 'Recipient'} (TIN: ${cert.beneficiaryTin})`);
+    lines.push(`Recipient: ${cert.beneficiaryName ?? 'Recipient'} (TIN: ${cert.beneficiaryTin})`);
+  }
+  if (cert.giftDate) {
+    lines.push(`Date of Gift: ${cert.giftDate}`);
+  }
+  if (cert.travelDetails) {
+    lines.push(
+      `Travel: ${cert.travelDetails.passengerName} | Passport: ${cert.travelDetails.passportNumber} | ${cert.travelDetails.destination} (${cert.travelDetails.travelClass})`
+    );
   }
   lines.push(`Assessment Year(s): ${cert.assessmentYears}`);
   cert.items.forEach((item, idx) => {
+    const ownerTag = item.taxpayerTin ? ` [${item.taxpayerName ?? ''} ${item.taxpayerTin}]` : '';
+    const noteTag = item.remarks ? ` — Note: ${item.remarks}` : '';
     lines.push(
-      `Item ${idx + 1}: [${item.headCode}] ${item.headNameEn} (${item.assessmentYear}) - BDT ${item.amount.toLocaleString('en-US')}`
+      `Item ${idx + 1}:${ownerTag} [${item.headCode}] ${item.headNameEn} / ${item.headNameBn} (${item.assessmentYear}) — ৳ ${item.amount.toLocaleString('en-US')}${noteTag}`
     );
   });
-  lines.push(`Sample Total Amount: BDT ${cert.totalAmount.toLocaleString('en-US')}`);
+  lines.push(`Reconciled Sample Total: ৳ ${cert.totalAmount.toLocaleString('en-US')}`);
   return lines;
+}
+
+function escapePdfAscii(input: string): string {
+  const asciiOnly = input.replace(/[^\x20-\x7E]/g, ' ');
+  return asciiOnly.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 }
 
 export function buildSamplePdfBytes(lines: readonly string[]): Uint8Array {
@@ -87,7 +117,7 @@ export function buildSamplePdfBytes(lines: readonly string[]): Uint8Array {
     '/F1 10 Tf',
     '42 752 Td',
     '15 TL',
-    ...lines.map((line, i) => `${i === 0 ? '' : 'T* '}(${escapePdfText(line)}) Tj`),
+    ...lines.map((line, i) => `${i === 0 ? '' : 'T* '}(${escapePdfAscii(line)}) Tj`),
     'ET',
   ].join('\n');
 

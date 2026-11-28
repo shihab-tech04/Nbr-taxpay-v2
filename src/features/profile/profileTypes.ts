@@ -24,13 +24,13 @@ export interface TaxpayerProfile24 {
   taxesRange: string;
   district: string;
   country: string;
-  // Certificate details
+  // Certificate details (previousTin first per original layout)
+  previousTin: string;
   certificateIssuedOn: string;
   certificateLastUpdatedOn: string;
   issuingOfficer: string;
   taxOfficeAddress: string;
   taxOfficePhone: string;
-  previousTin: string;
 }
 
 export type ProfileGroupKey =
@@ -53,26 +53,26 @@ export interface ProfileFieldMeta {
 
 export const PROFILE_24_FIELD_MANIFEST: readonly ProfileFieldMeta[] = [
   // Group 1: Identity Details
-  { key: 'taxpayerName', labelEn: 'Name', labelBn: 'করদাতার নাম', group: 'identity', source: 'certificate' },
+  { key: 'taxpayerName', labelEn: 'Name', labelBn: 'নাম', group: 'identity', source: 'certificate' },
   { key: 'tin', labelEn: 'TIN', labelBn: 'টিআইএন', group: 'identity', source: 'certificate', maskable: true, copyable: true },
 
   // Group 2: Summary (Embedded in ProfileSummaryCard)
-  { key: 'tinType', labelEn: 'TIN type', labelBn: 'টিআইএন-এর ধরণ', group: 'summary', source: 'tin_profile' },
+  { key: 'tinType', labelEn: 'TIN type', labelBn: 'টিআইএন ধরন', group: 'summary', source: 'tin_profile' },
   { key: 'taxesCircle', labelEn: 'Taxes circle', labelBn: 'কর সার্কেল', group: 'summary', source: 'certificate' },
-  { key: 'registeredOn', labelEn: 'Registered since', labelBn: 'নিবন্ধনের তারিখ', group: 'summary', source: 'tin_profile' },
+  { key: 'registeredOn', labelEn: 'Registered since', labelBn: 'নিবন্ধিত হওয়ার তারিখ', group: 'summary', source: 'tin_profile' },
   { key: 'lastLoginAt', labelEn: 'Last account login', labelBn: 'সর্বশেষ লগইন', group: 'summary', source: 'account' },
 
   // Group 3: Personal Information
-  { key: 'taxpayerStatus', labelEn: 'Taxpayer status', labelBn: 'করদাতার স্থিতি', group: 'personal', source: 'tin_profile' },
-  { key: 'tinSubtype', labelEn: 'TIN classification', labelBn: 'টিআইএন শ্রেণিবিভাগ', group: 'personal', source: 'tin_profile' },
-  { key: 'userType', labelEn: 'User type', labelBn: 'ব্যবহারকারীর ধরণ', group: 'personal', source: 'tin_profile' },
+  { key: 'taxpayerStatus', labelEn: 'Taxpayer status', labelBn: 'করদাতার অবস্থা', group: 'personal', source: 'certificate' },
+  { key: 'tinSubtype', labelEn: 'TIN classification', labelBn: 'টিআইএন শ্রেণি', group: 'personal', source: 'tin_profile' },
+  { key: 'userType', labelEn: 'User type', labelBn: 'ব্যবহারকারীর ধরন', group: 'personal', source: 'tin_profile' },
   { key: 'localTaxpayer', labelEn: 'Local taxpayer', labelBn: 'স্থানীয় করদাতা', group: 'personal', source: 'tin_profile' },
 
   // Group 4: Contact & Addresses
   { key: 'mobileNumber', labelEn: 'Mobile number', labelBn: 'মোবাইল নম্বর', group: 'contact', source: 'tin_profile', maskable: true, copyable: true },
   { key: 'emailAddress', labelEn: 'Email address', labelBn: 'ইমেইল ঠিকানা', group: 'contact', source: 'tin_profile', maskable: true, copyable: true },
-  { key: 'registeredAddress', labelEn: 'Registered / permanent address', labelBn: 'স্থায়ী ঠিকানা', group: 'contact', source: 'tin_profile' },
-  { key: 'currentAddress', labelEn: 'Current address', labelBn: 'বর্তমান ঠিকানা', group: 'contact', source: 'tin_profile' },
+  { key: 'registeredAddress', labelEn: 'Registered / permanent address', labelBn: 'নিবন্ধিত / স্থায়ী ঠিকানা', group: 'contact', source: 'certificate' },
+  { key: 'currentAddress', labelEn: 'Current address', labelBn: 'বর্তমান ঠিকানা', group: 'contact', source: 'certificate' },
 
   // Group 5: Tax Jurisdiction
   { key: 'taxesZone', labelEn: 'Taxes zone', labelBn: 'কর অঞ্চল', group: 'jurisdiction', source: 'certificate' },
@@ -80,11 +80,11 @@ export const PROFILE_24_FIELD_MANIFEST: readonly ProfileFieldMeta[] = [
   { key: 'district', labelEn: 'District', labelBn: 'জেলা', group: 'jurisdiction', source: 'tin_profile' },
   { key: 'country', labelEn: 'Country', labelBn: 'দেশ', group: 'jurisdiction', source: 'tin_profile' },
 
-  // Group 6: Certificate Details
-  { key: 'certificateIssuedOn', labelEn: 'Certificate issue date', labelBn: 'সনদ জারির তারিখ', group: 'certificate', source: 'certificate' },
-  { key: 'certificateLastUpdatedOn', labelEn: 'Certificate last updated', labelBn: 'সর্বশেষ হালনাগাদ', group: 'certificate', source: 'certificate' },
-  { key: 'issuingOfficer', labelEn: 'Issuing tax officer', labelBn: 'প্রদানকারী কর্মকর্তা', group: 'certificate', source: 'certificate' },
+  // Group 6: Certificate Details (Previous TIN first)
+  { key: 'previousTin', labelEn: 'Previous TIN', labelBn: 'পূর্ববর্তী টিআইএন', group: 'certificate', source: 'certificate', maskable: true, copyable: true },
+  { key: 'certificateIssuedOn', labelEn: 'Certificate issue date', labelBn: 'সনদ ইস্যুর তারিখ', group: 'certificate', source: 'certificate' },
+  { key: 'certificateLastUpdatedOn', labelEn: 'Certificate last updated', labelBn: 'সনদ সর্বশেষ হালনাগাদ', group: 'certificate', source: 'certificate' },
+  { key: 'issuingOfficer', labelEn: 'Issuing tax officer', labelBn: 'সনদ ইস্যুকারী কর কর্মকর্তা', group: 'certificate', source: 'certificate' },
   { key: 'taxOfficeAddress', labelEn: 'Tax office address', labelBn: 'কর অফিসের ঠিকানা', group: 'certificate', source: 'certificate' },
   { key: 'taxOfficePhone', labelEn: 'Tax office phone', labelBn: 'কর অফিসের ফোন', group: 'certificate', source: 'certificate', maskable: true },
-  { key: 'previousTin', labelEn: 'Previous TIN', labelBn: 'পূর্ববর্তী টিআইএন', group: 'certificate', source: 'certificate', maskable: true, copyable: true },
 ];

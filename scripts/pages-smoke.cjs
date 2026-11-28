@@ -81,18 +81,24 @@ async function assertNoMobileNavbarOverflow(page, routeLabel) {
     assert.equal(await page.locator('main input').first().isDisabled(), true);
 
     await page.goto(base + '#/profile', { waitUntil: 'networkidle' });
-    await page.locator('main h1').first().waitFor({ state: 'visible' });
-    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 24);
-    assert.equal(await page.getByRole('button', { name: /Reveal TIN/i }).isDisabled(), true);
-    assert.equal(await page.getByRole('button', { name: /Copy TIN/i }).isDisabled(), true);
+    await page.getByTestId('profile-auth-gate').waitFor({ state: 'visible' });
+    assert.match(await page.getByTestId('profile-auth-gate').innerText(), /Sign in to view your profile\./);
+    assert.equal(await page.locator('[data-testid^="profile-field-"]').count(), 0);
     assert.equal(await page.getByText('PRIVATE_SENTINEL', { exact: false }).count(), 0);
+    assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
     await assertNoMobileNavbarOverflow(page, 'profile-en');
+
+    await page.goto(base + '#/certificates', { waitUntil: 'networkidle' });
+    await page.getByTestId('tax-credit-certificates-section').waitFor({ state: 'visible' });
+    await page.getByTestId('payment-certificates-section').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('[data-testid="payment-certificates-section"] tbody tr').count(), 0);
+    assert.equal(await page.getByText('882349102384', { exact: false }).count(), 0);
 
     await page.goto(base + '#/login', { waitUntil: 'networkidle' });
     assert.equal(await page.locator('main input').first().isDisabled(), true);
     assert.equal(await page.evaluate(() => localStorage.getItem('sohojkor_transactions')), null);
     assert.deepEqual(errors, []);
-    console.log('Compiled Pages homepage, navigation, preview-policy, profile 24-field guard, mobile Navbar 320/390px, and route smoke PASS');
+    console.log('Compiled Pages homepage, navigation, preview-policy, profile auth gate, isolated certificates, mobile Navbar 320/390px, and route smoke PASS');
   } finally {
     await browser.close();
   }

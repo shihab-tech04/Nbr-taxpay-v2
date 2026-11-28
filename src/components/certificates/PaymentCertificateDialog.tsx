@@ -1,17 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Award, Download, Printer, ShieldAlert } from 'lucide-react';
-import type { PaymentLineItem, PaymentTransaction } from '../../types/tax';
+import { Award, Download, Printer } from 'lucide-react';
+import type { PaymentTransaction } from '../../types/tax';
 import { AppButton } from '../../design-system/buttons';
-import { isValidYmd } from '../../design-system/dates/dateUtils';
-import { AppToast } from '../../design-system/feedback';
+import { AppStateView, AppToast } from '../../design-system/feedback';
 import { AppDialog } from '../../design-system/modals';
-import { AppTable, useTableState, type AppColumn } from '../../design-system/tables';
-import {
-  buildCertificatePdfLines,
-  buildPaymentCertificateRecord,
-  downloadSamplePdf,
-} from '../../shared/certificateUtils';
+import { exportCertificateElementToPdf } from '../../shared/certificatePdfExport';
+import { buildPaymentCertificateRecord } from '../../shared/certificateUtils';
+import { CertificatePaper } from './CertificatePaper';
 
 interface PaymentCertificateDialogProps {
   open: boolean;
@@ -30,50 +26,22 @@ export const PaymentCertificateDialog: React.FC<PaymentCertificateDialogProps> =
 }) => {
   const { t, i18n } = useTranslation();
   const isBn = i18n?.language === 'bn';
-  const [downloadedToast, setDownloadedToast] = useState(false);
+  const paperRef = useRef<HTMLElement>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const cert = transaction ? buildPaymentCertificateRecord(transaction, isAuthenticated) : null;
+  if (!transaction) return null;
 
-  const columns: AppColumn<PaymentLineItem>[] = [
-    {
-      key: 'headNameEn',
-      header: t('taxHead'),
-      sortable: true,
-      accessor: (item) => (isBn ? item.headNameBn : item.headNameEn),
-      cell: (item) => (
-        <div>
-          <div className="font-medium">{isBn ? item.headNameBn : item.headNameEn}</div>
-          <div className="text-[11px] text-slate-500 font-mono">{isBn ? 'কোড' : 'Code'}: {item.headCode}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'assessmentYear',
-      header: t('assessmentYear'),
-      sortable: true,
-      accessor: (item) => item.assessmentYear,
-      cell: (item) => <span className="font-mono">{item.assessmentYear}</span>,
-    },
-    {
-      key: 'amount',
-      header: t('amountBdt'),
-      align: 'right',
-      sortable: true,
-      accessor: (item) => item.amount,
-      cell: (item) => <span className="font-semibold font-mono">৳ {item.amount.toLocaleString()}</span>,
-    },
-  ];
+  const cert = buildPaymentCertificateRecord(transaction, isAuthenticated);
 
-  const { sortState, handleSort, sortedData } = useTableState(cert?.items ?? [], {
-    columns,
-    initialSort: { columnKey: 'headNameEn', direction: 'asc' },
-  });
-
-  if (!cert) return null;
-
-  const handleDownload = () => {
-    if (downloadSamplePdf(cert.certificateId, buildCertificatePdfLines(cert))) {
-      setDownloadedToast(true);
+  const handleDownload = async () => {
+    if (!cert) return;
+    setExportError(null);
+    const ok = await exportCertificateElementToPdf(cert, paperRef.current, 'certificate');
+    if (ok) {
+      setToastMsg(isBn ? `${cert.certificateId}.pdf ডাউনলোড হয়েছে` : `Downloaded ${cert.certificateId}.pdf`);
+    } else {
+      setExportError(isBn ? 'পিডিএফ ডাউনলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Could not export PDF. Please retry.');
     }
   };
 
@@ -94,7 +62,7 @@ export const PaymentCertificateDialog: React.FC<PaymentCertificateDialogProps> =
                 {isBn ? 'সম্মিলিত পেমেন্ট সনদ (নমুনা)' : 'Combined Payment Certificate (Sample)'}
               </div>
               <div className="text-xs font-mono text-slate-500 font-normal">
-                {cert.certificateId} · {cert.transactionRef}
+                {cert ? `${cert.certificateId} · ${cert.transactionRef}` : transaction.transactionRef}
               </div>
             </div>
           </div>
@@ -102,60 +70,50 @@ export const PaymentCertificateDialog: React.FC<PaymentCertificateDialogProps> =
         closeLabel={isBn ? 'সনদ বন্ধ করুন' : 'Close certificate'}
         actions={
           <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-            <AppButton actionType="secondary" size="small" onClick={onClose}>{t('back')}</AppButton>
-            <div className="flex items-center gap-2">
-              <AppButton actionType="secondary" size="small" startIcon={<Printer size={16} />} onClick={() => window.print()}>
-                {isBn ? 'প্রিন্ট' : 'Print'}
-              </AppButton>
-              <AppButton actionType="primary" size="small" startIcon={<Download size={16} />} onClick={handleDownload}>
-                {isBn ? 'নমুনা পিডিএফ ডাউনলোড' : 'Download PDF'}
-              </AppButton>
-            </div>
+            <AppButton actionType="secondary" size="small" onClick={onClose}>
+              {t('back')}
+            </AppButton>
+            {cert && (
+              <div className="flex items-center gap-2">
+                <AppButton actionType="secondary" size="small" startIcon={<Printer size={16} />} onClick={() => window.print()}>
+                  {isBn ? 'প্রিন্ট' : 'Print'}
+                </AppButton>
+                <AppButton actionType="primary" size="small" startIcon={<Download size={16} />} onClick={() => void handleDownload()}>
+                  {isBn ? 'নমুনা পিডিএফ ডাউনলোড' : 'Download PDF'}
+                </AppButton>
+              </div>
+            )}
           </div>
         }
       >
-        <div className="space-y-5 text-xs">
-          <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-start gap-2">
-            <ShieldAlert size={16} className="shrink-0 mt-0.5 text-amber-600" />
-            <span>
-              {isBn
-                ? 'এটি শুধুমাত্র পেমেন্ট সনদের ইউআই প্রিভিউ — কোনো সরকারি কর রেয়াত সনদ বা নিষ্পত্তি প্রমাণ নয়।'
-                : 'Illustrative Payment Certificate UI preview only — separate from Tax Credit Certificates and not official NBR verification.'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-            <div><span className="text-slate-500 block">{t('challanNumberLabel')}</span><strong className="font-mono text-slate-900 dark:text-white">{cert.challanNumber}</strong></div>
-            <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="font-mono text-slate-900 dark:text-white">{cert.bankRef}</strong></div>
-            <div><span className="text-slate-500 block">{isBn ? 'তারিখ ও মাধ্যম' : 'Date & Channel'}</span><strong className="text-slate-900 dark:text-white">{new Date(cert.createdAt).toLocaleDateString()} · {cert.paymentChannel}</strong></div>
-            <div><span className="text-slate-500 block">{isBn ? 'প্রদানকারী' : 'Payer'}</span><strong className="text-slate-900 dark:text-white">{cert.taxpayerName}</strong></div>
-            <div><span className="text-slate-500 block">{t('taxpayerTin')}</span><strong className="font-mono text-slate-900 dark:text-white">{cert.taxpayerTin}</strong></div>
-            <div><span className="text-slate-500 block">{t('assessmentYear')}</span><strong className="font-mono text-slate-900 dark:text-white">{cert.assessmentYears}</strong></div>
-            {cert.beneficiaryTin && (
-              <div className="col-span-2 sm:col-span-3">
-                <span className="text-slate-500 block">{isBn ? 'সুবিধাভোগী প্রাপক' : 'Recipient / Beneficiary'}</span>
-                <strong className="text-slate-900 dark:text-white">{cert.beneficiaryName} (TIN: {cert.beneficiaryTin})</strong>
+        {!cert ? (
+          <AppStateView
+            variant="error"
+            title={isBn ? 'সনদ প্রিভিউ অনুপলব্ধ' : 'Certificate Preview Unavailable'}
+            description={
+              isBn
+                ? 'লেনদেনের মোট অঙ্ক ও কর খাতের যোগফল সমন্বিত নয় অথবা লেনদেনটি সম্পন্ন হয়নি।'
+                : 'Transaction allocations could not be reconciled or payment status is not completed.'
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            {exportError && (
+              <div role="alert" className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {exportError}
               </div>
             )}
-            {cert.giftDate && isValidYmd(cert.giftDate) && (
-              <div><span className="text-slate-500 block">{t('giftDate')}</span><strong className="font-mono text-slate-900 dark:text-white">{cert.giftDate}</strong></div>
-            )}
+            <CertificatePaper
+              cert={cert}
+              paperRef={paperRef}
+              onCopySuccess={(id) =>
+                setToastMsg(isBn ? `${id} কপি হয়েছে` : `Copied ${id} to clipboard`)
+              }
+            />
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{isBn ? 'সম্মিলিত কর খাতসমূহ' : 'Combined Payment-Head Allocations'}</h4>
-              <span className="font-mono font-bold text-teal-700 dark:text-teal-400">{isBn ? 'মোট (নমুনা)' : 'Sample Total'}: ৳ {cert.totalAmount.toLocaleString()}</span>
-            </div>
-            <AppTable<PaymentLineItem> columns={columns} data={sortedData} keyExtractor={(_, i) => `${cert.certificateId}-${i}`} sortState={sortState} onSort={handleSort} />
-          </div>
-
-          <div data-testid="certificate-lifecycle-note" className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-            {isBn ? cert.lifecycleNoteBn : cert.lifecycleNoteEn}
-          </div>
-        </div>
+        )}
       </AppDialog>
-      <AppToast open={downloadedToast} onClose={() => setDownloadedToast(false)} message={isBn ? `${cert.certificateId}.pdf ডাউনলোড হয়েছে` : `Downloaded ${cert.certificateId}.pdf`} severity="success" />
+      <AppToast open={Boolean(toastMsg)} onClose={() => setToastMsg(null)} message={toastMsg} severity="success" />
     </>
   );
 };

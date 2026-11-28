@@ -1,9 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '../types/tax';
-import { INITIAL_USER } from './mockData';
+import {
+  getNoticesForTin,
+  WALKIN_GUEST_USER,
+  type FirstLoginNotice,
+} from './accountSession';
 import { isRestrictedOperationAllowed } from './previewPolicy';
 import { readAppStorage, readJsonStorage, writeAppStorage } from './storageAdapter';
-import { getNoticesForTin, type FirstLoginNotice } from './accountSession';
 
 export interface SessionContextValue {
   user: UserProfile;
@@ -19,13 +22,15 @@ export interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUserState] = useState<UserProfile>(() =>
-    readJsonStorage('sohojkor_user', INITIAL_USER)
-  );
-
   const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(() => {
     if (!isRestrictedOperationAllowed('sign_in')) return false;
     return readAppStorage('sohojkor_auth') === 'true';
+  });
+
+  const [user, setUserState] = useState<UserProfile>(() => {
+    if (!isRestrictedOperationAllowed('sign_in')) return WALKIN_GUEST_USER;
+    if (readAppStorage('sohojkor_auth') !== 'true') return WALKIN_GUEST_USER;
+    return readJsonStorage('sohojkor_user', WALKIN_GUEST_USER);
   });
 
   const [acknowledgedByTin, setAcknowledgedByTin] = useState<Record<string, string[]>>(() =>
@@ -52,6 +57,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const setIsAuthenticated = useCallback((val: boolean) => {
     if (val && !isRestrictedOperationAllowed('sign_in')) return;
     setIsAuthenticatedState(val);
+    if (!val) setUserState(WALKIN_GUEST_USER);
   }, []);
 
   const completeOtpSignIn = useCallback((profile: UserProfile) => {
@@ -62,24 +68,24 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const acknowledgeNotice = useCallback(
     (noticeId: string) => {
-      if (!isRestrictedOperationAllowed('sign_in')) return;
+      if (!isRestrictedOperationAllowed('sign_in') || !isAuthenticated || !user.tin) return;
       setAcknowledgedByTin((prev) => {
         const existing = prev[user.tin] ?? [];
         if (existing.includes(noticeId)) return prev;
         return { ...prev, [user.tin]: [...existing, noticeId] };
       });
     },
-    [user.tin]
+    [isAuthenticated, user.tin]
   );
 
   const signOutClean = useCallback(() => {
     setIsAuthenticatedState(false);
-    setUserState(INITIAL_USER);
-    setAcknowledgedByTin({});
+    setUserState(WALKIN_GUEST_USER);
+    // Keep per-account acknowledged notices persisted across logout and re-login.
   }, []);
 
   const unseenNotices = useMemo(() => {
-    if (!isAuthenticated || !isRestrictedOperationAllowed('sign_in')) return [];
+    if (!isAuthenticated || !isRestrictedOperationAllowed('sign_in') || !user.tin) return [];
     const acked = acknowledgedByTin[user.tin] ?? [];
     return getNoticesForTin(user.tin).filter((notice) => !acked.includes(notice.id));
   }, [acknowledgedByTin, isAuthenticated, user.tin]);

@@ -1,19 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Award, Download, Eye, ShieldCheck } from 'lucide-react';
 import type { PaymentTransaction } from '../../types/tax';
 import { useApp } from '../../shared/AppContext';
-import {
-  buildCertificatePdfLines,
-  buildPaymentCertificateRecord,
-  downloadSamplePdf,
-  type PaymentCertificateRecord,
-} from '../../shared/certificateUtils';
+import { exportCertificateElementToPdf } from '../../shared/certificatePdfExport';
+import { buildPaymentCertificateRecord, type PaymentCertificateRecord } from '../../shared/certificateUtils';
 import { AppButton } from '../../design-system/buttons';
 import { AppStateView, AppToast } from '../../design-system/feedback';
 import { useAppNavigation } from '../../design-system/navigation';
 import { AppTable, useTableState, type AppColumn } from '../../design-system/tables';
+import { CertificatePaper } from '../../components/certificates/CertificatePaper';
 import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 
 export const TaxCreditCertificatesView: React.FC = () => {
@@ -21,10 +18,12 @@ export const TaxCreditCertificatesView: React.FC = () => {
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const { goBack } = useAppNavigation();
-  const { transactions, isAuthenticated } = useApp();
+  const { transactions, isAuthenticated, activeScope } = useApp();
 
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
+  const [exportCert, setExportCert] = useState<PaymentCertificateRecord | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const offscreenPaperRef = useRef<HTMLElement>(null);
 
   const txByCertId = useMemo(
     () => new Map(transactions.map((tx) => [`CERT-${tx.transactionRef}`, tx])),
@@ -35,9 +34,20 @@ export const TaxCreditCertificatesView: React.FC = () => {
     () =>
       transactions
         .map((tx) => buildPaymentCertificateRecord(tx, isAuthenticated))
-        .filter((item): item is PaymentCertificateRecord => item !== null),
-    [transactions, isAuthenticated]
+        .filter((item): item is PaymentCertificateRecord => Boolean(item && item.ownerScope === activeScope)),
+    [transactions, isAuthenticated, activeScope]
   );
+
+  const handleRowDownload = (cert: PaymentCertificateRecord) => {
+    setExportCert(cert);
+    requestAnimationFrame(() => {
+      void exportCertificateElementToPdf(cert, offscreenPaperRef.current, 'certificate').then((ok) => {
+        if (ok) {
+          setToastMsg(isBn ? `${cert.certificateId}.pdf ডাউনলোড হয়েছে` : `Downloaded ${cert.certificateId}.pdf`);
+        }
+      });
+    });
+  };
 
   const columns: AppColumn<PaymentCertificateRecord>[] = [
     {
@@ -76,16 +86,7 @@ export const TaxCreditCertificatesView: React.FC = () => {
           <AppButton actionType="secondary" size="small" startIcon={<Eye size={14} />} onClick={() => setSelectedTx(txByCertId.get(c.certificateId) ?? null)}>
             {isBn ? 'দেখুন' : 'View'}
           </AppButton>
-          <AppButton
-            actionType="primary"
-            size="small"
-            startIcon={<Download size={14} />}
-            onClick={() => {
-              if (downloadSamplePdf(c.certificateId, buildCertificatePdfLines(c))) {
-                setToastMsg(isBn ? `${c.certificateId}.pdf ডাউনলোড হয়েছে` : `Downloaded ${c.certificateId}.pdf`);
-              }
-            }}
-          >
+          <AppButton actionType="primary" size="small" startIcon={<Download size={14} />} onClick={() => handleRowDownload(c)}>
             {isBn ? 'পিডিএফ' : 'Download'}
           </AppButton>
         </div>
@@ -166,6 +167,11 @@ export const TaxCreditCertificatesView: React.FC = () => {
         </section>
       </div>
 
+      {exportCert && (
+        <div className="fixed -left-[9999px] top-0 w-[760px]" aria-hidden="true">
+          <CertificatePaper cert={exportCert} paperRef={offscreenPaperRef} />
+        </div>
+      )}
       <PaymentCertificateDialog open={Boolean(selectedTx)} onClose={() => setSelectedTx(null)} transaction={selectedTx} isAuthenticated={isAuthenticated} />
       <AppToast open={Boolean(toastMsg)} onClose={() => setToastMsg(null)} message={toastMsg} severity="success" />
     </div>

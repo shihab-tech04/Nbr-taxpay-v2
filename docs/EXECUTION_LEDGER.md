@@ -242,3 +242,22 @@ All citizen features, design tokens, bilingual translations, and production-grad
 - **Remaining Outside-Sandbox Steps**:
   - Commit/push Cycle 10–11 changes from a git-connected environment, verify prior `2a6c024` backup/restore bundle, trigger `.github/workflows/citizen-pages.yml` CI run, and confirm live deployed GitHub Pages SHA and `.nojekyll` bypass.
 
+## Accelerated Cycle 11–12 — Account Isolation, Auth Parity, 24-Field Profile Closure, Unicode PDF Certificates, & All Tax Payments (`F-21`)
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); zero SQL/RPC/Edge/Office changes; zero Nadia/Nadia UX references; all approved Home 2, design-system, table, modal, and date contracts preserved cleanly.
+- **Account Isolation & Authentication (`src/shared/accountSession.ts`, `SessionContext.tsx`, `scopedDomainStorage.ts`, `DomainStateContext.tsx`, `src/features/account/`, `App.tsx`)**:
+  - Scoped `DomainStateContext` per authenticated TIN (`acct_<tin>`) and isolated `'walkin'` storage (`sohojkor_domain_*`), preventing cross-account or walk-in data leakage across `User1 -> User2 -> User1`, logout, and page reload.
+  - Preserved per-account notification acknowledgements (`sohojkor_ack_notices`) across `signOutClean()` and mounted `FirstLoginNoticeDialog` globally in `App.tsx` across authenticated inner routes.
+  - Made `lookupTinIdentity` fail closed on unknown TINs/IDs, restored empty initial credentials with `user1`/`user2` quick-fill, `AppPasswordField` + password check + `Recover Account` toggle, SMS/Email masked contact choices, Resend cooldown, open-redirect-safe `?returnTo=`, walk-in entry, and signed-in account-switching guard.
+- **Exact 24-Field Taxpayer Profile Parity (`src/features/profile/`)**:
+  - Placed `previousTin` FIRST in Certificate Details, assigned declared `'certificate'` sources on `taxesCircle`, `taxpayerStatus`, `registeredAddress`, and `currentAddress`, restored original masking thresholds (`>=8` TIN, `>=6` phone, regex email), `*` masking preserving separators, and `@****.***` domain hiding.
+  - Enforced synchronous reveal/copy state reset on every `scopeKey` (`identity|key|value|canReveal|profileContext`) transition (`A->B->A`), clipboard failure `<span role="alert">`, `profileContext` gate on TIN Copy, signed-out `[data-testid="profile-auth-gate"]` (`Sign in to view your profile.`) without sample leakage, and `registrationNotLinked` toggle for unlinked accounts.
+- **Complete Certificate Foundation & Wrapped Multipage Unicode PDF (`src/shared/certificateUtils.ts`, `certificatePdfExport.ts`, `components/certificates/`, `ReceiptModal.tsx`, `TaxCreditCertificatesView.tsx`)**:
+  - Bound `ownerScope` and `originMode` (`signed_in` | `walk_in`) directly to completed transactions, enforced item-total reconciliation (`isTransactionReconciled`), filtered `/certificates` strictly by `activeScope`, preserved `giftDate`/`travelDetails`/per-line taxpayer & remarks + ref Copy, and implemented wrapped multipage Unicode/Bengali + `৳` PDF export via `html2canvas-pro` + `jspdf`.
+- **All Tax Payments (`F-21` / `US-20`)**:
+  - Delivered 7 fixed category groups (`ALL_TAX_CATEGORIES`), `<=5` frequent categories (signed-in `>=2` completed transactions only), shared `Chooser -> Taxpayers -> Payment Head -> Preview -> Result` flow, own liability vs facilitation multi-taxpayer + one-time TIN, per-taxpayer `Tax with Return` single-AY & exclusion rules (allowing `Taxpayer A Return + Taxpayer B Advance`), searchable head selector (`AppAutocomplete`), multiline EN/BN remarks (`AppTextArea` / `F-178`), signed-in Draft Save & Resume (`DraftsView`), `Pay Again` clone (`HistoryView`), and Walk-In Result options including explicit `Sign in to Claim Payment` (`F-167` via `?claimRef=`).
+- **Verification Evidence (Sandbox)**:
+  - `npm run arch:check`, `npm run typecheck`, `compile_applet`, `lint_applet`, `NODE_ENV=production npx vite build --base=/Nbr-taxpay-v2/`, 4-timezone `npm test` (`56/56` across `UTC`, `Asia/Dhaka`, `America/Los_Angeles`, `America/New_York`), `pages-smoke.cjs`, `ci-interactive-browser.cjs`, and live `playwright-cli` desktop/mobile verification completed cleanly after final edits.
+- **Remaining Outside-Sandbox Steps**:
+  - Commit/push Cycle 11–12 changes and confirm live GitHub Actions / GitHub Pages deployment from a git-connected environment.
+
+

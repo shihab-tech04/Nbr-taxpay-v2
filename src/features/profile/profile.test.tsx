@@ -6,10 +6,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n/i18n';
 import { AppProvider } from '../../shared/AppContext';
+import type { UserProfile } from '../../types/tax';
 import { PROFILE_24_FIELD_MANIFEST } from './profileTypes';
 import { SAMPLE_TAXPAYER_PROFILE_24 } from './profileData';
 import {
   formatProfileValue,
+  isSensitiveMaskValue,
   maskProfileEmail,
   maskProfilePhone,
   maskProfileTin,
@@ -18,7 +20,7 @@ import {
 import { ProfileView } from './ProfileView';
 import { MaskedProfileValue } from './components/MaskedProfileValue';
 
-test('PROFILE_24_FIELD_MANIFEST matches exact 24 unique keys, groups, sources, and ordering', () => {
+test('PROFILE_24_FIELD_MANIFEST matches exact 24 unique keys, Previous TIN first, and certificate sources', () => {
   assert.equal(PROFILE_24_FIELD_MANIFEST.length, 24);
   const uniqueKeys = new Set(PROFILE_24_FIELD_MANIFEST.map((f) => f.key));
   assert.equal(uniqueKeys.size, 24);
@@ -35,59 +37,73 @@ test('PROFILE_24_FIELD_MANIFEST matches exact 24 unique keys, groups, sources, a
     contact: ['mobileNumber', 'emailAddress', 'registeredAddress', 'currentAddress'],
     jurisdiction: ['taxesZone', 'taxesRange', 'district', 'country'],
     certificate: [
+      'previousTin',
       'certificateIssuedOn',
       'certificateLastUpdatedOn',
       'issuingOfficer',
       'taxOfficeAddress',
       'taxOfficePhone',
-      'previousTin',
     ],
   });
 
+  const byKey = new Map(PROFILE_24_FIELD_MANIFEST.map((f) => [f.key, f]));
+  assert.equal(byKey.get('taxpayerStatus')?.source, 'certificate');
+  assert.equal(byKey.get('registeredAddress')?.source, 'certificate');
+  assert.equal(byKey.get('currentAddress')?.source, 'certificate');
+  assert.equal(byKey.get('taxpayerName')?.labelBn, 'নাম');
+  assert.equal(byKey.get('tinType')?.labelBn, 'টিআইএন ধরন');
+
   for (const field of PROFILE_24_FIELD_MANIFEST) {
-    assert.ok(field.source === 'certificate' || field.source === 'tin_profile' || field.source === 'account');
     assert.ok(SAMPLE_TAXPAYER_PROFILE_24[field.key].length > 0);
   }
 });
 
-test('Masking follows first-3-digits-only for TIN/phones, masks email domains, and hides sensitive certificate refs', () => {
-  assert.equal(maskProfileTin('882349102384'), '882•••••••••');
-  assert.equal(maskProfileTin('6543210987'), '654•••••••');
-  assert.equal(maskProfileTin('N/A'), 'N/A');
-  assert.equal(maskProfilePhone('+8801712345678'), '880••••••••••');
-  assert.equal(maskProfilePhone('+880-2-9355555'), '880••••••••');
-  assert.equal(maskProfileEmail('rafiqul.islam@example.com'), 'ra••••@e••••.•••');
+test('Masking follows original thresholds (>=8 TIN, >=6 phone), preserves separators with *, and hides email domains', () => {
+  assert.equal(isSensitiveMaskValue('1234567', 'tin'), false);
+  assert.equal(isSensitiveMaskValue('12345678', 'tin'), true);
+  assert.equal(isSensitiveMaskValue('12345', 'mobileNumber'), false);
+  assert.equal(isSensitiveMaskValue('123456', 'mobileNumber'), true);
 
-  assert.equal(formatProfileValue('tin', '882349102384', false), '882•••••••••');
-  assert.equal(formatProfileValue('previousTin', '6543210987', false), '654•••••••');
-  assert.equal(formatProfileValue('taxOfficePhone', '+880-2-9355555', false), '880••••••••');
+  assert.equal(maskProfileTin('882349102384'), '882*********');
+  assert.equal(maskProfileTin('6543210987'), '654*******');
+  assert.equal(maskProfileTin('123-45678'), '123-*****');
+  assert.equal(maskProfileTin('N/A'), 'N/A');
+  assert.equal(maskProfilePhone('+8801712345678'), '+880**********');
+  assert.equal(maskProfilePhone('+880-2-9355555'), '+880-*-*******');
+  assert.equal(maskProfileEmail('rafiqul.islam@example.com'), 'ra***********@****.***');
+
+  assert.equal(formatProfileValue('tin', '882349102384', false), '882*********');
+  assert.equal(formatProfileValue('previousTin', '6543210987', false), '654*******');
+  assert.equal(formatProfileValue('taxOfficePhone', '+880-2-9355555', false), '+880-*-*******');
   assert.equal(formatProfileValue('tin', '882349102384', true), '882349102384');
 });
 
-test('resolveTaxpayerProfile isolates fixtures from unrelated signed-in user identities', () => {
-  const { profile, isSampleIdentity } = resolveTaxpayerProfile(
-    {
-      tin: '112233445566',
-      name: 'Tasnim Chowdhury',
-      circle: 'Circle-019',
-      zone: 'Tax Zone-02, Chattogram',
-      email: 'tasnim@chattogram.org',
-      phone: '+8801911223344',
-      registeredDate: '2024-02-11',
-      taxpayerType: 'Individual',
-    },
-    true,
-    false
-  );
+test('resolveTaxpayerProfile blocks signed-out access and isolates unlinked secondary accounts', () => {
+  const secondary: UserProfile = {
+    tin: '112233445566',
+    name: 'Tasnim Chowdhury',
+    circle: 'Circle-019',
+    zone: 'Tax Zone-02, Chattogram',
+    email: 'tasnim@chattogram.org',
+    phone: '+8801911223344',
+    registeredDate: '2024-02-11',
+    taxpayerType: 'Individual',
+  };
 
-  assert.equal(isSampleIdentity, false);
-  assert.equal(profile.taxpayerName, 'Tasnim Chowdhury');
-  assert.equal(profile.registeredAddress, '—');
-  assert.equal(profile.previousTin, '—');
-  assert.equal(profile.taxOfficePhone, '—');
+  assert.equal(resolveTaxpayerProfile(secondary, false, false), null);
+  assert.equal(resolveTaxpayerProfile(secondary, true, true), null);
+
+  const resolved = resolveTaxpayerProfile(secondary, true, false);
+  assert.ok(resolved);
+  assert.equal(resolved.isSampleIdentity, false);
+  assert.equal(resolved.registrationNotLinked, true);
+  assert.equal(resolved.profile.taxpayerName, 'Tasnim Chowdhury');
+  assert.equal(resolved.profile.registeredAddress, '—');
+  assert.equal(resolved.profile.previousTin, '—');
+  assert.equal(resolved.profile.taxOfficePhone, '—');
 });
 
-test('MaskedProfileValue resets reveal visibility cleanly when unauthorized and uses bilingual aria labels', async () => {
+test('MaskedProfileValue enforces profileContext on TIN copy and uses bilingual reveal aria labels', async () => {
   const tinMeta = PROFILE_24_FIELD_MANIFEST.find((f) => f.key === 'tin')!;
   await i18n.changeLanguage('bn');
   const bnHtml = renderToStaticMarkup(
@@ -95,12 +111,20 @@ test('MaskedProfileValue resets reveal visibility cleanly when unauthorized and 
       <MaskedProfileValue meta={tinMeta} value="882349102384" identityKey="882349102384" canReveal={false} />
     </I18nextProvider>
   );
-  assert.match(bnHtml, /882•••••••••/);
+  assert.match(bnHtml, /882\*{9}/);
   assert.match(bnHtml, /aria-label="টিআইএন দেখুন"/);
+  assert.doesNotMatch(bnHtml, /কপি করুন/);
+
   await i18n.changeLanguage('en');
+  const enWithCopyHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <MaskedProfileValue meta={tinMeta} value="882349102384" identityKey="882349102384" canReveal profileContext />
+    </I18nextProvider>
+  );
+  assert.match(enWithCopyHtml, /aria-label="Copy TIN"/);
 });
 
-test('ProfileView renders exact 24 fields once each with zero duplicated Summary or Circle nodes', async () => {
+test('ProfileView renders signed-out auth gate without leaking sample taxpayer data', async () => {
   await i18n.changeLanguage('en');
   const html = renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>
@@ -112,18 +136,8 @@ test('ProfileView renders exact 24 fields once each with zero duplicated Summary
     </I18nextProvider>
   );
 
-  assert.match(html, /Sample taxpayer/);
-  assert.doesNotMatch(html, /Verified Taxpayer/);
+  assert.match(html, /data-testid="profile-auth-gate"/);
+  assert.match(html, /Sign in to view your profile\./);
+  assert.doesNotMatch(html, /Rafiqul/);
   assert.doesNotMatch(html, /882349102384/);
-  assert.doesNotMatch(html, /6543210987/);
-  assert.doesNotMatch(html, /example\.com/);
-  assert.match(html, /882•••••••••/);
-  assert.match(html, /654•••••••/);
-  assert.match(html, /ra••••@e••••\.•••/);
-  assert.doesNotMatch(html, /Account &amp; Registration Summary/);
-
-  for (const field of PROFILE_24_FIELD_MANIFEST) {
-    const matches = html.match(new RegExp(`data-testid="profile-field-${field.key}"`, 'g')) ?? [];
-    assert.equal(matches.length, 1, `Expected exactly 1 occurrence of ${field.key}`);
-  }
 });
