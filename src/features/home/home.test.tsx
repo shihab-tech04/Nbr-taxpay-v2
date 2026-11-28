@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ThemeProvider } from '@mui/material/styles';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../../i18n/i18n';
 import { readPublicBackendConfig } from '../../config/publicBackend';
 import { getTheme } from '../../design-system/theme';
 import { INITIAL_TRANSACTIONS } from '../../shared/mockData';
@@ -44,7 +46,11 @@ import {
 import { getRecordVerificationServiceStatus } from './services/recordVerificationService';
 
 function renderHomeWithTheme(node: React.ReactElement): string {
-  return renderToStaticMarkup(<ThemeProvider theme={getTheme('light')}>{node}</ThemeProvider>);
+  return renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <ThemeProvider theme={getTheme('light')}>{node}</ThemeProvider>
+    </I18nextProvider>
+  );
 }
 
 test('Home 2 design tokens and layout metrics match approved specification', () => {

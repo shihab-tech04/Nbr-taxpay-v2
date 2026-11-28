@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import type { UserProfile } from '../types/tax';
 import {
   getNoticesForTin,
+  lookupTinIdentity,
   WALKIN_GUEST_USER,
   type FirstLoginNotice,
 } from './accountSession';
@@ -21,17 +22,29 @@ export interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
-export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(() => {
-    if (!isRestrictedOperationAllowed('sign_in')) return false;
-    return readAppStorage('sohojkor_auth') === 'true';
-  });
+function readVerifiedSessionUser(): { authenticated: boolean; profile: UserProfile } {
+  if (!isRestrictedOperationAllowed('sign_in')) {
+    return { authenticated: false, profile: WALKIN_GUEST_USER };
+  }
+  if (readAppStorage('sohojkor_auth') !== 'true') {
+    return { authenticated: false, profile: WALKIN_GUEST_USER };
+  }
+  const stored = readJsonStorage('sohojkor_user', WALKIN_GUEST_USER);
+  const verified = lookupTinIdentity(stored.tin);
+  if (!verified) {
+    return { authenticated: false, profile: WALKIN_GUEST_USER };
+  }
+  return { authenticated: true, profile: verified.profile };
+}
 
-  const [user, setUserState] = useState<UserProfile>(() => {
-    if (!isRestrictedOperationAllowed('sign_in')) return WALKIN_GUEST_USER;
-    if (readAppStorage('sohojkor_auth') !== 'true') return WALKIN_GUEST_USER;
-    return readJsonStorage('sohojkor_user', WALKIN_GUEST_USER);
-  });
+export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(
+    () => readVerifiedSessionUser().authenticated
+  );
+
+  const [user, setUserState] = useState<UserProfile>(
+    () => readVerifiedSessionUser().profile
+  );
 
   const [acknowledgedByTin, setAcknowledgedByTin] = useState<Record<string, string[]>>(() =>
     readJsonStorage<Record<string, string[]>>('sohojkor_ack_notices', {})

@@ -31,6 +31,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const isBn = i18n?.language === 'bn';
   const [certOpen, setCertOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const paperRef = useRef<HTMLElement>(null);
 
   const columns: AppColumn<PaymentLineItem>[] = [
@@ -74,9 +75,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const cert = buildPaymentCertificateRecord(transaction, isAuthenticated);
 
   const handleDownloadPdf = async () => {
-    if (!cert) return;
+    if (!cert) {
+      setExportError(isBn ? 'অসমন্বিত লেনদেনের পিডিএফ তৈরি সম্ভব নয়।' : 'Receipt PDF unavailable for unreconciled or pending records.');
+      return;
+    }
+    setExportError(null);
     if (await exportCertificateElementToPdf(cert, paperRef.current, 'receipt')) {
       setToastMsg(isBn ? `${transaction.challanNumber}.pdf ডাউনলোড হয়েছে` : `Downloaded ${transaction.challanNumber}.pdf`);
+    } else {
+      setExportError(isBn ? 'পিডিএফ ডাউনলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Could not export receipt PDF. Please retry.');
     }
   };
 
@@ -123,6 +130,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         }
       >
         <div className="space-y-6">
+          {exportError && (
+            <div role="alert" className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
+              {exportError}
+            </div>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs">
             <div><span className="text-slate-500 block">{t('challanNumberLabel')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.challanNumber}</strong></div>
             <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.bankRef}</strong></div>

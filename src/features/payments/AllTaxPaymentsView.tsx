@@ -4,6 +4,7 @@ import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { PaymentStepHeader } from '../../components/payments/PaymentStepHeader';
 import { AllTaxCategoryStep } from './components/AllTaxCategoryStep';
+import { AllTaxChannelStep } from './components/AllTaxChannelStep';
 import { AllTaxFormStep } from './components/AllTaxFormStep';
 import { AllTaxPreviewStep } from './components/AllTaxPreviewStep';
 import { AllTaxResultStep } from './components/AllTaxResultStep';
@@ -21,7 +22,7 @@ export const AllTaxPaymentsView: React.FC = () => {
         <PaymentStepHeader
           title="All Tax Payments (সকল কর প্রদান)"
           subtitle="File Tax with Return, Advance Tax, Assessed Demand, Penalty, Source Tax, Tribunal, or Other Heads"
-          stepIndicator={`Step ${flow.stepNumber} of 4`}
+          stepIndicator={flow.step === 'chooser' ? 'Category Chooser' : `Step ${flow.stepNumber} of 5`}
         />
 
         {flow.step === 'chooser' && (
@@ -53,6 +54,7 @@ export const AllTaxPaymentsView: React.FC = () => {
                 flow.setSelectedTaxpayerTin(next[0].tin);
               }
             }}
+            onSaveNewBeneficiary={flow.addBeneficiary}
             onBack={() => flow.setStep('chooser')}
             onNext={() => flow.setStep('form')}
           />
@@ -75,6 +77,7 @@ export const AllTaxPaymentsView: React.FC = () => {
             activeTaxpayers={flow.selectedTaxpayers}
             selectedTaxpayerTin={flow.selectedTaxpayerTin}
             items={flow.items}
+            editingIndex={flow.editingIndex}
             totalAmount={flow.totalAmount}
             onChangeCategory={() => flow.setStep('chooser')}
             onBackToTaxpayers={() => flow.setStep('taxpayer')}
@@ -95,6 +98,8 @@ export const AllTaxPaymentsView: React.FC = () => {
             }}
             onChangeRemarks={flow.setRemarks}
             onAddItem={flow.handleAddItem}
+            onEditItem={flow.handleEditItem}
+            onCancelEdit={flow.handleCancelEdit}
             onRemoveItem={flow.handleRemoveItem}
             onSaveDraft={flow.handleSaveDraft}
             onProceedToPreview={flow.handleProceedToPreview}
@@ -108,11 +113,20 @@ export const AllTaxPaymentsView: React.FC = () => {
             isForBeneficiary={flow.isForBeneficiary}
             beneficiaryTin={flow.beneficiaryTin}
             selectedCategory={flow.selectedCategory}
-            paymentChannel={flow.paymentChannel}
             items={flow.items}
             totalAmount={flow.totalAmount}
-            onChangeChannel={flow.setPaymentChannel}
             onBack={() => flow.setStep('form')}
+            onProceedToChannel={() => flow.setStep('channel')}
+          />
+        )}
+
+        {flow.step === 'channel' && (
+          <AllTaxChannelStep
+            paymentChannel={flow.paymentChannel}
+            totalAmount={flow.totalAmount}
+            itemCount={flow.items.length}
+            onChangeChannel={flow.setPaymentChannel}
+            onBack={() => flow.setStep('preview')}
             onConfirmPayment={flow.handleConfirmPayment}
           />
         )}

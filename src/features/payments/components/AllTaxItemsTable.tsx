@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { AppIconButton } from '../../../design-system/buttons';
 import { AppTable, useTableState, type AppColumn } from '../../../design-system/tables';
 import type { PaymentLineItem } from '../../../types/tax';
@@ -13,12 +13,16 @@ interface IndexedLineItem {
 interface AllTaxItemsTableProps {
   items: readonly PaymentLineItem[];
   totalAmount: number;
+  editingIndex?: number | null;
+  onEditItem?: (index: number) => void;
   onRemoveItem: (index: number) => void;
 }
 
 export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
   items,
   totalAmount,
+  editingIndex = null,
+  onEditItem,
   onRemoveItem,
 }) => {
   const { t, i18n } = useTranslation();
@@ -35,12 +39,25 @@ export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
       header: t('taxHead'),
       sortable: true,
       accessor: (row) => (isBn ? row.item.headNameBn : row.item.headNameEn),
-      cell: ({ item }) => (
-        <div>
-          <div className="font-medium">{isBn ? item.headNameBn : item.headNameEn}</div>
+      cell: ({ item, originalIndex }) => (
+        <div className="space-y-0.5">
+          <div className="font-medium">
+            {isBn ? item.headNameBn : item.headNameEn}
+            {editingIndex === originalIndex && (
+              <span className="ml-2 text-[10px] font-semibold text-teal-700 dark:text-teal-300">
+                ({isBn ? 'সম্পাদনা চলছে' : 'Editing'})
+              </span>
+            )}
+          </div>
           <div className="text-[11px] text-slate-500 font-mono">
             {isBn ? 'কোড' : 'Code'}: {item.headCode}
+            {item.taxpayerTin ? ` · ${item.taxpayerName ?? ''} (${item.taxpayerTin})` : ''}
           </div>
+          {item.remarks && (
+            <p className="text-[11px] text-slate-500 whitespace-pre-wrap break-words max-w-xs">
+              {item.remarks}
+            </p>
+          )}
         </div>
       ),
     },
@@ -66,19 +83,27 @@ export const AllTaxItemsTable: React.FC<AllTaxItemsTableProps> = ({
       header: t('actions'),
       align: 'center',
       cell: ({ item, originalIndex }) => (
-        <AppIconButton
-          intent="destructive"
-          size="small"
-          previewRestricted
-          aria-label={
-            isBn
-              ? `${item.headNameBn} মুছুন`
-              : `Remove ${item.headNameEn}`
-          }
-          onClick={() => onRemoveItem(originalIndex)}
-        >
-          <Trash2 size={16} />
-        </AppIconButton>
+        <div className="inline-flex items-center gap-1">
+          {onEditItem && (
+            <AppIconButton
+              size="small"
+              previewRestricted
+              aria-label={isBn ? `${item.headNameBn} সম্পাদনা করুন` : `Edit ${item.headNameEn}`}
+              onClick={() => onEditItem(originalIndex)}
+            >
+              <Pencil size={15} />
+            </AppIconButton>
+          )}
+          <AppIconButton
+            intent="destructive"
+            size="small"
+            previewRestricted
+            aria-label={isBn ? `${item.headNameBn} মুছুন` : `Remove ${item.headNameEn}`}
+            onClick={() => onRemoveItem(originalIndex)}
+          >
+            <Trash2 size={15} />
+          </AppIconButton>
+        </div>
       ),
     },
   ];

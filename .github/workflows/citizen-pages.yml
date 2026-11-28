@@ -21,7 +21,7 @@ jobs:
       - name: Backup and restore pre-release Main
         run: |
           set -euo pipefail
-          baseline_ref=de5a04e
+          baseline_ref=1bda46f75fd5375e37d38596db74f8862b253849
           baseline=$(git -C "$GITHUB_WORKSPACE" rev-parse --verify "${baseline_ref}^{commit}")
           git -C "$GITHUB_WORKSPACE" branch -f recovery-baseline "$baseline"
           mkdir -p "$RUNNER_TEMP/recovery"
@@ -35,7 +35,7 @@ jobs:
           sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: pre-release-de5a04e-recovery
+          name: pre-release-1bda46f-recovery
           path: |
             ${{ runner.temp }}/recovery/pre-release.bundle
             ${{ runner.temp }}/recovery/SHA256SUMS

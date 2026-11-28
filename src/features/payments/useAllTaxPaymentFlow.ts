@@ -7,7 +7,6 @@ import type { PaymentDraft, PaymentLineItem, PaymentTransaction, TaxHeadCategory
 import { getHeadsForCategory } from './allTaxCatalogue';
 import {
   calculateItemsTotal,
-  INITIAL_ALL_TAX_ITEMS,
   rankFrequentPaymentCategories,
   validateAndBuildTaxItem,
   validateCombinedLineAddition,
@@ -20,12 +19,7 @@ interface AllTaxRouteState {
   reuseTx?: PaymentTransaction;
 }
 
-function buildInitialTaxpayers(
-  isAuthenticated: boolean,
-  userTin: string,
-  userName: string,
-  state?: AllTaxRouteState | null
-): SelectedTaxpayerEntry[] {
+function buildInitialTaxpayers(isAuthenticated: boolean, userTin: string, userName: string, state?: AllTaxRouteState | null): SelectedTaxpayerEntry[] {
   const fromItems = (state?.resumeDraft?.items ?? state?.reuseTx?.items ?? [])
     .filter((i) => i.taxpayerTin)
     .map((i) => ({ tin: i.taxpayerTin!, name: i.taxpayerName ?? i.taxpayerTin!, source: 'one_time' as const }));
@@ -34,10 +28,7 @@ function buildInitialTaxpayers(
     fromItems.forEach((tp) => unique.set(tp.tin, tp));
     return [...unique.values()];
   }
-  if (isAuthenticated && userTin) {
-    return [{ tin: userTin, name: userName, source: 'self' }];
-  }
-  return [];
+  return isAuthenticated && userTin ? [{ tin: userTin, name: userName, source: 'self' }] : [];
 }
 
 export function useAllTaxPaymentFlow() {
@@ -46,19 +37,21 @@ export function useAllTaxPaymentFlow() {
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = (location.state ?? null) as AllTaxRouteState | null;
-  const { user, isAuthenticated, activeScope, beneficiaries, transactions, addTransaction, saveDraft } = useApp();
+  const { user, isAuthenticated, activeScope, beneficiaries, addBeneficiary, transactions, addTransaction, saveDraft } = useApp();
 
   const initialSeed = routeState?.resumeDraft ?? routeState?.reuseTx ?? null;
-  const [step, setStep] = useState<'chooser' | 'taxpayer' | 'form' | 'preview' | 'success'>(initialSeed ? 'form' : 'chooser');
+  const [step, setStep] = useState<'chooser' | 'taxpayer' | 'form' | 'preview' | 'channel' | 'success'>(initialSeed ? 'form' : 'chooser');
   const [selectedCategory, setSelectedCategory] = useState<TaxHeadCategory>(initialSeed?.category ?? 'tax_with_return');
-  const [liabilityMode, setLiabilityMode] = useState<'own' | 'facilitation'>('own');
+  const [liabilityMode, setLiabilityMode] = useState<'own' | 'facilitation'>(() =>
+    buildInitialTaxpayers(isAuthenticated, user.tin, user.name, routeState).length > 1 ? 'facilitation' : 'own'
+  );
   const [selectedTaxpayers, setSelectedTaxpayers] = useState<SelectedTaxpayerEntry[]>(() =>
     buildInitialTaxpayers(isAuthenticated, user.tin, user.name, routeState)
   );
   const [selectedTaxpayerTin, setSelectedTaxpayerTin] = useState<string>(() => selectedTaxpayers[0]?.tin ?? '');
   const [assessmentYear, setAssessmentYear] = useState(initialSeed?.items[0]?.assessmentYear ?? '2025-2026');
   const [selectedHeadId, setSelectedHeadId] = useState(() => getHeadsForCategory(initialSeed?.category ?? 'tax_with_return')[0].id);
-  const [amountInput, setAmountInput] = useState<string>('15000');
+  const [amountInput, setAmountInput] = useState<string>('');
   const [amountError, setAmountError] = useState('');
   const [beneficiaryError, setBeneficiaryError] = useState('');
   const [formBannerError, setFormBannerError] = useState('');
@@ -66,7 +59,8 @@ export function useAllTaxPaymentFlow() {
   const [isForBeneficiary, setIsForBeneficiary] = useState(Boolean(routeState?.resumeDraft?.beneficiaryTin || routeState?.reuseTx?.beneficiaryTin));
   const [beneficiaryTin, setBeneficiaryTin] = useState(routeState?.resumeDraft?.beneficiaryTin ?? routeState?.reuseTx?.beneficiaryTin ?? '');
   const [paymentChannel, setPaymentChannel] = useState<ActivePaymentChannel>('bKash');
-  const [items, setItems] = useState<PaymentLineItem[]>(() => initialSeed?.items ? [...initialSeed.items] : isAuthenticated ? INITIAL_ALL_TAX_ITEMS : []);
+  const [items, setItems] = useState<PaymentLineItem[]>(() => (initialSeed?.items ? [...initialSeed.items] : []));
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -84,39 +78,59 @@ export function useAllTaxPaymentFlow() {
     setStep('taxpayer');
   };
 
-  const handleAddItem = () => {
+  const handleAddOrUpdateItem = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
     const activeTp = selectedTaxpayers.find((tp) => tp.tin === selectedTaxpayerTin) ?? selectedTaxpayers[0];
-    const result = validateAndBuildTaxItem({
-      selectedHeadId,
-      amountInput,
-      assessmentYear,
-      remarks,
-      taxpayerTin: activeTp?.tin,
-      taxpayerName: activeTp?.name,
-    });
+    const result = validateAndBuildTaxItem({ selectedHeadId, amountInput, assessmentYear, remarks, taxpayerTin: activeTp?.tin, taxpayerName: activeTp?.name });
     if (!result.ok) {
-      if (result.reason !== 'missing_head') {
-        setAmountError(result.reason === 'min' ? t('amountMinError', { amount: '100' }) : t('amountInvalidError'));
-      }
+      if (result.reason !== 'missing_head') setAmountError(result.reason === 'min' ? t('amountMinError', { amount: '100' }) : t('amountInvalidError'));
       return;
     }
-    const ruleCheck = validateCombinedLineAddition(items, result.item, activeTp?.tin || user.tin || 'WALKIN');
+    const baseItems = editingIndex !== null ? items.filter((_, idx) => idx !== editingIndex) : items;
+    const ruleCheck = validateCombinedLineAddition(baseItems, result.item, activeTp?.tin || user.tin || 'WALKIN');
     if (!ruleCheck.ok) {
-      const msg =
+      setFormBannerError(
         ruleCheck.reason === 'duplicate_line'
           ? isBn ? 'একই করদাতা, কর খাত ও কর বর্ষ ইতিমধ্যে যুক্ত আছে।' : 'This taxpayer, tax head, and assessment year is already in your challan.'
           : ruleCheck.reason === 'return_single_ay_per_taxpayer'
           ? isBn ? 'একই করদাতার রিটার্নসহ করের জন্য কেবল ১টি কর বর্ষ অনুমোদিত।' : 'Tax with Return permits only one Assessment Year per taxpayer.'
-          : isBn ? 'একই করদাতার জন্য রিটার্নসহ কর ও অন্যান্য খাত একসাথে যোগ করা যাবে না।' : 'Cannot mix Tax with Return and non-Return heads for the same taxpayer (allowed across different taxpayers).';
-      setFormBannerError(msg);
+          : isBn ? 'একই করদাতার জন্য রিটার্নসহ কর ও অন্যান্য খাত একসাথে যোগ করা যাবে না।' : 'Cannot mix Tax with Return and non-Return heads for the same taxpayer (allowed across different taxpayers).'
+      );
       return;
     }
     setAmountError('');
     setFormBannerError('');
-    setItems((prev) => [...prev, result.item]);
-    setAmountInput('10000');
+    setItems(editingIndex !== null ? items.map((existing, idx) => (idx === editingIndex ? result.item : existing)) : [...items, result.item]);
+    setEditingIndex(null);
+    setAmountInput('');
     setRemarks('');
+  };
+
+  const handleEditItem = (idx: number) => {
+    const target = items[idx];
+    if (!target) return;
+    setEditingIndex(idx);
+    if (target.taxpayerTin) setSelectedTaxpayerTin(target.taxpayerTin);
+    setSelectedHeadId(target.headId);
+    setAssessmentYear(target.assessmentYear);
+    setAmountInput(String(target.amount));
+    setRemarks(target.remarks ?? '');
+    setAmountError('');
+    setFormBannerError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingIndex(null);
+    setAmountInput('');
+    setRemarks('');
+    setAmountError('');
+    setFormBannerError('');
+  };
+
+  const handleRemoveItem = (idx: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+    if (editingIndex === idx) handleCancelEdit();
+    else if (editingIndex !== null && idx < editingIndex) setEditingIndex(editingIndex - 1);
   };
 
   const handleProceedToPreview = () => {
@@ -164,20 +178,18 @@ export function useAllTaxPaymentFlow() {
     navigate('/drafts');
   };
 
-  const stepNumber = step === 'chooser' ? 1 : step === 'taxpayer' ? 2 : step === 'form' ? 3 : step === 'preview' ? 4 : 4;
+  const stepNumber = step === 'chooser' ? 1 : step === 'taxpayer' ? 1 : step === 'form' ? 2 : step === 'preview' ? 3 : step === 'channel' ? 4 : 5;
 
   return {
-    user, isAuthenticated, beneficiaries, frequentCategories, step, stepNumber, setStep,
-    selectedCategory, handleSelectCategory, liabilityMode, setLiabilityMode,
-    selectedTaxpayers, setSelectedTaxpayers, selectedTaxpayerTin, setSelectedTaxpayerTin,
-    assessmentYear, setAssessmentYear, selectedHeadId, setSelectedHeadId,
-    amountInput, setAmountInput, amountError, setAmountError, beneficiaryError, setBeneficiaryError,
-    formBannerError, remarks, setRemarks, isForBeneficiary, setIsForBeneficiary,
-    beneficiaryTin, setBeneficiaryTin, paymentChannel, setPaymentChannel, items, totalAmount,
-    completedTx, showReceipt, setShowReceipt, handleAddItem,
-    handleRemoveItem: (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx)),
+    user, isAuthenticated, beneficiaries, addBeneficiary, frequentCategories, step, stepNumber, setStep,
+    selectedCategory, handleSelectCategory, liabilityMode, setLiabilityMode, selectedTaxpayers, setSelectedTaxpayers,
+    selectedTaxpayerTin, setSelectedTaxpayerTin, assessmentYear, setAssessmentYear, selectedHeadId, setSelectedHeadId,
+    amountInput, setAmountInput, amountError, setAmountError, beneficiaryError, setBeneficiaryError, formBannerError,
+    remarks, setRemarks, isForBeneficiary, setIsForBeneficiary, beneficiaryTin, setBeneficiaryTin, paymentChannel, setPaymentChannel,
+    items, editingIndex, totalAmount, completedTx, showReceipt, setShowReceipt,
+    handleAddItem: handleAddOrUpdateItem, handleEditItem, handleCancelEdit, handleRemoveItem,
     handleProceedToPreview, handleConfirmPayment, handleSaveDraft,
-    resetWalkIn: () => { setCompletedTx(null); setShowReceipt(false); setItems([]); setStep('chooser'); },
+    resetWalkIn: () => { setCompletedTx(null); setShowReceipt(false); setItems([]); setAmountInput(''); setRemarks(''); setEditingIndex(null); setStep('chooser'); },
     goDashboard: () => navigate(isAuthenticated ? '/dashboard' : '/'),
   };
 }

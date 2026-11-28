@@ -32,6 +32,7 @@ interface AllTaxFormStepProps {
   selectedTaxpayerTin?: string;
   items: readonly PaymentLineItem[];
   totalAmount: number;
+  editingIndex?: number | null;
   onChangeCategory: () => void;
   onBackToTaxpayers?: () => void;
   onToggleBeneficiary: (checked: boolean) => void;
@@ -42,6 +43,8 @@ interface AllTaxFormStepProps {
   onChangeAmountInput: (amount: string) => void;
   onChangeRemarks: (remarks: string) => void;
   onAddItem: () => void;
+  onEditItem?: (index: number) => void;
+  onCancelEdit?: () => void;
   onRemoveItem: (index: number) => void;
   onSaveDraft: () => void;
   onProceedToPreview: () => void;
@@ -162,11 +165,18 @@ export const AllTaxFormStep: React.FC<AllTaxFormStepProps> = (props) => {
         </div>
       </div>
 
-      <AppButton type="button" actionType="secondary" surface="soft" fullWidth previewRestricted startIcon={<Plus size={16} />} onClick={props.onAddItem} sx={{ borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>
-        {t('addHead')}
-      </AppButton>
+      <div className="flex flex-wrap gap-2">
+        <AppButton type="button" actionType="secondary" surface="soft" previewRestricted startIcon={<Plus size={16} />} onClick={props.onAddItem} sx={{ flex: '1 1 200px', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>
+          {props.editingIndex !== null && props.editingIndex !== undefined ? (isBn ? 'খাত হালনাগাদ করুন' : 'Update Tax Head') : t('addHead')}
+        </AppButton>
+        {props.editingIndex !== null && props.editingIndex !== undefined && props.onCancelEdit && (
+          <AppButton type="button" actionType="secondary" surface="outlined" onClick={props.onCancelEdit} sx={{ borderRadius: '12px', py: 1.5, px: 2.5, fontSize: '0.75rem' }}>
+            {t('cancel')}
+          </AppButton>
+        )}
+      </div>
 
-      <AllTaxItemsTable items={props.items} totalAmount={props.totalAmount} onRemoveItem={props.onRemoveItem} />
+      <AllTaxItemsTable items={props.items} totalAmount={props.totalAmount} editingIndex={props.editingIndex} onEditItem={props.onEditItem} onRemoveItem={props.onRemoveItem} />
 
       <div className="flex flex-wrap gap-3 pt-4">
         {isAuth && (

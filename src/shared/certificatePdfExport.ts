@@ -1,4 +1,4 @@
-import { buildCertificatePdfLines, downloadSamplePdf, type PaymentCertificateRecord } from './certificateUtils';
+import type { PaymentCertificateRecord } from './certificateUtils';
 
 export async function exportCertificateElementToPdf(
   cert: PaymentCertificateRecord,
@@ -6,7 +6,7 @@ export async function exportCertificateElementToPdf(
   variant: 'certificate' | 'receipt' = 'certificate'
 ): Promise<boolean> {
   if (typeof document === 'undefined' || !paperElement) {
-    return downloadSamplePdf(cert.certificateId, buildCertificatePdfLines(cert));
+    return false;
   }
 
   try {
@@ -44,7 +44,7 @@ export async function exportCertificateElementToPdf(
     });
 
     if (!canvas.width || !canvas.height) {
-      throw new Error('Empty certificate render canvas.');
+      return false;
     }
 
     const pdf = new jsPDF({ format: 'a4', unit: 'mm', compress: true });
@@ -63,7 +63,7 @@ export async function exportCertificateElementToPdf(
     pageCanvas.width = canvas.width;
     const ctx = pageCanvas.getContext('2d');
     if (!ctx) {
-      throw new Error('Could not initialize 2D PDF slice context.');
+      return false;
     }
 
     for (let start = 0; start < canvas.height; ) {
@@ -91,6 +91,6 @@ export async function exportCertificateElementToPdf(
     pdf.save(`${prefix}${safeId}.pdf`);
     return true;
   } catch {
-    return downloadSamplePdf(cert.certificateId, buildCertificatePdfLines(cert));
+    return false;
   }
 }

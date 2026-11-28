@@ -35,7 +35,11 @@ import {
   validateAndBuildTaxItem,
   validateCombinedLineAddition,
 } from './allTaxLogic';
+import { MemoryRouter } from 'react-router-dom';
+import { AppProvider } from '../../shared/AppContext';
+import { AllTaxPaymentsView } from './AllTaxPaymentsView';
 import { AllTaxCategoryStep } from './components/AllTaxCategoryStep';
+import { AllTaxChannelStep } from './components/AllTaxChannelStep';
 import { AllTaxFormStep } from './components/AllTaxFormStep';
 import { AllTaxPreviewStep } from './components/AllTaxPreviewStep';
 import { AllTaxResultStep } from './components/AllTaxResultStep';
@@ -131,7 +135,16 @@ test('giftTaxLogic and travelTaxLogic preserve 1:1 original calculations and val
   assert.equal(travelErrors.passport, 'Bad passport');
 });
 
-test('AllTax Chooser, Form, Preview, and Walk-In Result components render cleanly', () => {
+test('AllTax Chooser, Form, Preview, Channel, and Walk-In Result render cleanly with no automatic sample items', () => {
+  const initialPageHtml = renderPaymentsWithProviders(
+    <AppProvider>
+      <MemoryRouter initialEntries={['/all-taxes']}>
+        <AllTaxPaymentsView />
+      </MemoryRouter>
+    </AppProvider>
+  );
+  assert.doesNotMatch(initialPageHtml, /Annual return submission/);
+
   const chooserHtml = renderPaymentsWithProviders(
     <AllTaxCategoryStep
       selectedCategory="tax_with_return"
@@ -148,7 +161,7 @@ test('AllTax Chooser, Form, Preview, and Walk-In Result components render cleanl
       selectedCategory="tax_with_return"
       assessmentYear="2025-2026"
       selectedHeadId={TAX_HEADS[0].id}
-      amountInput="15000"
+      amountInput=""
       amountError=""
       beneficiaryError=""
       formBannerError=""
@@ -167,6 +180,7 @@ test('AllTax Chooser, Form, Preview, and Walk-In Result components render cleanl
       onChangeAmountInput={() => {}}
       onChangeRemarks={() => {}}
       onAddItem={() => {}}
+      onEditItem={() => {}}
       onRemoveItem={() => {}}
       onSaveDraft={() => {}}
       onProceedToPreview={() => {}}
@@ -174,6 +188,7 @@ test('AllTax Chooser, Form, Preview, and Walk-In Result components render cleanl
   );
   assert.match(formHtml, /role="combobox"/);
   assert.match(formHtml, /<textarea/);
+  assert.match(formHtml, /Edit Income Tax with Return/);
   assert.doesNotMatch(formHtml, /Save as Draft/);
 
   const previewHtml = renderPaymentsWithProviders(
@@ -183,15 +198,27 @@ test('AllTax Chooser, Form, Preview, and Walk-In Result components render cleanl
       isForBeneficiary={false}
       beneficiaryTin=""
       selectedCategory="tax_with_return"
-      paymentChannel="bKash"
       items={INITIAL_ALL_TAX_ITEMS}
       totalAmount={15000}
+      onBack={() => {}}
+      onProceedToChannel={() => {}}
+    />
+  );
+  assert.match(previewHtml, /data-testid="all-tax-preview-step"/);
+  assert.match(previewHtml, /Proceed to Payment Channel/);
+
+  const channelHtml = renderPaymentsWithProviders(
+    <AllTaxChannelStep
+      paymentChannel="bKash"
+      totalAmount={15000}
+      itemCount={1}
       onChangeChannel={() => {}}
       onBack={() => {}}
       onConfirmPayment={() => {}}
     />
   );
-  assert.equal((previewHtml.match(/type="radio"/g) ?? []).length, ACTIVE_PAYMENT_CHANNEL_OPTIONS.length);
+  assert.match(channelHtml, /data-testid="all-tax-channel-step"/);
+  assert.equal((channelHtml.match(/type="radio"/g) ?? []).length, ACTIVE_PAYMENT_CHANNEL_OPTIONS.length);
 
   const walkInResultHtml = renderPaymentsWithProviders(
     <AllTaxResultStep

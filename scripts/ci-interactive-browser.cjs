@@ -198,6 +198,7 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.getByRole('button', { name: /Continue to Payment Head/i }).click();
 
     assert.equal(await page.getByRole('button', { name: /Save as Draft/i }).count(), 0);
+    assert.equal(await page.locator('tbody tr').count(), 0);
     await page.getByLabel(/Tax Head/i).click();
     await page.getByRole('option', { name: /0111/i }).click();
     await page.getByLabel(/Amount \(BDT\)/i).fill('5000');
@@ -218,7 +219,13 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.getByRole('button', { name: /Add Tax Head/i }).click();
 
     assert.equal(await page.locator('tbody tr').count(), 2);
-    // Sort by Amount asc -> 1000 (Advance Income Tax 0112, originalIndex 1) moves to visual row 0; removing it preserves 0111!
+    // Edit Advance Income Tax line item before sorting/removing
+    await page.getByRole('button', { name: /Edit Advance Income Tax/i }).click();
+    await page.getByLabel(/Amount \(BDT\)/i).fill('1500');
+    await page.getByRole('button', { name: /Update Tax Head/i }).click();
+    assert.match(await page.locator('tbody').innerText(), /1,500/);
+
+    // Sort by Amount asc -> 1500 (Advance Income Tax 0112, originalIndex 1) moves to visual row 0; removing it preserves 0111!
     await page.locator('thead th', { hasText: /Amount \(BDT\)/i }).locator('[role="button"]').click();
     assert.match(await page.locator('tbody tr').first().innerText(), /Advance Income Tax/);
     await page.getByRole('button', { name: /Remove Advance Income Tax/i }).click();
@@ -226,7 +233,11 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     assert.match(await page.locator('tbody tr').first().innerText(), /Income Tax with Return/);
 
     await page.getByRole('button', { name: /Proceed to Preview/i }).click();
+    await page.getByTestId('all-tax-preview-step').waitFor({ state: 'visible' });
     assert.match(await page.locator('main').innerText(), /বাংলা চালান মন্তব্য/);
+    await page.getByRole('button', { name: /Proceed to Payment Channel/i }).click();
+    await page.getByTestId('all-tax-channel-step').waitFor({ state: 'visible' });
+    await page.getByRole('radio', { name: /Nagad/i }).click();
     await page.getByRole('button', { name: /Confirm & Pay/i }).click();
     const walkinResult = page.getByTestId('walkin-payment-result');
     await walkinResult.waitFor({ state: 'visible' });
@@ -235,6 +246,13 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await walkinResult.getByRole('button', { name: /Continue without signing in/i }).waitFor({ state: 'visible' });
     await walkinResult.getByRole('button', { name: /Sign in to Claim Payment/i }).click();
     await page.waitForURL('**/login?returnTo=*');
+
+    // Forged/unknown TIN in localStorage session must fail closed on reload
+    await page.evaluate(() => {
+      window.localStorage.setItem('sohojkor_user', JSON.stringify({ tin: '998877665544', name: 'Forged User' }));
+    });
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle' });
+    await page.getByTestId('profile-auth-gate').waitFor({ state: 'visible' });
 
     // 6. Auth & Account journey (User1 / Rafiqul): unknown TIN fail-closed, wrong password, masked contacts, Resend, OTP, ?returnTo=, sequential FirstLoginNoticeDialog
     await page.goto(`${baseUrl}/login?returnTo=/dashboard`, { waitUntil: 'networkidle' });
@@ -439,6 +457,7 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     const payCertDialog = page.locator('[role="dialog"]');
     await payCertDialog.waitFor({ state: 'visible' });
     assert.match(await payCertDialog.innerText(), /Combined Payment Certificate/);
+    await payCertDialog.getByRole('button', { name: /^Print$/i }).waitFor({ state: 'visible' });
     await payCertDialog.getByRole('button', { name: /Download PDF/i }).click();
     await page.getByText(/Downloaded CERT-/i).waitFor({ state: 'visible' });
     await page.keyboard.press('Escape');
