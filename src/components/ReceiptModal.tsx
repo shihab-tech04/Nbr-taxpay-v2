@@ -141,9 +141,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <div><span className="text-slate-500 block">{isBn ? 'পরিশোধের তারিখ' : 'Payment Date'}</span><strong className="text-slate-900 dark:text-slate-100 text-sm">{new Date(transaction.createdAt).toLocaleString()}</strong></div>
             <div><span className="text-slate-500 block">{t('taxpayerTin')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.taxpayerTin || 'Walk-In'}</strong></div>
             <div><span className="text-slate-500 block">{t('name')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm">{transaction.taxpayerName}</strong></div>
-            <div><span className="text-slate-500 block">{isBn ? 'পেমেন্ট মাধ্যম' : 'Payment Channel'}</span><strong className="text-sm font-semibold text-teal-700 dark:text-teal-400">{transaction.paymentChannel}</strong></div>
+            <div><span className="text-slate-500 block">{isBn ? 'পেমেন্ট মাধ্যম' : 'Payment Channel'}</span><strong className="text-sm font-semibold text-teal-700 dark:text-teal-400">{transaction.totalAmount === 0 && transaction.category === 'travel_tax' ? (isBn ? 'শূন্য-কর (মাধ্যম অপ্রয়োজনীয়)' : 'Zero-Tax (No Payment)') : transaction.paymentChannel}</strong></div>
             {transaction.giftDate && isValidYmd(transaction.giftDate) && (
               <div data-testid="receipt-gift-date"><span className="text-slate-500 block">{t('giftDate')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.giftDate}</strong></div>
+            )}
+            {transaction.category === 'travel_tax' && transaction.travelDetails && (
+              <div data-testid="receipt-travel-summary" className="col-span-2 sm:col-span-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <span className="text-slate-500 block">{isBn ? 'ভ্রমণের বিবরণ' : 'Travel Details'}</span>
+                <strong className="text-slate-900 dark:text-slate-100 font-mono">
+                  {transaction.travelDetails.travelMode ?? 'Land'} · {transaction.travelDetails.departurePort ?? '—'} → {transaction.travelDetails.destination}
+                  {transaction.travelDetails.travelDate ? ` (${transaction.travelDetails.travelDate})` : ''}
+                  {transaction.travelDetails.passportMasked ? ` · ${transaction.travelDetails.passportMasked}` : ''}
+                </strong>
+              </div>
             )}
           </div>
           {transaction.beneficiaryTin && (

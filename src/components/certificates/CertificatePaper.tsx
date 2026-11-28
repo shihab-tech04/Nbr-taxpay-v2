@@ -114,7 +114,9 @@ export const CertificatePaper: React.FC<CertificatePaperProps> = ({
         {cert.travelDetails && (
           <div className="col-span-2 sm:col-span-3">
             <span className="text-slate-500 block">{isBn ? 'ভ্রমণ তথ্য' : 'Travel Details'}</span>
-            <strong>{cert.travelDetails.passengerName} · {cert.travelDetails.passportNumber} · {cert.travelDetails.destination} ({cert.travelDetails.travelClass})</strong>
+            <strong>
+              {cert.travelDetails.passengerName || '—'} · {cert.travelDetails.passportMasked || cert.travelDetails.passportNumber || '—'} · {[cert.travelDetails.travelMode, cert.travelDetails.departurePort, cert.travelDetails.destination, cert.travelDetails.travelDate].filter(Boolean).join(' · ')}
+            </strong>
           </div>
         )}
       </section>

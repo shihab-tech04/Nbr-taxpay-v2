@@ -1,40 +1,37 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppNumberField, AppSelectField, AppTextField } from '../../../design-system/forms';
-import type { Beneficiary } from '../../../types/tax';
-
-type RelationshipType = Beneficiary['relationship'];
+import { AppNumberField, AppSelectField, AppTextField, validateTin } from '../../../design-system/forms';
+import { lookupTinIdentity } from '../../../shared/accountSession';
+import type { Beneficiary, BeneficiaryList } from '../../../types/tax';
+import { APPROVED_RELATIONSHIPS, RELATIONSHIP_I18N, type BeneficiaryFormErrors } from '../beneficiaryLogic';
 
 interface BeneficiaryFormProps {
   formId?: string;
   name: string;
   tin: string;
-  relationship: RelationshipType;
+  relationship: Beneficiary['relationship'];
+  relationshipNote: string;
+  listId: string;
+  lists: readonly BeneficiaryList[];
   phone: string;
-  errors: { name?: string; tin?: string; phone?: string };
+  errors: BeneficiaryFormErrors;
   onChangeName: (val: string) => void;
   onChangeTin: (val: string) => void;
-  onChangeRelationship: (val: RelationshipType) => void;
+  onChangeRelationship: (val: Beneficiary['relationship']) => void;
+  onChangeRelationshipNote: (val: string) => void;
+  onChangeListId: (val: string) => void;
   onChangePhone: (val: string) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
 export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
   formId = 'beneficiary-form',
-  name,
-  tin,
-  relationship,
-  phone,
-  errors,
-  onChangeName,
-  onChangeTin,
-  onChangeRelationship,
-  onChangePhone,
-  onSubmit,
+  name, tin, relationship, relationshipNote, listId, lists, phone, errors,
+  onChangeName, onChangeTin, onChangeRelationship, onChangeRelationshipNote, onChangeListId, onChangePhone, onSubmit,
 }) => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
-  const [customRelation, setCustomRelation] = useState(relationship === 'Others' ? '' : '');
+  const tinMatch = validateTin(tin).valid ? lookupTinIdentity(tin) : null;
 
   return (
     <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
@@ -55,52 +52,44 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
           onChange={(e) => onChangeTin(e.target.value)}
           placeholder={t('tinPlaceholder')}
           error={Boolean(errors.tin)}
-          helperText={errors.tin || t('tinHelperText')}
+          helperText={errors.tin || (tinMatch ? `${isBn ? 'ডিরেক্টরি তথ্য:' : 'Directory hint:'} ${tinMatch.maskedNameHint}` : t('tinHelperText'))}
           required
         />
         <AppSelectField
           label={t('relationship')}
           value={relationship}
-          onChange={(e) => {
-            const val = e.target.value as RelationshipType;
-            onChangeRelationship(val);
-          }}
+          onChange={(e) => onChangeRelationship(e.target.value as Beneficiary['relationship'])}
           helperText={t('relationshipHelper')}
-          options={[
-            { value: 'Father', label: t('father') },
-            { value: 'Mother', label: t('mother') },
-            { value: 'Siblings', label: t('siblings') },
-            { value: 'Son', label: t('son') },
-            { value: 'Daughter', label: t('daughter') },
-            { value: 'Spouse', label: t('spouse') },
-            { value: 'Friends', label: t('friends') },
-            { value: 'Clients', label: t('clients') },
-            { value: 'Others', label: t('others') },
-          ]}
+          options={APPROVED_RELATIONSHIPS.map((rel) => ({ value: rel, label: t(RELATIONSHIP_I18N[rel]) }))}
         />
         {relationship === 'Others' && (
           <AppTextField
-            label={isBn ? 'অন্যান্য সম্পর্ক উল্লেখ করুন' : 'Specify Other Relationship'}
-            value={customRelation}
-            onChange={(e) => setCustomRelation(e.target.value)}
+            label={isBn ? 'কাস্টম সম্পর্ক উল্লেখ করুন' : 'Custom Relationship Tag'}
+            value={relationshipNote}
+            onChange={(e) => onChangeRelationshipNote(e.target.value)}
             placeholder={isBn ? 'যেমন: ব্যবসায়িক অংশীদার' : 'e.g. Business Partner'}
+            error={Boolean(errors.relationshipNote)}
+            helperText={errors.relationshipNote || (isBn ? '১–৮০ অক্ষরের মধ্যে লিখুন।' : 'Required (1–80 characters).')}
+            required
           />
         )}
+        <AppSelectField
+          label={isBn ? 'তালিকা / গ্রুপ' : 'List / Group'}
+          value={listId}
+          onChange={(e) => onChangeListId(e.target.value)}
+          options={[
+            { value: '', label: isBn ? 'তালিকাবিহীন' : 'Unassigned' },
+            ...lists.map((l) => ({ value: l.id, label: l.name })),
+          ]}
+        />
         <AppTextField
           label={t('phone')}
           value={phone}
           onChange={(e) => onChangePhone(e.target.value)}
           placeholder={t('phonePlaceholder')}
           error={Boolean(errors.phone)}
-          helperText={errors.phone || t('phoneHelper')}
-          slotProps={{
-            htmlInput: {
-              inputMode: 'tel',
-              maxLength: 15,
-              autoComplete: 'tel',
-            },
-          }}
-          required
+          helperText={errors.phone || (isBn ? 'ঐচ্ছিক (01XXXXXXXXX)।' : 'Optional (01XXXXXXXXX).')}
+          slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 15, autoComplete: 'tel' } }}
         />
       </div>
     </form>

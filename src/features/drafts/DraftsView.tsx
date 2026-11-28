@@ -60,7 +60,7 @@ export const DraftsView: React.FC = () => {
             size="small"
             previewRestricted
             startIcon={<Play size={14} />}
-            onClick={() => navigate('/all-taxes', { state: { resumeDraft: d } })}
+            onClick={() => navigate(d.category === 'travel_tax' ? '/travel-tax' : '/all-taxes', { state: { resumeDraft: d } })}
             sx={{ borderRadius: '8px', px: 2 }}
           >
             {isBn ? 'পুনরায় শুরু' : 'Resume'}

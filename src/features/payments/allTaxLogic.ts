@@ -1,7 +1,9 @@
 import { validateCurrencyAmount } from '../../design-system/forms';
 import { TAX_HEADS } from '../../shared/mockData';
-import type { PaymentLineItem, PaymentTransaction, TaxHeadCategory } from '../../types/tax';
+import type { PaymentDraft, PaymentLineItem, PaymentTransaction, TaxHeadCategory } from '../../types/tax';
 import { ALL_TAX_CATEGORIES } from './allTaxCatalogue';
+
+export const ALLOWED_ASSESSMENT_YEARS = new Set(['2024-2025', '2025-2026', '2026-2027']);
 
 export const INITIAL_ALL_TAX_ITEMS: PaymentLineItem[] = [
   {
@@ -26,12 +28,10 @@ export function rankFrequentPaymentCategories(
   if (!isAuthenticated || !Number.isInteger(limit) || limit < 1) return [];
   const counts = new Map<TaxHeadCategory, { count: number; last: number }>();
   let completedCount = 0;
-
   for (const tx of transactions) {
     if (tx.status !== 'Completed') continue;
     const timestamp = Date.parse(tx.createdAt);
     if (!Number.isFinite(timestamp)) continue;
-
     const txCategories = new Set<TaxHeadCategory>();
     if (ALL_CATEGORY_SET.has(tx.category)) txCategories.add(tx.category);
     for (const item of tx.items) {
@@ -39,19 +39,13 @@ export function rankFrequentPaymentCategories(
       if (itemCat && ALL_CATEGORY_SET.has(itemCat)) txCategories.add(itemCat);
     }
     if (txCategories.size === 0) continue;
-
     completedCount += 1;
     for (const cat of txCategories) {
       const prev = counts.get(cat);
-      counts.set(cat, {
-        count: (prev?.count ?? 0) + 1,
-        last: Math.max(prev?.last ?? 0, timestamp),
-      });
+      counts.set(cat, { count: (prev?.count ?? 0) + 1, last: Math.max(prev?.last ?? 0, timestamp) });
     }
   }
-
   if (completedCount < 2) return [];
-
   return [...counts.entries()]
     .sort((a, b) => b[1].count - a[1].count || b[1].last - a[1].last || a[0].localeCompare(b[0]))
     .slice(0, Math.min(5, limit))
@@ -75,24 +69,16 @@ export function validateCombinedLineAddition(
   const candidateTin = (candidate.taxpayerTin ?? defaultTaxpayerKey).trim() || defaultTaxpayerKey;
   const candidateCat =
     candidate.category ?? TAX_HEADS.find((h) => h.id === candidate.headId)?.category ?? 'other_tax';
-
   for (const item of existingItems) {
     const itemTin = (item.taxpayerTin ?? defaultTaxpayerKey).trim() || defaultTaxpayerKey;
     const itemCat = item.category ?? TAX_HEADS.find((h) => h.id === item.headId)?.category ?? 'other_tax';
-
     if (itemTin === candidateTin && item.headId === candidate.headId && item.assessmentYear === candidate.assessmentYear) {
       return { ok: false, reason: 'duplicate_line' };
     }
-
-    if (itemTin !== candidateTin) {
-      // Different taxpayers can freely combine Return (Taxpayer A) + Advance/Other (Taxpayer B).
-      continue;
-    }
-
+    if (itemTin !== candidateTin) continue;
     if (itemCat === 'tax_with_return' && candidateCat === 'tax_with_return' && item.assessmentYear !== candidate.assessmentYear) {
       return { ok: false, reason: 'return_single_ay_per_taxpayer' };
     }
-
     if (
       (itemCat === 'tax_with_return' && candidateCat !== 'tax_with_return') ||
       (itemCat !== 'tax_with_return' && candidateCat === 'tax_with_return')
@@ -100,8 +86,71 @@ export function validateCombinedLineAddition(
       return { ok: false, reason: 'return_cannot_mix_same_taxpayer' };
     }
   }
-
   return { ok: true };
+}
+
+export function reconcileItemsWithTaxpayers(
+  items: readonly PaymentLineItem[],
+  activeTaxpayers: readonly { tin: string; name: string }[],
+  liabilityMode: 'own' | 'facilitation'
+): { validItems: PaymentLineItem[]; removedCount: number } {
+  const allowedTins = new Set(
+    (liabilityMode === 'own' ? activeTaxpayers.slice(0, 1) : activeTaxpayers).map((tp) => tp.tin.trim()).filter(Boolean)
+  );
+  if (allowedTins.size === 0) {
+    return { validItems: [], removedCount: items.length };
+  }
+  const validItems: PaymentLineItem[] = [];
+  let removedCount = 0;
+  for (const item of items) {
+    const itemTin = (item.taxpayerTin ?? '').trim();
+    if (!itemTin || !allowedTins.has(itemTin)) {
+      removedCount += 1;
+      continue;
+    }
+    validItems.push(item);
+  }
+  return { validItems, removedCount };
+}
+
+export function validateResumedOrReusedSeed(input: {
+  draft?: PaymentDraft;
+  reuseTx?: PaymentTransaction;
+  activeScope: string;
+  isAuthenticated: boolean;
+  userTin: string;
+}): { items: PaymentLineItem[]; warning?: 'owner_mismatch' | 'pruned_invalid' } {
+  const { draft, reuseTx, activeScope, isAuthenticated, userTin } = input;
+  if (reuseTx?.ownerScope && isAuthenticated && reuseTx.ownerScope !== activeScope && reuseTx.claimedByTin !== userTin) {
+    return { items: [], warning: 'owner_mismatch' };
+  }
+  const rawItems = draft?.items ?? reuseTx?.items ?? [];
+  const validItems: PaymentLineItem[] = [];
+  let pruned = false;
+  for (const raw of rawItems) {
+    const head = TAX_HEADS.find((h) => h.id === raw.headId && ALL_CATEGORY_SET.has(h.category));
+    if (!head || !ALLOWED_ASSESSMENT_YEARS.has(raw.assessmentYear) || !Number.isFinite(raw.amount) || raw.amount < 100) {
+      pruned = true;
+      continue;
+    }
+    const tpTin = (raw.taxpayerTin ?? (isAuthenticated ? userTin : '')).trim();
+    if (!/^\d{12,13}$/.test(tpTin)) {
+      pruned = true;
+      continue;
+    }
+    const candidate: PaymentLineItem = {
+      ...raw,
+      taxpayerTin: tpTin,
+      category: head.category,
+      remarks: normalizeChallanRemarks(raw.remarks ?? ''),
+    };
+    if (!validateCombinedLineAddition(validItems, candidate, tpTin).ok) {
+      pruned = true;
+      continue;
+    }
+    validItems.push(candidate);
+  }
+  return { items: validItems, warning: pruned ? 'pruned_invalid' : undefined };
 }
 
 export type AddItemResult =
@@ -117,23 +166,11 @@ export function validateAndBuildTaxItem(input: {
   taxpayerName?: string;
 }): AddItemResult {
   const head = TAX_HEADS.find((h) => h.id === input.selectedHeadId);
-  const amountCheck = validateCurrencyAmount(input.amountInput, {
-    minAmount: 100,
-    decimalScale: 2,
-    required: true,
-  });
-
+  const amountCheck = validateCurrencyAmount(input.amountInput, { minAmount: 100, decimalScale: 2, required: true });
   if (!amountCheck.valid || amountCheck.numericValue === null) {
-    return {
-      ok: false,
-      reason: amountCheck.reason === 'min' || amountCheck.reason === 'required' ? 'min' : 'invalid',
-    };
+    return { ok: false, reason: amountCheck.reason === 'min' || amountCheck.reason === 'required' ? 'min' : 'invalid' };
   }
-
-  if (!head) {
-    return { ok: false, reason: 'missing_head' };
-  }
-
+  if (!head) return { ok: false, reason: 'missing_head' };
   return {
     ok: true,
     item: {

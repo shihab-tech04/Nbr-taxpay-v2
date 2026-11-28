@@ -41,19 +41,8 @@ export const AllTaxPaymentsView: React.FC = () => {
             liabilityMode={flow.liabilityMode}
             beneficiaries={flow.beneficiaries}
             selectedTaxpayers={flow.selectedTaxpayers}
-            onChangeLiabilityMode={(mode) => {
-              flow.setLiabilityMode(mode);
-              if (mode === 'own' && flow.isAuthenticated && flow.user.tin) {
-                flow.setSelectedTaxpayers([{ tin: flow.user.tin, name: flow.user.name, source: 'self' }]);
-                flow.setSelectedTaxpayerTin(flow.user.tin);
-              }
-            }}
-            onChangeSelectedTaxpayers={(next) => {
-              flow.setSelectedTaxpayers(next);
-              if (next.length > 0 && !next.some((tp) => tp.tin === flow.selectedTaxpayerTin)) {
-                flow.setSelectedTaxpayerTin(next[0].tin);
-              }
-            }}
+            onChangeLiabilityMode={flow.setLiabilityMode}
+            onChangeSelectedTaxpayers={flow.setSelectedTaxpayers}
             onSaveNewBeneficiary={flow.addBeneficiary}
             onBack={() => flow.setStep('chooser')}
             onNext={() => flow.setStep('form')}

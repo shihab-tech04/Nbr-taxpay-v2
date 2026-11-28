@@ -1,14 +1,24 @@
 import {
   Beneficiary,
+  BeneficiaryList,
   CorrectionRequest,
   PaymentDraft,
   PaymentTransaction,
   SupportTicket,
 } from '../types/tax';
 import { isValidYmd } from '../design-system/dates/dateUtils';
+import { getActiveWalkInSessionId } from './accountSession';
 
 // Explicitly isolated experimental mock adapters for offline prototype state.
 // These helpers do NOT connect to official NBR/Sonali/bank verification APIs.
+
+export function createExperimentalBeneficiaryList(name: string): BeneficiaryList {
+  return {
+    id: `list-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    name: name.trim(),
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+}
 
 export function createExperimentalBeneficiary(
   input: Omit<Beneficiary, 'id' | 'createdAt'>
@@ -29,8 +39,17 @@ export function createExperimentalTransaction(
   if (txData.giftDate !== undefined && !isValidYmd(txData.giftDate)) {
     throw new Error(`Invalid giftDate "${String(txData.giftDate)}"; expected valid YYYY-MM-DD.`);
   }
+  const isWalkIn = txData.originMode === 'walk_in' || txData.ownerScope === 'walkin';
+  const safeTravelDetails = txData.travelDetails
+    ? {
+        ...txData.travelDetails,
+        passportNumber: isWalkIn ? undefined : txData.travelDetails.passportNumber,
+      }
+    : undefined;
   return {
     ...txData,
+    travelDetails: safeTravelDetails,
+    walkInSessionId: isWalkIn ? txData.walkInSessionId ?? getActiveWalkInSessionId() : txData.walkInSessionId,
     id: `tx-${Date.now()}`,
     transactionRef: `SOHO-2026-${Math.floor(10000 + Math.random() * 90000)}`,
     challanNumber: `NBR-CHL-2026-${Math.floor(100000 + Math.random() * 900000)}`,

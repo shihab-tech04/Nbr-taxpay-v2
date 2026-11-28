@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
           <ul className="space-y-2 text-xs">
             <li><Link to="/all-taxes" className="hover:text-white transition-colors">Tax with Return (0111)</Link></li>
             <li><Link to="/all-taxes" className="hover:text-white transition-colors">Advance Income Tax (AIT)</Link></li>
-            <li><Link to="/travel-tax" className="hover:text-white transition-colors">Travel Tax (Air/Land/Water)</Link></li>
+            <li><Link to="/travel-tax" className="hover:text-white transition-colors">Travel Tax (Land / Water)</Link></li>
             <li><Link to="/gift-tax" className="hover:text-white transition-colors">Gift Tax (দানকর)</Link></li>
           </ul>
         </div>

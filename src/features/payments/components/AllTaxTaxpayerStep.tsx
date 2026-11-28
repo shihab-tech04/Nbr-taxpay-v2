@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Plus, Trash2, Users } from 'lucide-react';
 import { AppButton, AppIconButton } from '../../../design-system/buttons';
 import { AppNumberField, AppSelectField, AppTextField, validateTin } from '../../../design-system/forms';
 import { AppCheckbox, AppRadioCard, AppRadioGroup } from '../../../design-system/selection';
+import { lookupTinIdentity } from '../../../shared/accountSession';
 import type { Beneficiary } from '../../../types/tax';
 
 export interface SelectedTaxpayerEntry {
@@ -45,7 +46,10 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
   const [manualName, setManualName] = useState('');
   const [saveAsBeneficiary, setSaveAsBeneficiary] = useState(false);
   const [relationship, setRelationship] = useState<Beneficiary['relationship']>('Clients');
+  const [relationshipNote, setRelationshipNote] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  const tinMatch = useMemo(() => (validateTin(manualTin).valid ? lookupTinIdentity(manualTin) : null), [manualTin]);
 
   const handleToggleBeneficiary = (b: Beneficiary, checked: boolean) => {
     setErrorMsg('');
@@ -64,10 +68,24 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
       setErrorMsg(t('invalidTinError'));
       return;
     }
-    const cleanName = manualName.trim() || `Taxpayer ${cleanTin}`;
+    const cleanName = manualName.trim() || tinMatch?.profile.name || '';
+    if (!cleanName) {
+      setErrorMsg(isBn ? 'অনুগ্রহ করে করদাতার আইনি নাম লিখুন।' : 'Enter the taxpayer legal name for this TIN.');
+      return;
+    }
+    const cleanNote = relationship === 'Others' ? relationshipNote.trim() : '';
     const shouldSave = isAuthenticated && liabilityMode === 'facilitation' && saveAsBeneficiary && Boolean(onSaveNewBeneficiary);
+    if (shouldSave && relationship === 'Others' && (cleanNote.length < 1 || cleanNote.length > 80)) {
+      setErrorMsg(isBn ? 'অন্যান্য সম্পর্কের বিবরণ (১–৮০ অক্ষর) লিখুন।' : 'Custom relationship note must be 1–80 characters.');
+      return;
+    }
     if (shouldSave && !beneficiaries.some((b) => b.tin === cleanTin)) {
-      onSaveNewBeneficiary?.({ name: cleanName, tin: cleanTin, relationship, phone: '+8801700000000' });
+      onSaveNewBeneficiary?.({
+        name: cleanName,
+        tin: cleanTin,
+        relationship,
+        relationshipNote: cleanNote || undefined,
+      });
     }
     const entry: SelectedTaxpayerEntry = { tin: cleanTin, name: cleanName, source: shouldSave ? 'beneficiary' : 'one_time' };
     if (liabilityMode === 'own') {
@@ -78,6 +96,7 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
     setManualTin('');
     setManualName('');
     setSaveAsBeneficiary(false);
+    setRelationshipNote('');
     setErrorMsg('');
   };
 
@@ -128,14 +147,14 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-3">
           <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{isBn ? '১২-অঙ্কের টিআইএন যোগ করুন (এককালীন বা নতুন বেনিফিশিয়ারি)' : 'Set / Add 12-Digit Taxpayer TIN'}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
-            <AppNumberField label={t('taxpayerTin')} maxLength={12} value={manualTin} onChange={(e) => setManualTin(e.target.value)} placeholder={t('tinPlaceholder')} />
+            <AppNumberField label={t('taxpayerTin')} maxLength={12} value={manualTin} onChange={(e) => setManualTin(e.target.value)} placeholder={t('tinPlaceholder')} helperText={tinMatch ? `${isBn ? 'নমুনা তথ্য:' : 'Directory hint:'} ${tinMatch.maskedNameHint}` : undefined} />
             <AppTextField label={t('name')} value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder={isBn ? 'করদাতার নাম' : 'Taxpayer Name'} />
             <AppButton actionType="secondary" surface="soft" startIcon={<Plus size={15} />} onClick={handleAddOneTime} sx={{ mt: { sm: 0.5 }, height: 48 }}>
               {isBn ? 'টিআইএন যোগ করুন' : 'Use / Add TIN'}
             </AppButton>
           </div>
           {isAuthenticated && liabilityMode === 'facilitation' && onSaveNewBeneficiary && (
-            <div className="flex flex-wrap items-center gap-4 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center pt-1">
               <AppCheckbox checked={saveAsBeneficiary} onChange={(_, c) => setSaveAsBeneficiary(c)} label={isBn ? 'বেনিফিশিয়ারি তালিকায় সংরক্ষণ করুন' : 'Save new taxpayer to Beneficiaries'} />
               {saveAsBeneficiary && (
                 <AppSelectField
@@ -143,11 +162,13 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
                   value={relationship}
                   onChange={(e) => setRelationship(e.target.value as Beneficiary['relationship'])}
                   options={[
-                    { value: 'Clients', label: 'Clients' }, { value: 'Father', label: 'Father' }, { value: 'Mother', label: 'Mother' },
-                    { value: 'Spouse', label: 'Spouse' }, { value: 'Child', label: 'Child' }, { value: 'Siblings', label: 'Siblings' },
-                    { value: 'Friends', label: 'Friends' }, { value: 'Others', label: 'Others' },
+                    { value: 'Clients', label: t('clients') }, { value: 'Father', label: t('father') }, { value: 'Mother', label: t('mother') }, { value: 'Spouse', label: t('spouse') },
+                    { value: 'Son', label: t('son') }, { value: 'Daughter', label: t('daughter') }, { value: 'Siblings', label: t('siblings') }, { value: 'Friends', label: t('friends') }, { value: 'Others', label: t('others') },
                   ]}
                 />
+              )}
+              {saveAsBeneficiary && relationship === 'Others' && (
+                <AppTextField label={isBn ? 'সম্পর্ক উল্লেখ করুন' : 'Custom Tag Note'} value={relationshipNote} onChange={(e) => setRelationshipNote(e.target.value)} placeholder={isBn ? 'যেমন: অংশীদার' : 'e.g. Partner'} />
               )}
             </div>
           )}

@@ -25,7 +25,10 @@ export interface PaymentCertificateRecord {
 }
 
 export function isTransactionReconciled(tx: PaymentTransaction): boolean {
-  if (!tx.items.length || !Number.isFinite(tx.totalAmount) || tx.totalAmount <= 0) return false;
+  if (!tx.items.length || !Number.isFinite(tx.totalAmount)) return false;
+  const allowZero = tx.category === 'travel_tax';
+  if (allowZero ? tx.totalAmount < 0 : tx.totalAmount <= 0) return false;
+  if (tx.items.some((i) => !Number.isFinite(i.amount) || i.amount < 0)) return false;
   const itemsTotal = tx.items.reduce((sum, item) => sum + item.amount, 0);
   return Math.round(itemsTotal * 100) === Math.round(tx.totalAmount * 100);
 }
@@ -90,9 +93,10 @@ export function buildCertificatePdfLines(cert: PaymentCertificateRecord): string
     lines.push(`Date of Gift: ${cert.giftDate}`);
   }
   if (cert.travelDetails) {
-    lines.push(
-      `Travel: ${cert.travelDetails.passengerName} | Passport: ${cert.travelDetails.passportNumber} | ${cert.travelDetails.destination} (${cert.travelDetails.travelClass})`
-    );
+    const td = cert.travelDetails;
+    const passportShow = td.passportMasked ?? td.passportNumber ?? '—';
+    const routeMeta = [td.travelMode, td.departurePort, td.destination, td.travelDate].filter(Boolean).join(' · ');
+    lines.push(`Travel: ${td.passengerName ?? ''} | Passport: ${passportShow} | ${routeMeta}`);
   }
   lines.push(`Assessment Year(s): ${cert.assessmentYears}`);
   cert.items.forEach((item, idx) => {

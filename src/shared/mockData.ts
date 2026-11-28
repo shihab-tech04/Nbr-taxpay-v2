@@ -1,5 +1,6 @@
 import {
   Beneficiary,
+  BeneficiaryList,
   CorrectionRequest,
   PaymentDraft,
   PaymentTransaction,
@@ -27,14 +28,20 @@ export const TAX_HEADS: TaxHeadItem[] = [
   { id: 'h7', code: '0115', nameEn: 'Source Tax / TDS on Salaries & Supply', nameBn: 'উৎস কর / বেতন ও সরবরাহ থেকে কর্তন', category: 'source_tax', isWithholding: true, descriptionEn: 'Deposit TDS/TCS as a withholding agent.' },
   { id: 'h8', code: '0116', nameEn: 'Taxes Appellate Tribunal Fee / Deposit', nameBn: 'আপিল ট্রাইব্যুনাল ফি / জমা', category: 'appellate_tribunal', descriptionEn: 'Payment under Appellate Tribunal payment head.' },
   { id: 'h9', code: '0117', nameEn: 'Property Transfer & Capital Gains Surcharge', nameBn: 'সম্পত্তি হস্তান্তর ও মূলধনী লাভ সারচার্জ', category: 'other_tax', descriptionEn: 'Other statutory income tax heads and surcharges.' },
-  { id: 'h5', code: '0120', nameEn: 'Travel Tax (Air / Land / Water)', nameBn: 'ভ্রমণ কর (আকাশ / স্থল / জলপথ)', category: 'travel_tax', descriptionEn: 'Mandatory departure tax for international travel.' },
+  { id: 'h5', code: '0120', nameEn: 'Travel Tax (Land / Water)', nameBn: 'ভ্রমণ কর (স্থল / জলপথ)', category: 'travel_tax', descriptionEn: 'Mandatory departure tax for international land and water travel.' },
   { id: 'h6', code: '0130', nameEn: 'Gift Tax (দানকর)', nameBn: 'দানকর (Gift Tax)', category: 'gift_tax', descriptionEn: 'Tax on taxable gifts made to non-exempt recipients.' },
 ];
 
+export const INITIAL_BENEFICIARY_LISTS: BeneficiaryList[] = [
+  { id: 'list-family', name: 'Family', createdAt: '2025-01-01' },
+  { id: 'list-clients', name: 'Clients', createdAt: '2025-01-01' },
+  { id: 'list-friends', name: 'Friends', createdAt: '2025-01-01' },
+];
+
 export const INITIAL_BENEFICIARIES: Beneficiary[] = [
-  { id: 'b1', name: 'Mrs. Fatema Begum', tin: '992384102938', relationship: 'Mother', phone: '+8801811122233', createdAt: '2025-01-10' },
-  { id: 'b2', name: 'Tanvir Islam', tin: '773492019283', relationship: 'Son', phone: '+8801911223344', createdAt: '2025-03-12' },
-  { id: 'b3', name: 'GreenCorp Ltd.', tin: '112938475601', relationship: 'Clients', phone: '+8801522334455', email: 'accounts@greencorp.bd', createdAt: '2025-05-20' },
+  { id: 'b1', name: 'Mrs. Fatema Begum', tin: '992384102938', relationship: 'Mother', listId: 'list-family', phone: '+8801811122233', createdAt: '2025-01-10' },
+  { id: 'b2', name: 'Tanvir Islam', tin: '773492019283', relationship: 'Son', listId: 'list-family', phone: '+8801911223344', createdAt: '2025-03-12' },
+  { id: 'b3', name: 'GreenCorp Ltd.', tin: '112938475601', relationship: 'Clients', listId: 'list-clients', phone: '+8801522334455', email: 'accounts@greencorp.bd', createdAt: '2025-05-20' },
 ];
 
 export const INITIAL_TRANSACTIONS: PaymentTransaction[] = [

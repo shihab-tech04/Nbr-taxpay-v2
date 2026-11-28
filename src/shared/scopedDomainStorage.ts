@@ -1,5 +1,6 @@
 import type {
   Beneficiary,
+  BeneficiaryList,
   CorrectionRequest,
   PaymentDraft,
   PaymentTransaction,
@@ -7,15 +8,17 @@ import type {
 } from '../types/tax';
 import {
   INITIAL_BENEFICIARIES,
+  INITIAL_BENEFICIARY_LISTS,
   INITIAL_CORRECTIONS,
   INITIAL_DRAFTS,
   INITIAL_SUPPORT,
   INITIAL_TRANSACTIONS,
 } from './mockData';
 import { readJsonStorage, writeAppStorage } from './storageAdapter';
-import { lookupTinIdentity } from './accountSession';
+import { getActiveWalkInSessionId, lookupTinIdentity } from './accountSession';
 
 export interface ScopedDomainData {
+  beneficiaryLists: BeneficiaryList[];
   beneficiaries: Beneficiary[];
   transactions: PaymentTransaction[];
   drafts: PaymentDraft[];
@@ -24,12 +27,16 @@ export interface ScopedDomainData {
 }
 
 const SECONDARY_SEED: ScopedDomainData = {
+  beneficiaryLists: [
+    { id: 'list-sec-family', name: 'Family', createdAt: '2025-04-01' },
+  ],
   beneficiaries: [
     {
       id: 'b-sec-1',
       name: 'Karim Chowdhury',
       tin: '445566778899',
       relationship: 'Father',
+      listId: 'list-sec-family',
       phone: '+8801911002233',
       createdAt: '2025-04-02',
     },
@@ -92,6 +99,7 @@ const SECONDARY_SEED: ScopedDomainData = {
 };
 
 const EMPTY_WALKIN_DATA: ScopedDomainData = {
+  beneficiaryLists: [],
   beneficiaries: [],
   transactions: [],
   drafts: [],
@@ -102,6 +110,7 @@ const EMPTY_WALKIN_DATA: ScopedDomainData = {
 export function getSeedForScope(scope: string): ScopedDomainData {
   if (scope === 'acct_882349102384') {
     return {
+      beneficiaryLists: [...INITIAL_BENEFICIARY_LISTS],
       beneficiaries: [...INITIAL_BENEFICIARIES],
       transactions: [...INITIAL_TRANSACTIONS],
       drafts: [...INITIAL_DRAFTS],
@@ -111,6 +120,7 @@ export function getSeedForScope(scope: string): ScopedDomainData {
   }
   if (scope === 'acct_112233445566') {
     return {
+      beneficiaryLists: [...SECONDARY_SEED.beneficiaryLists],
       beneficiaries: [...SECONDARY_SEED.beneficiaries],
       transactions: [...SECONDARY_SEED.transactions],
       drafts: [...SECONDARY_SEED.drafts],
@@ -118,22 +128,34 @@ export function getSeedForScope(scope: string): ScopedDomainData {
       supportTickets: [...SECONDARY_SEED.supportTickets],
     };
   }
-  return {
-    beneficiaries: [...EMPTY_WALKIN_DATA.beneficiaries],
-    transactions: [...EMPTY_WALKIN_DATA.transactions],
-    drafts: [...EMPTY_WALKIN_DATA.drafts],
-    corrections: [...EMPTY_WALKIN_DATA.corrections],
-    supportTickets: [...EMPTY_WALKIN_DATA.supportTickets],
-  };
+  return { ...EMPTY_WALKIN_DATA };
 }
 
 export function getScopedDomainStorageKey(scope: string): string {
   return `sohojkor_domain_${scope}`;
 }
 
-export function readScopedDomainData(scope: string): ScopedDomainData {
+export function readScopedDomainData(
+  scope: string,
+  options: { includeAllSessions?: boolean } = {}
+): ScopedDomainData {
   const seed = getSeedForScope(scope);
-  return readJsonStorage<ScopedDomainData>(getScopedDomainStorageKey(scope), seed);
+  const raw = readJsonStorage<ScopedDomainData>(getScopedDomainStorageKey(scope), seed);
+  const lists = Array.isArray(raw.beneficiaryLists) ? raw.beneficiaryLists : seed.beneficiaryLists;
+  if (scope !== 'walkin' || options.includeAllSessions) {
+    return { ...seed, ...raw, beneficiaryLists: lists };
+  }
+  const activeGuestSession = getActiveWalkInSessionId();
+  return {
+    ...EMPTY_WALKIN_DATA,
+    ...raw,
+    beneficiaryLists: [],
+    drafts: [],
+    beneficiaries: [],
+    transactions: (raw.transactions ?? []).filter(
+      (tx) => !tx.walkInSessionId || tx.walkInSessionId === activeGuestSession
+    ),
+  };
 }
 
 export function writeScopedDomainData(scope: string, data: ScopedDomainData): void {
@@ -143,28 +165,24 @@ export function writeScopedDomainData(scope: string, data: ScopedDomainData): vo
 export function claimWalkInTransactionInStorage(
   tx: PaymentTransaction,
   targetTin: string,
-  targetName: string
+  _targetName: string
 ): PaymentTransaction | null {
-  if (!/^\d{12,13}$/.test(targetTin)) return null;
-  const verified = lookupTinIdentity(targetTin);
-  if (!verified) return null;
+  if (!/^\d{12,13}$/.test(targetTin) || !lookupTinIdentity(targetTin)) return null;
   if (tx.originMode !== 'walk_in' && tx.ownerScope !== 'walkin') return null;
+  if (tx.taxpayerTin.trim() && tx.taxpayerTin.trim() !== targetTin) return null;
   const targetScope = `acct_${targetTin}`;
   const targetData = readScopedDomainData(targetScope);
-  const already = targetData.transactions.some((item) => item.transactionRef === tx.transactionRef);
-  if (already) return null;
-
-  const claimed: PaymentTransaction = {
-    ...tx,
-    ownerScope: targetScope,
-    taxpayerTin: targetTin,
-    taxpayerName: verified.profile.name || targetName,
-  };
-  writeScopedDomainData(targetScope, {
-    ...targetData,
-    transactions: [claimed, ...targetData.transactions],
-  });
+  if (targetData.transactions.some((item) => item.transactionRef === tx.transactionRef)) return null;
   const walkinData = readScopedDomainData('walkin');
+  const stored = walkinData.transactions.find((item) => item.transactionRef === tx.transactionRef);
+  if (!stored) return null;
+  const claimed: PaymentTransaction = {
+    ...stored,
+    ownerScope: targetScope,
+    claimedByTin: targetTin,
+    claimedAt: new Date().toISOString(),
+  };
+  writeScopedDomainData(targetScope, { ...targetData, transactions: [claimed, ...targetData.transactions] });
   writeScopedDomainData('walkin', {
     ...walkinData,
     transactions: walkinData.transactions.filter((item) => item.transactionRef !== tx.transactionRef),

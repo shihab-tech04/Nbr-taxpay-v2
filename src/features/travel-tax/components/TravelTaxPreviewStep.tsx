@@ -1,72 +1,102 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle, Edit3 } from 'lucide-react';
 import { AppButton } from '../../../design-system/buttons';
-import { calculatePassengerTax, calculateTotalTravelTax, type TravelPassenger } from '../travelTaxLogic';
+import { AppTextField } from '../../../design-system/forms';
+import type { ConfirmedPassenger, TravelDetailsInput } from '../travelTaxTypes';
 
 interface TravelTaxPreviewStepProps {
-  passengers: readonly TravelPassenger[];
-  onBack: () => void;
-  onPay: () => void;
+  passengers: ReadonlyArray<ConfirmedPassenger & { ageOnTravelDate: number; amount: number }>;
+  details: TravelDetailsInput;
+  totalAmount: number;
+  receiptMobile: string;
+  mobileError?: string;
+  isAuthenticated: boolean;
+  onChangeReceiptMobile: (val: string) => void;
+  onEditPassengers: () => void;
+  onEditDetails: () => void;
+  onSaveDraft: () => void;
+  onProceed: () => void;
 }
 
 export const TravelTaxPreviewStep: React.FC<TravelTaxPreviewStepProps> = ({
-  passengers,
-  onBack,
-  onPay,
+  passengers, details, totalAmount, receiptMobile, mobileError, isAuthenticated,
+  onChangeReceiptMobile, onEditPassengers, onEditDetails, onSaveDraft, onProceed,
 }) => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
-  const totalDisplay = calculateTotalTravelTax(passengers);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 lg:p-8 space-y-6">
-      <h3 className="text-lg font-bold">
-        {isBn ? 'ভ্রমণ কর পেমেন্ট প্রিভিউ (বহু-যাত্রী)' : 'Travel Tax Payment Preview (Multi-Passenger)'}
-      </h3>
+    <div data-testid="travel-stage-3" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6">
+      <h3 className="text-lg font-bold">{isBn ? 'ধাপ ৩: চূড়ান্ত ভ্রমণ কর প্রিভিউ' : 'Stage 3: Final Travel Tax Preview'}</h3>
 
-      <div className="space-y-4">
-        {passengers.map((p, idx) => {
-          const subtotal = calculatePassengerTax(p);
-          return (
-            <div key={p.id || idx} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs font-mono">
-              <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 pb-2">
-                <span>{isBn ? `যাত্রী #${idx + 1}: ${p.passengerName}` : `Passenger #${idx + 1}: ${p.passengerName}`}</span>
-                <span>৳ {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
-                <div>Passport: <strong className="uppercase">{p.passportNumber}</strong> ({p.passportType})</div>
-                <div>Mode / Zone: <strong>{p.travelMode}</strong> / <strong>{p.destinationZone}</strong></div>
-                <div>Class: <strong>{p.travelClass}</strong></div>
-                <div>Category: <strong>{p.passengerCategory}</strong></div>
+      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs">
+        <div className="flex items-center justify-between">
+          <strong className="text-slate-900 dark:text-white">{isBn ? 'ভ্রমণের পথ ও তারিখ' : 'Route & Travel Date'}</strong>
+          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditDetails}>
+            {t('edit')}
+          </AppButton>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-slate-600 dark:text-slate-300">
+          <div>Mode: <strong>{details.travelMode}</strong></div>
+          <div>Port: <strong>{details.departurePort}</strong></div>
+          <div>Destination: <strong>{details.destination}</strong></div>
+          <div>Date: <strong>{details.travelDate}</strong></div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <strong className="text-xs text-slate-700 dark:text-slate-200">{isBn ? 'যাত্রীভিত্তিক বিবরণ' : 'Passenger-Wise Tax Breakdown'}</strong>
+          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditPassengers}>
+            {t('edit')}
+          </AppButton>
+        </div>
+        {passengers.map((p, idx) => (
+          <div key={p.id} className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl flex flex-wrap justify-between items-center gap-2 text-xs font-mono">
+            <div>
+              <strong className="text-slate-900 dark:text-white">#{idx + 1} {p.passengerName}</strong>
+              <div className="text-[11px] text-slate-500">
+                {p.passportType} · {p.passportMasked} · DOB {p.dob} · {isBn ? `বয়স ${p.ageOnTravelDate}` : `Age ${p.ageOnTravelDate}`}
               </div>
             </div>
-          );
-        })}
+            <strong className="text-teal-700 dark:text-teal-300">৳ {p.amount.toLocaleString()}</strong>
+          </div>
+        ))}
       </div>
 
       <div className="p-4 bg-teal-50 dark:bg-teal-950/40 rounded-xl border border-teal-200 dark:border-teal-800 flex justify-between items-center">
-        <span className="text-sm font-bold">{isBn ? 'মোট প্রদেয় কর:' : 'Total Payable Tax:'}</span>
-        <strong className="text-xl font-mono text-teal-700 dark:text-teal-300">৳ {totalDisplay.toLocaleString()}</strong>
+        <span className="text-sm font-bold">{isBn ? 'সমন্বিত মোট ভ্রমণ কর:' : 'Combined Illustrative Travel Tax:'}</span>
+        <strong className="text-xl font-mono text-teal-700 dark:text-teal-300">৳ {totalAmount.toLocaleString()}</strong>
       </div>
 
-      <div className="flex gap-4 pt-4">
+      <AppTextField
+        label={isBn ? 'রসিদের জন্য মোবাইল নম্বর' : 'Receipt Mobile Number'}
+        value={receiptMobile}
+        previewRestricted
+        required={totalAmount > 0}
+        onChange={(e) => onChangeReceiptMobile(e.target.value)}
+        placeholder="01XXXXXXXXX"
+        error={Boolean(mobileError)}
+        helperText={mobileError || (totalAmount > 0 ? (isBn ? 'পরিশোধযোগ্য চালানের জন্য ১১ ডিজিটের মোবাইল নম্বর বাধ্যতামূলক (ইমেইল বাধ্যতামূলক নয়)।' : 'Required 11-digit BD mobile (01XXXXXXXXX) for payable challan. Email not required.') : (isBn ? 'শূন্য-কর মূল্যায়নের জন্য ঐচ্ছিক।' : 'Optional for zero-tax assessments.'))}
+        slotProps={{ htmlInput: { inputMode: 'tel', maxLength: 15 } }}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        {isAuthenticated ? (
+          <AppButton type="button" actionType="secondary" previewRestricted onClick={onSaveDraft}>{t('saveDraft')}</AppButton>
+        ) : <span />}
         <AppButton
-          actionType="secondary"
-          onClick={onBack}
-          sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}
-        >
-          {t('back')}
-        </AppButton>
-        <AppButton
+          type="button"
           actionType="primary"
           intent="confirm"
           previewRestricted
-          endIcon={<CheckCircle size={16} />}
-          onClick={onPay}
-          sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
+          endIcon={totalAmount > 0 ? <ArrowRight size={16} /> : <CheckCircle size={16} />}
+          onClick={onProceed}
         >
-          {t('confirmPayment')}
+          {totalAmount > 0
+            ? (isBn ? 'পেমেন্ট মাধ্যমে এগিয়ে যান' : 'Proceed to Payment Channel')
+            : (isBn ? 'শূন্য-কর মূল্যায়ন সম্পন্ন করুন' : 'Complete Zero-Tax Assessment')}
         </AppButton>
       </div>
     </div>

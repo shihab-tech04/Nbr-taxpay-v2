@@ -33,11 +33,23 @@ export const MaskedProfileValue: React.FC<MaskedProfileValueProps> = ({
     status: 'idle',
   });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionEpochRef = useRef(0);
 
   useEffect(() => {
+    transitionEpochRef.current += 1;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     setRevealState({ scope: scopeKey, active: false });
     setCopyState({ scope: scopeKey, status: 'idle' });
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      transitionEpochRef.current += 1;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [scopeKey]);
 
   const sensitive = Boolean(meta.maskable) && isSensitiveMaskValue(value, meta.key);
@@ -49,6 +61,7 @@ export const MaskedProfileValue: React.FC<MaskedProfileValueProps> = ({
 
   const handleCopy = async () => {
     if (!canCopy) return;
+    const epochAtStart = transitionEpochRef.current;
     let didCopy = false;
     try {
       if (navigator.clipboard?.writeText) {
@@ -58,6 +71,8 @@ export const MaskedProfileValue: React.FC<MaskedProfileValueProps> = ({
     } catch {
       didCopy = false;
     }
+
+    if (transitionEpochRef.current !== epochAtStart) return;
 
     if (!didCopy && typeof document !== 'undefined' && typeof document.execCommand === 'function') {
       const helper = document.createElement('textarea');
@@ -75,11 +90,17 @@ export const MaskedProfileValue: React.FC<MaskedProfileValueProps> = ({
       document.body.removeChild(helper);
     }
 
+    if (transitionEpochRef.current !== epochAtStart) return;
+
     if (timerRef.current) clearTimeout(timerRef.current);
     if (didCopy) {
       setCopyState({ scope: scopeKey, status: 'done' });
       onCopySuccess?.(label);
-      timerRef.current = setTimeout(() => setCopyState({ scope: scopeKey, status: 'idle' }), 2000);
+      timerRef.current = setTimeout(() => {
+        if (transitionEpochRef.current === epochAtStart) {
+          setCopyState({ scope: scopeKey, status: 'idle' });
+        }
+      }, 2000);
     } else {
       setCopyState({ scope: scopeKey, status: 'failed' });
     }

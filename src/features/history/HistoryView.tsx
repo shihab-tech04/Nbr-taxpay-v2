@@ -22,13 +22,14 @@ export const HistoryView: React.FC = () => {
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, transactions, isAuthenticated, claimWalkInTransaction } = useApp();
+  const { user, transactions, isAuthenticated, claimWalkInTransactionDetailed } = useApp();
 
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRangeFilterValue>({ from: '', to: '' });
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
   const [certTx, setCertTx] = useState<PaymentTransaction | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const claimRef = searchParams.get('claimRef');
   const pendingWalkInTx = useMemo(() => {
@@ -38,10 +39,19 @@ export const HistoryView: React.FC = () => {
 
   const handleExplicitClaim = () => {
     if (!pendingWalkInTx || !user.tin) return;
-    const claimed = claimWalkInTransaction(pendingWalkInTx, user.tin, user.name);
-    if (claimed) {
+    const result = claimWalkInTransactionDetailed(pendingWalkInTx, user.tin);
+    if (result.ok) {
+      setClaimError(null);
       setSearchParams({});
-      setToastMsg(isBn ? `${claimed.transactionRef} অ্যাকাউন্টে যুক্ত হয়েছে` : `Claimed ${claimed.transactionRef} into your account`);
+      setToastMsg(isBn ? `${result.transaction.transactionRef} অ্যাকাউন্টে যুক্ত হয়েছে` : `Claimed ${result.transaction.transactionRef} into your account`);
+    } else {
+      setClaimError(
+        result.reason === 'ownership_mismatch'
+          ? isBn ? 'এই ওয়াক-ইন লেনদেনটি আপনার যাচাইকৃত টিআইএন বা মোবাইলের সাথে মেলে না।' : 'Claim rejected: walk-in payer ownership does not match your verified account.'
+          : result.reason === 'duplicate_claim'
+          ? isBn ? 'এই লেনদেনটি ইতিমধ্যে দাবি করা হয়েছে।' : 'Claim rejected: this walk-in transaction was already claimed.'
+          : isBn ? 'ভুল, মেয়াদোত্তীর্ণ বা অযাচাইকৃত ওয়াক-ইন রেফারেন্স।' : 'Claim rejected: invalid, stale, or unverified walk-in reference.'
+      );
     }
   };
 
@@ -139,6 +149,20 @@ export const HistoryView: React.FC = () => {
             <AppSearchField label={t('searchHistoryLabel')} value={search} onChange={(e) => setSearch(e.target.value)} onClear={() => setSearch('')} placeholder={t('searchHistoryPlaceholder')} helperText={t('searchHistoryHelper')} clearAriaLabel={t('clearSearch')} />
           </div>
         </div>
+
+        {(claimError || (isAuthenticated && Boolean(claimRef) && !pendingWalkInTx)) && (
+          <div role="alert" data-testid="walkin-claim-error" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2">
+            <span>
+              {claimError ||
+                (isBn
+                  ? 'ভুল, মেয়াদোত্তীর্ণ বা ইতিমধ্যে দাবিকৃত ওয়াক-ইন রেফারেন্স।'
+                  : 'Claim rejected: invalid, stale, or already claimed walk-in reference.')}
+            </span>
+            <AppButton actionType="secondary" size="small" onClick={() => { setClaimError(null); setSearchParams({}); }}>
+              {t('cancel')}
+            </AppButton>
+          </div>
+        )}
 
         {pendingWalkInTx && (
           <div data-testid="walkin-claim-banner" className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 flex flex-wrap items-center justify-between gap-3 text-xs">

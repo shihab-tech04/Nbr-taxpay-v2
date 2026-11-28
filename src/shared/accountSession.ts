@@ -179,13 +179,11 @@ export function verifySimulationOtp(
 export function sanitizeReturnPath(rawReturnTo: string | null | undefined): string {
   if (!rawReturnTo) return '/dashboard';
   const trimmed = rawReturnTo.trim();
-  if (
-    !trimmed.startsWith('/') ||
-    trimmed.startsWith('//') ||
-    trimmed.includes('://') ||
-    trimmed.startsWith('/login')
-  ) {
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('://') || trimmed.startsWith('/login')) {
     return '/dashboard';
   }
   return trimmed;
 }
+
+export { getActiveWalkInSessionId, normalizeBdMobile, rotateWalkInSessionId } from './walkInSession';
+

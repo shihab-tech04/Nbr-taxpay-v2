@@ -11,6 +11,12 @@ export interface UserProfile {
   taxpayerType: 'Individual' | 'Company' | 'Firm';
 }
 
+export interface BeneficiaryList {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Beneficiary {
   id: string;
   name: string;
@@ -26,7 +32,8 @@ export interface Beneficiary {
     | 'Clients'
     | 'Others';
   relationshipNote?: string;
-  phone: string;
+  listId?: string;
+  phone?: string;
   email?: string;
   createdAt: string;
 }
@@ -67,63 +74,36 @@ export interface PaymentLineItem {
   remarks?: string;
 }
 
-export type YmdMonth =
-  | '01'
-  | '02'
-  | '03'
-  | '04'
-  | '05'
-  | '06'
-  | '07'
-  | '08'
-  | '09'
-  | '10'
-  | '11'
-  | '12';
-
+export type YmdMonth = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10' | '11' | '12';
 export type YmdDay =
-  | '01'
-  | '02'
-  | '03'
-  | '04'
-  | '05'
-  | '06'
-  | '07'
-  | '08'
-  | '09'
-  | '10'
-  | '11'
-  | '12'
-  | '13'
-  | '14'
-  | '15'
-  | '16'
-  | '17'
-  | '18'
-  | '19'
-  | '20'
-  | '21'
-  | '22'
-  | '23'
-  | '24'
-  | '25'
-  | '26'
-  | '27'
-  | '28'
-  | '29'
-  | '30'
-  | '31';
-
+  | '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10'
+  | '11' | '12' | '13' | '14' | '15' | '16' | '17' | '18' | '19' | '20'
+  | '21' | '22' | '23' | '24' | '25' | '26' | '27' | '28' | '29' | '30' | '31';
 export type YmdDateString = `${number}-${YmdMonth}-${YmdDay}`;
+
+export interface TravelPassengerRecord {
+  id: string;
+  passengerName: string;
+  passportType: 'BD' | 'Foreign';
+  passportMasked: string;
+  dob: string;
+  nationality?: string;
+  ageOnTravelDate: number;
+  amount: number;
+  confirmed: boolean;
+}
 
 export interface TravelDetails {
   passengerName?: string;
   passportNumber?: string;
   passportMasked?: string;
+  travelMode?: 'Land' | 'Water';
   departurePort?: string;
   destination: string;
   travelDate?: string;
-  travelClass: string;
+  travelClass?: string;
+  contactMobile?: string;
+  passengers?: TravelPassengerRecord[];
 }
 
 export interface PaymentTransaction {
@@ -135,6 +115,9 @@ export interface PaymentTransaction {
   beneficiaryName?: string;
   ownerScope?: string;
   originMode?: 'signed_in' | 'walk_in';
+  walkInSessionId?: string;
+  claimedByTin?: string;
+  claimedAt?: string;
   category: TaxHeadCategory;
   giftDate?: YmdDateString;
   travelDetails?: TravelDetails;
@@ -147,6 +130,16 @@ export interface PaymentTransaction {
   bankRef: string;
 }
 
+export interface TravelDraftSnapshot {
+  passengers: TravelPassengerRecord[];
+  travelMode: 'Land' | 'Water';
+  departurePort: string;
+  destination: string;
+  travelDate: string;
+  contactMobile?: string;
+  stage?: 1 | 2 | 3;
+}
+
 export interface PaymentDraft {
   id: string;
   title: string;
@@ -154,6 +147,7 @@ export interface PaymentDraft {
   items: PaymentLineItem[];
   beneficiaryTin?: string;
   remarks?: string;
+  travelDraft?: TravelDraftSnapshot;
   updatedAt: string;
 }
 
