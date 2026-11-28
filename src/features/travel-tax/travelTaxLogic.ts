@@ -41,7 +41,7 @@ export function resolveDestinationBaseTax(mode: TravelMode, zone: DestinationZon
 }
 
 export function calculatePassengerTax(p: TravelPassenger): number {
-  if (p.medicalExempt || p.passengerCategory === 'Medical Exempt' || p.passengerCategory === 'Diplomat') {
+  if (p.passengerCategory === 'Diplomat' || (p.passengerCategory === 'Medical Exempt' && p.medicalExempt)) {
     return 0;
   }
   const base = resolveDestinationBaseTax(p.travelMode, p.destinationZone);
