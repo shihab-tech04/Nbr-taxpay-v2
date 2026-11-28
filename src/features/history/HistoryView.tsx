@@ -12,6 +12,7 @@ import {
   type DateRangeFilterValue,
 } from '../../design-system/forms';
 import { AppButton } from '../../design-system/buttons';
+import { AppTable, type AppColumn } from '../../design-system/tables';
 
 export const HistoryView: React.FC = () => {
   const { t } = useTranslation();
@@ -35,6 +36,73 @@ export const HistoryView: React.FC = () => {
   const handlePayAgain = () => {
     navigate('/all-taxes');
   };
+
+  const columns: AppColumn<PaymentTransaction>[] = [
+    {
+      key: 'transactionRef',
+      header: 'Transaction & Challan',
+      sortable: true,
+      cell: (tx) => (
+        <div>
+          <div className="font-bold font-mono text-slate-900 dark:text-white">{tx.transactionRef}</div>
+          <div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      sortable: true,
+      cell: (tx) => <span className="font-medium capitalize">{tx.category.replace(/_/g, ' ')}</span>,
+    },
+    {
+      key: 'paymentChannel',
+      header: 'Channel',
+      sortable: true,
+      cell: (tx) => <span className="font-semibold">{tx.paymentChannel}</span>,
+    },
+    {
+      key: 'totalAmount',
+      header: 'Amount',
+      align: 'right',
+      sortable: true,
+      cell: (tx) => <span className="font-mono font-bold text-teal-700">৳ {tx.totalAmount.toLocaleString()}</span>,
+    },
+    {
+      key: 'createdAt',
+      header: 'Date',
+      sortable: true,
+      cell: (tx) => <span className="font-mono">{new Date(tx.createdAt).toLocaleDateString()}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (tx) => (
+        <div className="inline-flex items-center justify-end gap-2">
+          <AppButton
+            actionType="secondary"
+            size="small"
+            startIcon={<Eye size={14} />}
+            onClick={() => setSelectedTx(tx)}
+            sx={{ minHeight: 30, px: 1.5, py: 0.5, borderRadius: '8px', color: 'primary.main', borderColor: 'divider' }}
+          >
+            Receipt
+          </AppButton>
+          <AppButton
+            actionType="secondary"
+            surface="soft"
+            size="small"
+            startIcon={<RotateCcw size={14} />}
+            onClick={handlePayAgain}
+            sx={{ minHeight: 30, px: 1.5, py: 0.5, borderRadius: '8px' }}
+          >
+            Pay Again
+          </AppButton>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
@@ -63,69 +131,12 @@ export const HistoryView: React.FC = () => {
           <AppDateRangeFilter value={dateRange} onChange={setDateRange} />
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-              <tr>
-                <th className="p-4">Transaction & Challan</th>
-                <th className="p-4">Category</th>
-                <th className="p-4">Channel</th>
-                <th className="p-4">Amount</th>
-                <th className="p-4">Date</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {filtered.map(tx => (
-                <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="p-4">
-                    <div className="font-bold font-mono text-slate-900 dark:text-white">{tx.transactionRef}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber}</div>
-                  </td>
-                  <td className="p-4 font-medium capitalize">{tx.category.replace(/_/g, ' ')}</td>
-                  <td className="p-4 font-semibold">{tx.paymentChannel}</td>
-                  <td className="p-4 font-mono font-bold text-teal-700">৳ {tx.totalAmount.toLocaleString()}</td>
-                  <td className="p-4 font-mono">{new Date(tx.createdAt).toLocaleDateString()}</td>
-                  <td className="p-4 text-right">
-                    <div className="inline-flex items-center justify-end gap-2">
-                      <AppButton
-                        actionType="secondary"
-                        size="small"
-                        startIcon={<Eye size={14} />}
-                        onClick={() => setSelectedTx(tx)}
-                        sx={{
-                          minHeight: 30,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: '8px',
-                          color: 'primary.main',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        Receipt
-                      </AppButton>
-                      <AppButton
-                        actionType="secondary"
-                        surface="soft"
-                        size="small"
-                        startIcon={<RotateCcw size={14} />}
-                        onClick={handlePayAgain}
-                        sx={{
-                          minHeight: 30,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: '8px',
-                        }}
-                      >
-                        Pay Again
-                      </AppButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <AppTable
+          columns={columns}
+          data={filtered}
+          keyExtractor={(tx) => tx.id}
+          emptyMessage="No payment records found."
+        />
       </div>
 
       <ReceiptModal

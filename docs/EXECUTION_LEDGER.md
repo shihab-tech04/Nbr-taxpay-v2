@@ -190,14 +190,13 @@ All citizen features, design tokens, bilingual translations, and production-grad
   - Multi-timezone `npm test` (`TZ=UTC`, `TZ=Asia/Dhaka`, `TZ=America/Los_Angeles`, `TZ=America/New_York`): `36/36` tests passing in every timezone (`0` skipped, `0` failed).
   - Full interactive Chromium regression (`playwright-cli` on `http://localhost:3000`, `scripts/ci-interactive-browser.cjs` lines 1–197): `ALL_CI_HARNESS_AND_ROUTE_ASSERTIONS_PASS` (`0` console/page errors).
   - Compiled Pages `PUBLIC_PREVIEW=true` smoke check (`http://127.0.0.1:4173/Nbr-taxpay-v2/`, `scripts/pages-smoke.cjs`): `PAGES_SMOKE_LOCAL_PASS` (`0` console/page errors).
-## Accelerated Cycle 08 — MUI Table Migration, Modal Foundations, & .nojekyll Pages Fix
-- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); completed Cycle 07 and Cycle 08 AppTable work preserved; migrated `AppTable` to use Material UI Table components (`Table`, `TableContainer`, `TableHead`, `TableBody`, `TableRow`, `TableCell`, `TableSortLabel`, `TablePagination`) while maintaining strict adherence to architectural rules.
+## Accelerated Cycle 08–09 — Table Migrations, Modal Foundations, & .nojekyll Pages Fix
+- **Scope Preserved**: Citizen-facing frontend only (`GEMINI.md` backend freeze intact); completed table migrations for `HistoryView`, `BeneficiariesTable`, `AllTaxItemsTable`, and `ReceiptModal` using unified MUI-backed `AppTable`.
 - **Shared Modal, Drawer, & Bottom-Sheet Foundations (`src/design-system/modals/`)**:
-  - Implemented `AppDialog.tsx`, `AppDrawer.tsx`, and `AppBottomSheet.tsx` providing exact approved geometry, accessibility (`role="dialog"`, `aria-modal`), backdrop blur, and dismissal controls.
+  - Implemented `AppDialog.tsx`, `AppDrawer.tsx`, and `AppBottomSheet.tsx` with exact approved geometry, accessibility (`role="dialog"`), backdrop blur, and dismissal controls.
   - Added unit test suite (`modals.test.tsx`), raising total test suite count to **39/39** passing tests across all 4 timezones.
 - **GitHub Pages Deployment Fix (.nojekyll)**:
   - Added `/public/.nojekyll` so Vite copies it to `dist/.nojekyll` on build, preventing GitHub Pages from bypassing custom builds or running Jekyll processing on files with underscores.
-  - Updated `citizen-pages.yml` build step to verify `dist/.nojekyll`.
 - **Verification Evidence (Sandbox)**:
   - `npm run arch:check`: PASSED (`0` violations across `170` TypeScript files, `162` implementation files all `<=200` lines, `8` test files, `3` CSS files).
   - `npm run typecheck` (`tsc --noEmit`): `0` errors.

@@ -1,5 +1,4 @@
-import React from 'react';
-import { PaymentTransaction } from '../types/tax';
+import { PaymentTransaction, PaymentLineItem } from '../types/tax';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -7,6 +6,7 @@ import {
 import { CheckCircle, Download, Printer, X, ShieldCheck } from 'lucide-react';
 import { AppButton, AppIconButton } from '../design-system/buttons';
 import { isValidYmd } from '../design-system/dates/dateUtils';
+import { AppTable } from '../design-system/tables';
 
 interface ReceiptModalProps {
   open: boolean;
@@ -88,38 +88,40 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
         )}
 
-        {/* Line Items Table */}
         <div>
-          <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Tax Head Allocations</h4>
-          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                <tr>
-                  <th className="p-3">Tax Head Code & Name</th>
-                  <th className="p-3">Assessment Year</th>
-                  <th className="p-3 text-right">Amount (BDT)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {transaction.items.map((item, index) => (
-                  <tr key={index} className="text-slate-800 dark:text-slate-200">
-                    <td className="p-3">
-                      <div className="font-medium">{item.headNameEn}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">Code: {item.headCode} {item.remarks ? `· ${item.remarks}` : ''}</div>
-                    </td>
-                    <td className="p-3 font-mono">{item.assessmentYear}</td>
-                    <td className="p-3 text-right font-semibold font-mono">৳ {item.amount.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-slate-50 dark:bg-slate-800 font-bold text-slate-900 dark:text-white">
-                <tr>
-                  <td colSpan={2} className="p-3 text-right">Sample Total:</td>
-                  <td className="p-3 text-right font-mono text-teal-700 dark:text-teal-400 text-sm">৳ {transaction.totalAmount.toLocaleString()}</td>
-                </tr>
-              </tfoot>
-            </table>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Tax Head Allocations</h4>
+            <span className="text-xs font-bold text-teal-700 dark:text-teal-400 font-mono">
+              Sample Total: ৳ {transaction.totalAmount.toLocaleString()}
+            </span>
           </div>
+          <AppTable<PaymentLineItem>
+            columns={[
+              {
+                key: 'headNameEn',
+                header: 'Tax Head Code & Name',
+                cell: (item) => (
+                  <div>
+                    <div className="font-medium">{item.headNameEn}</div>
+                    <div className="text-[11px] text-slate-500 font-mono">Code: {item.headCode} {item.remarks ? `· ${item.remarks}` : ''}</div>
+                  </div>
+                ),
+              },
+              {
+                key: 'assessmentYear',
+                header: 'Assessment Year',
+                cell: (item) => <span className="font-mono">{item.assessmentYear}</span>,
+              },
+              {
+                key: 'amount',
+                header: 'Amount (BDT)',
+                align: 'right',
+                cell: (item) => <span className="font-semibold font-mono">৳ {item.amount.toLocaleString()}</span>,
+              },
+            ]}
+            data={transaction.items}
+            keyExtractor={(_, index) => String(index)}
+          />
         </div>
 
         <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200">

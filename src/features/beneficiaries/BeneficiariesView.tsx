@@ -8,6 +8,7 @@ import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { Beneficiary } from '../../types/tax';
 import { BeneficiariesTable } from './components/BeneficiariesTable';
 import { BeneficiaryForm } from './components/BeneficiaryForm';
+import { AppDialog } from '../../design-system/modals';
 
 type RelationshipType = Beneficiary['relationship'];
 
@@ -68,7 +69,15 @@ export const BeneficiariesView: React.FC = () => {
           </AppButton>
         </div>
 
-        {showAddModal && (
+        <AppDialog
+          open={showAddModal}
+          onClose={() => {
+            setErrors({});
+            setShowAddModal(false);
+          }}
+          title={t('addBeneficiary')}
+          maxWidth="md"
+        >
           <BeneficiaryForm
             name={name}
             tin={tin}
@@ -94,7 +103,7 @@ export const BeneficiariesView: React.FC = () => {
             }}
             onSubmit={handleSubmit}
           />
-        )}
+        </AppDialog>
 
         <BeneficiariesTable
           beneficiaries={beneficiaries}

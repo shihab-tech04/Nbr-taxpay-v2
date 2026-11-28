@@ -1,22 +1,92 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { ArrowRight, Eye, Plus } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
-import { AppButton, AppCardButton } from '../../design-system/buttons';
+import { AppButton } from '../../design-system/buttons';
+import { AppTable, type AppColumn } from '../../design-system/tables';
+import { DashboardMetrics } from './components/DashboardMetrics';
 
 export const DashboardView: React.FC = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, transactions, beneficiaries, drafts } = useApp();
 
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
 
   const totalPaid = transactions
-    .filter(tx => tx.status === 'Completed')
+    .filter((tx) => tx.status === 'Completed')
     .reduce((sum, tx) => sum + tx.totalAmount, 0);
+
+  const columns: AppColumn<PaymentTransaction>[] = [
+    {
+      key: 'transactionRef',
+      header: 'Ref & Challan',
+      sortable: true,
+      cell: (tx) => (
+        <div>
+          <div className="font-semibold text-slate-900 dark:text-white font-mono">{tx.transactionRef}</div>
+          <div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      sortable: true,
+      cell: (tx) => (
+        <div>
+          <span className="font-medium text-slate-800 dark:text-slate-200 capitalize">{tx.category.replace(/_/g, ' ')}</span>
+          {tx.beneficiaryName && <div className="text-[11px] text-teal-600">For: {tx.beneficiaryName}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'paymentChannel',
+      header: 'Channel',
+      sortable: true,
+      cell: (tx) => <span className="font-semibold text-slate-700 dark:text-slate-300">{tx.paymentChannel}</span>,
+    },
+    {
+      key: 'totalAmount',
+      header: 'Amount (BDT)',
+      align: 'right',
+      sortable: true,
+      cell: (tx) => <span className="font-mono font-semibold text-slate-900 dark:text-white">৳ {tx.totalAmount.toLocaleString()}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (tx) => (
+        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-medium">
+          {tx.status}
+        </span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      align: 'right',
+      cell: (tx) => (
+        <AppButton
+          actionType="secondary"
+          size="small"
+          startIcon={<Eye size={14} />}
+          onClick={() => setSelectedTx(tx)}
+          sx={{
+            minHeight: 30,
+            px: 1.5,
+            py: 0.5,
+            borderRadius: '8px',
+            color: 'primary.main',
+            borderColor: 'divider',
+          }}
+        >
+          Receipt
+        </AppButton>
+      ),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-10 px-6 lg:px-12">
@@ -58,65 +128,29 @@ export const DashboardView: React.FC = () => {
               onClick={() => navigate('/beneficiaries')}
               sx={{ borderRadius: '12px', px: 2, py: 1.25 }}
             >
-              Manage Beneficiaries ({beneficiaries.length})
+              Beneficiaries
             </AppButton>
           </div>
         </div>
 
         {/* Summary Metric Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2">
-            <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('totalPaidSummary')}</span>
-            <div className="text-3xl font-bold font-mono text-teal-700 dark:text-teal-400">
-              ৳ {totalPaid.toLocaleString()}
-            </div>
-            <p className="text-[11px] text-slate-500">Across {transactions.filter(t => t.status === 'Completed').length} sample challans</p>
-          </div>
-
-          <AppCardButton
-            onClick={() => navigate('/drafts')}
-            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 hover:border-teal-500 transition-colors"
-            sx={{
-              width: '100%',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              p: 3,
-              borderRadius: '16px',
-            }}
-          >
-            <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('activeDraftsCount')}</span>
-            <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white">
-              {drafts.length}
-            </div>
-            <p className="text-[11px] text-slate-500">Saved payment drafts awaiting checkout</p>
-          </AppCardButton>
-
-          <AppCardButton
-            onClick={() => navigate('/beneficiaries')}
-            className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-2 hover:border-teal-500 transition-colors"
-            sx={{
-              width: '100%',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              p: 3,
-              borderRadius: '16px',
-            }}
-          >
-            <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">{t('beneficiariesCount')}</span>
-            <div className="text-3xl font-bold font-mono text-slate-900 dark:text-white">
-              {beneficiaries.length}
-            </div>
-            <p className="text-[11px] text-slate-500">Illustrative family and client records</p>
-          </AppCardButton>
-        </div>
+        <DashboardMetrics
+          totalPaid={totalPaid}
+          completedChallansCount={transactions.filter((tx) => tx.status === 'Completed').length}
+          draftsCount={drafts.length}
+          beneficiariesCount={beneficiaries.length}
+        />
 
         {/* Recent Payment Activity Table */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 space-y-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-bold">{t('recentActivity')}</h3>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Payment Activities</h3>
+              <p className="text-xs text-slate-500">Latest completed tax challans and transaction references.</p>
+            </div>
             <AppButton
               actionType="secondary"
-              surface="ghost"
+              surface="minimal"
               size="small"
               endIcon={<ArrowRight size={14} />}
               onClick={() => navigate('/history')}
@@ -129,59 +163,12 @@ export const DashboardView: React.FC = () => {
             </AppButton>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-                <tr>
-                  <th className="p-3">Ref & Challan</th>
-                  <th className="p-3">Category</th>
-                  <th className="p-3">Channel</th>
-                  <th className="p-3">Amount (BDT)</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-3">
-                      <div className="font-semibold text-slate-900 dark:text-white font-mono">{tx.transactionRef}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber}</div>
-                    </td>
-                    <td className="p-3">
-                      <span className="font-medium text-slate-800 dark:text-slate-200 capitalize">{tx.category.replace(/_/g, ' ')}</span>
-                      {tx.beneficiaryName && <div className="text-[11px] text-teal-600">For: {tx.beneficiaryName}</div>}
-                    </td>
-                    <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">{tx.paymentChannel}</td>
-                    <td className="p-3 font-mono font-semibold text-slate-900 dark:text-white">৳ {tx.totalAmount.toLocaleString()}</td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-medium">
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <AppButton
-                        actionType="secondary"
-                        size="small"
-                        startIcon={<Eye size={14} />}
-                        onClick={() => setSelectedTx(tx)}
-                        sx={{
-                          minHeight: 30,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: '8px',
-                          color: 'primary.main',
-                          borderColor: 'divider',
-                        }}
-                      >
-                        Receipt
-                      </AppButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <AppTable
+            columns={columns}
+            data={transactions}
+            keyExtractor={(tx) => tx.id}
+            emptyMessage="No payment activities found."
+          />
         </div>
       </div>
 

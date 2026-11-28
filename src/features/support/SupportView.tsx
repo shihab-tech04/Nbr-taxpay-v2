@@ -9,6 +9,7 @@ import type { SupportTicket } from '../../types/tax';
 import { SupportContextBanner } from './components/SupportContextBanner';
 import { SupportFaqList } from './components/SupportFaqList';
 import { SupportTicketForm } from './components/SupportTicketForm';
+import { AppDialog } from '../../design-system/modals';
 
 type SupportCategory = SupportTicket['category'];
 
@@ -89,7 +90,15 @@ export const SupportView: React.FC = () => {
           </div>
         </div>
 
-        {showModal && (
+        <AppDialog
+          open={showModal}
+          onClose={() => {
+            setErrors({});
+            setShowModal(false);
+          }}
+          title={contract === 'incident' ? (isBn ? 'সমস্যা রিপোর্ট করুন' : 'Report an Issue') : 'Create Support Ticket'}
+          maxWidth="md"
+        >
           <SupportTicketForm
             subject={subject}
             category={category}
@@ -110,7 +119,7 @@ export const SupportView: React.FC = () => {
             }}
             onSubmit={handleSubmit}
           />
-        )}
+        </AppDialog>
 
         <SupportFaqList />
       </div>

@@ -12,9 +12,10 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material';
+import { AppButton } from '../buttons';
 import type { AppColumn, TablePaginationState, TableSortState } from './tableTypes';
 
-interface AppTableProps<T> {
+export interface AppTableProps<T> {
   columns: readonly AppColumn<T>[];
   data: readonly T[];
   keyExtractor: (row: T, index: number) => string;
@@ -28,6 +29,8 @@ interface AppTableProps<T> {
   isError?: boolean;
   errorMessage?: string;
   emptyMessage?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
   className?: string;
 }
 
@@ -45,6 +48,8 @@ export function AppTable<T>({
   isError = false,
   errorMessage = 'Failed to load records.',
   emptyMessage = 'No records found.',
+  onRetry,
+  retryLabel = 'Retry',
   className = '',
 }: AppTableProps<T>) {
   const effectiveTotal = totalRows ?? data.length;
@@ -95,14 +100,17 @@ export function AppTable<T>({
               </TableRow>
             ) : isError ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" className="py-12 text-rose-600 font-medium">
-                  {errorMessage}
-                </TableCell>
-              </TableRow>
-            ) : data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} align="center" className="py-12 text-slate-500 dark:text-slate-400 italic">
-                  {emptyMessage}
+                <TableCell colSpan={columns.length} align="center" className="py-12">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Typography variant="body2" className="text-rose-600 font-medium">
+                      {errorMessage}
+                    </Typography>
+                    {onRetry && (
+                      <AppButton actionType="secondary" size="small" onClick={onRetry}>
+                        {retryLabel}
+                      </AppButton>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -113,9 +121,14 @@ export function AppTable<T>({
                 >
                   {columns.map((col) => {
                     const align = col.align ?? 'left';
+                    const cellContent = col.cell
+                      ? col.cell(row, idx)
+                      : col.accessor
+                      ? String(col.accessor(row) ?? '')
+                      : String((row as Record<string, unknown>)[col.key as string] ?? '');
                     return (
                       <TableCell key={String(col.key)} align={align} className={`py-3.5 px-4 text-xs text-slate-700 dark:text-slate-300 ${col.className ?? ''}`}>
-                        {col.cell ? col.cell(row, idx) : String((row as Record<string, unknown>)[col.key as string] ?? '')}
+                        {cellContent}
                       </TableCell>
                     );
                   })}
@@ -124,6 +137,11 @@ export function AppTable<T>({
             )}
           </TableBody>
         </Table>
+        {!isLoading && !isError && data.length === 0 && emptyMessage && (
+          <div className="py-12 text-center text-xs text-slate-500 dark:text-slate-400 italic">
+            {emptyMessage}
+          </div>
+        )}
       </TableContainer>
 
       {pagination && !isLoading && !isError && (

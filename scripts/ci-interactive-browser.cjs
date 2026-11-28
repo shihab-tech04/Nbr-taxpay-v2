@@ -194,8 +194,44 @@ async function runInteractiveChecks(page, baseUrl = 'http://127.0.0.1:4174') {
     await page.locator('[role="dialog"]').getByText('Sample challan — not valid for payment').waitFor({ state: 'visible' });
     assert.match(await page.locator('[role="dialog"] [data-testid="receipt-gift-date"]').innerText(), /2026-04-10/);
 
+    await page.keyboard.press('Escape');
+    await page.locator('[role="dialog"]').waitFor({ state: 'hidden', timeout: 3000 });
+
+    // 5. AppTable & AppDialog regression: Beneficiaries table + AppDialog modal
+    await page.goto(`${baseUrl}/beneficiaries`, { waitUntil: 'networkidle' });
+    const benTable = page.locator('table');
+    await benTable.waitFor({ state: 'visible' });
+    const benRows = await page.locator('tbody tr').count();
+    assert.ok(benRows >= 1, 'Beneficiaries table has rows');
+    await page.getByRole('button', { name: /Add (New )?Beneficiary|নতুন বেনিফিশিয়ারি|সুবিধাভোগী যোগ/i }).click();
+    const benDialog = page.locator('[role="dialog"]');
+    await benDialog.waitFor({ state: 'visible' });
+    assert.match(await benDialog.innerText(), /Add (New )?Beneficiary|নতুন বেনিফিশিয়ারি|সুবিধাভোগী যোগ/i);
+    await page.keyboard.press('Escape');
+    await benDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
+    // 6. AppTable & AppDialog regression: Corrections table + AppDialog modal
+    await page.goto(`${baseUrl}/corrections`, { waitUntil: 'networkidle' });
+    const corrTable = page.locator('table');
+    await corrTable.waitFor({ state: 'visible' });
+    const corrRows = await page.locator('tbody tr').count();
+    assert.ok(corrRows >= 1, 'Corrections table has rows');
+    await page.getByRole('button', { name: /Apply for Correction|Submit Correction|সংশোধনের আবেদন/i }).click();
+    const corrDialog = page.locator('[role="dialog"]');
+    await corrDialog.waitFor({ state: 'visible' });
+    assert.match(await corrDialog.innerText(), /Apply for Correction|Submit Correction|সংশোধনের আবেদন/i);
+    await page.keyboard.press('Escape');
+    await corrDialog.waitFor({ state: 'hidden', timeout: 3000 });
+
+    // 7. AppTable regression: Drafts table
+    await page.goto(`${baseUrl}/drafts`, { waitUntil: 'networkidle' });
+    const draftsTable = page.locator('table');
+    await draftsTable.waitFor({ state: 'visible' });
+    const draftRows = await page.locator('tbody tr').count();
+    assert.ok(draftRows >= 1, 'Drafts table has rows');
+
     assert.deepEqual(errors, []);
-    return 'CI interactive browser checks (TIN A->B->A, masking, caret, suggestions, Autocomplete clear, Date bounds, History, Gift Tax, Navbar 320/390px) PASS';
+    return 'CI interactive browser checks (TIN A->B->A, masking, caret, suggestions, Autocomplete clear, Date bounds, History, Gift Tax, Navbar 320/390px, AppTable & AppDialog) PASS';
   } finally {
     page.off('pageerror', onPageError);
     page.off('console', onConsole);

@@ -1,49 +1,60 @@
 import React from 'react';
+import { Drawer } from '@mui/material';
 import { X } from 'lucide-react';
 import { AppIconButton } from '../buttons';
 
-interface AppDrawerProps {
+export interface AppDrawerProps {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
+  actions?: React.ReactNode;
   anchor?: 'left' | 'right';
   className?: string;
+  disablePortal?: boolean;
 }
 
 export const AppDrawer: React.FC<AppDrawerProps> = ({
   open,
   onClose,
   title,
+  subtitle,
   children,
+  actions,
   anchor = 'right',
   className = '',
+  disablePortal = false,
 }) => {
-  if (!open) return null;
-
-  const positionClass = anchor === 'left' ? 'left-0' : 'right-0';
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="app-drawer-title"
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 flex"
+    <Drawer
+      anchor={anchor}
+      open={open}
+      onClose={onClose}
+      disablePortal={disablePortal}
+      slotProps={{
+        paper: {
+          className: `w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col ${className}`,
+        },
+      }}
     >
-      <div className="flex-1" onClick={onClose} />
-      <div
-        className={`w-full max-w-md h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col ${positionClass} ${className}`}
-      >
+      {title && (
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <h3 id="app-drawer-title" className="text-base font-bold text-slate-900 dark:text-white">
-            {title}
-          </h3>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+          </div>
           <AppIconButton size="small" aria-label="Close drawer" onClick={onClose}>
             <X size={18} />
           </AppIconButton>
         </div>
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
-      </div>
-    </div>
+      )}
+      <div className="p-6 overflow-y-auto flex-1">{children}</div>
+      {actions && (
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800">
+          {actions}
+        </div>
+      )}
+    </Drawer>
   );
 };
