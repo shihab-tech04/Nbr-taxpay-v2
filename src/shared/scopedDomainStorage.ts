@@ -13,6 +13,7 @@ import {
   INITIAL_TRANSACTIONS,
 } from './mockData';
 import { readJsonStorage, writeAppStorage } from './storageAdapter';
+import { lookupTinIdentity } from './accountSession';
 
 export interface ScopedDomainData {
   beneficiaries: Beneficiary[];
@@ -145,21 +146,24 @@ export function claimWalkInTransactionInStorage(
   targetName: string
 ): PaymentTransaction | null {
   if (!/^\d{12,13}$/.test(targetTin)) return null;
+  const verified = lookupTinIdentity(targetTin);
+  if (!verified) return null;
+  if (tx.originMode !== 'walk_in' && tx.ownerScope !== 'walkin') return null;
   const targetScope = `acct_${targetTin}`;
+  const targetData = readScopedDomainData(targetScope);
+  const already = targetData.transactions.some((item) => item.transactionRef === tx.transactionRef);
+  if (already) return null;
+
   const claimed: PaymentTransaction = {
     ...tx,
     ownerScope: targetScope,
-    taxpayerTin: tx.taxpayerTin || targetTin,
-    taxpayerName: tx.taxpayerName || targetName,
+    taxpayerTin: targetTin,
+    taxpayerName: verified.profile.name || targetName,
   };
-  const targetData = readScopedDomainData(targetScope);
-  const already = targetData.transactions.some((item) => item.transactionRef === claimed.transactionRef);
-  if (!already) {
-    writeScopedDomainData(targetScope, {
-      ...targetData,
-      transactions: [claimed, ...targetData.transactions],
-    });
-  }
+  writeScopedDomainData(targetScope, {
+    ...targetData,
+    transactions: [claimed, ...targetData.transactions],
+  });
   const walkinData = readScopedDomainData('walkin');
   writeScopedDomainData('walkin', {
     ...walkinData,

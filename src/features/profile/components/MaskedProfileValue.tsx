@@ -34,7 +34,11 @@ export const MaskedProfileValue: React.FC<MaskedProfileValueProps> = ({
   });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, [scopeKey]);
+  useEffect(() => {
+    setRevealState({ scope: scopeKey, active: false });
+    setCopyState({ scope: scopeKey, status: 'idle' });
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [scopeKey]);
 
   const sensitive = Boolean(meta.maskable) && isSensitiveMaskValue(value, meta.key);
   const isTinField = meta.key === 'tin' || meta.key === 'previousTin';

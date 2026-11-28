@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppNumberField, AppSelectField, AppTextField } from '../../../design-system/forms';
 import type { Beneficiary } from '../../../types/tax';
@@ -32,7 +32,9 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
   onChangePhone,
   onSubmit,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
+  const [customRelation, setCustomRelation] = useState(relationship === 'Others' ? '' : '');
 
   return (
     <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
@@ -59,7 +61,10 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
         <AppSelectField
           label={t('relationship')}
           value={relationship}
-          onChange={(e) => onChangeRelationship(e.target.value as RelationshipType)}
+          onChange={(e) => {
+            const val = e.target.value as RelationshipType;
+            onChangeRelationship(val);
+          }}
           helperText={t('relationshipHelper')}
           options={[
             { value: 'Father', label: t('father') },
@@ -73,6 +78,14 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
             { value: 'Others', label: t('others') },
           ]}
         />
+        {relationship === 'Others' && (
+          <AppTextField
+            label={isBn ? 'অন্যান্য সম্পর্ক উল্লেখ করুন' : 'Specify Other Relationship'}
+            value={customRelation}
+            onChange={(e) => setCustomRelation(e.target.value)}
+            placeholder={isBn ? 'যেমন: ব্যবসায়িক অংশীদার' : 'e.g. Business Partner'}
+          />
+        )}
         <AppTextField
           label={t('phone')}
           value={phone}

@@ -12,10 +12,11 @@ import { PaymentSuccessCard } from '../../components/payments/PaymentSuccessCard
 import { TravelTaxFormStep } from './components/TravelTaxFormStep';
 import { TravelTaxPreviewStep } from './components/TravelTaxPreviewStep';
 import {
-  resolveDestinationBaseTax,
+  calculatePassengerTax,
+  calculateTotalTravelTax,
   validateTravelFormStep,
-  type TravelClass,
   type TravelFormErrors,
+  type TravelPassenger,
 } from './travelTaxLogic';
 
 export const TravelTaxView: React.FC = () => {
@@ -23,27 +24,61 @@ export const TravelTaxView: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, activeScope, addTransaction } = useApp();
 
-  const [passportNumber, setPassportNumber] = useState('A06829102');
-  const [passengerName, setPassengerName] = useState(isAuthenticated ? user.name : '');
-  const [destination, setDestination] = useState('India (By Air)');
-  const [travelClass, setTravelClass] = useState<TravelClass>('Economy');
-  const [amount, setAmount] = useState<number>(2000);
+  const [passengers, setPassengers] = useState<TravelPassenger[]>([
+    {
+      id: 'p-1',
+      passengerName: isAuthenticated ? user.name : '',
+      passportNumber: 'A06829102',
+      passportType: 'BD',
+      travelMode: 'Air',
+      destinationZone: 'India',
+      travelClass: 'Economy',
+      passengerCategory: 'Adult',
+      medicalExempt: false,
+    },
+  ]);
   const [step, setStep] = useState<'form' | 'preview' | 'success'>('form');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [certOpen, setCertOpen] = useState(false);
   const [errors, setErrors] = useState<TravelFormErrors>({});
 
+  const handleAddPassenger = () => {
+    setPassengers((prev) => [
+      ...prev,
+      {
+        id: `p-${Date.now()}`,
+        passengerName: '',
+        passportNumber: '',
+        passportType: 'BD',
+        travelMode: 'Air',
+        destinationZone: 'India',
+        travelClass: 'Economy',
+        passengerCategory: 'Adult',
+        medicalExempt: false,
+      },
+    ]);
+  };
+
+  const handleRemovePassenger = (index: number) => {
+    if (passengers.length <= 1) return;
+    setPassengers((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleUpdatePassenger = (index: number, updated: TravelPassenger) => {
+    setPassengers((prev) => prev.map((item, idx) => (idx === index ? updated : item)));
+    if (errors.passengers) {
+      setErrors({});
+    }
+  };
+
   const handleProceed = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isRestrictedOperationAllowed('payment_submit')) return;
-    const nextErrors = validateTravelFormStep(
-      { passportNumber, passengerName },
-      {
-        invalidPassport: t('invalidPassportError'),
-        requiredPassengerName: t('requiredPassengerNameError'),
-      }
-    );
-    if (Object.keys(nextErrors).length > 0) {
+    const nextErrors = validateTravelFormStep(passengers, {
+      invalidPassport: t('invalidPassportError'),
+      requiredPassengerName: t('requiredPassengerNameError'),
+    });
+    if (nextErrors.passengers && Object.keys(nextErrors.passengers).length > 0) {
       setErrors(nextErrors);
       return;
     }
@@ -53,30 +88,31 @@ export const TravelTaxView: React.FC = () => {
 
   const handlePay = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
+    const totalAmount = calculateTotalTravelTax(passengers);
+    const items = passengers.map((p) => ({
+      headId: 'h5',
+      headCode: '0120',
+      headNameEn: `Travel Tax - ${p.travelMode} / ${p.destinationZone} (${p.passportNumber})`,
+      headNameBn: `ভ্রমণ কর - ${p.travelMode} (${p.passengerName})`,
+      assessmentYear: '2025-2026',
+      amount: calculatePassengerTax(p),
+      remarks: `Passport: ${p.passportNumber}, Mode: ${p.travelMode}, Class: ${p.travelClass}, Cat: ${p.passengerCategory}`,
+    }));
+
     const tx = addTransaction({
       taxpayerTin: isAuthenticated ? user.tin : '',
-      taxpayerName: isAuthenticated ? user.name : passengerName,
+      taxpayerName: isAuthenticated ? user.name : (passengers[0]?.passengerName || 'Walk-in Passenger'),
       ownerScope: activeScope,
       originMode: isAuthenticated ? 'signed_in' : 'walk_in',
       category: 'travel_tax',
       travelDetails: {
-        passportNumber,
-        passengerName,
-        destination,
-        travelClass,
+        passportNumber: passengers[0]?.passportNumber || '',
+        passengerName: passengers[0]?.passengerName || '',
+        destination: `${passengers[0]?.travelMode} - ${passengers[0]?.destinationZone}`,
+        travelClass: passengers[0]?.travelClass || 'Economy',
       },
-      items: [
-        {
-          headId: 'h5',
-          headCode: '0120',
-          headNameEn: `Travel Tax - ${destination} (${passportNumber})`,
-          headNameBn: `ভ্রমণ কর - ${destination}`,
-          assessmentYear: '2025-2026',
-          amount,
-          remarks: `Passport: ${passportNumber}, Class: ${travelClass}`,
-        },
-      ],
-      totalAmount: amount,
+      items,
+      totalAmount,
       paymentChannel: 'bKash',
       status: 'Completed',
     });
@@ -93,41 +129,23 @@ export const TravelTaxView: React.FC = () => {
               <Plane className="text-teal-700" size={28} /> {t('travelTax')}
             </>
           }
-          subtitle="Departure tax assessment for international air, land, and water travel."
+          subtitle="Departure tax assessment for international air, land, and water travel with multi-passenger allocation."
         />
 
         {step === 'form' && (
           <TravelTaxFormStep
-            passportNumber={passportNumber}
-            passengerName={passengerName}
-            destination={destination}
-            travelClass={travelClass}
-            baseAmount={amount}
+            passengers={passengers}
             errors={errors}
-            onChangePassport={(val) => {
-              setPassportNumber(val);
-              if (errors.passport) setErrors((p) => ({ ...p, passport: undefined }));
-            }}
-            onChangePassengerName={(val) => {
-              setPassengerName(val);
-              if (errors.passengerName) setErrors((p) => ({ ...p, passengerName: undefined }));
-            }}
-            onChangeDestination={(dest) => {
-              setDestination(dest);
-              setAmount(resolveDestinationBaseTax(dest));
-            }}
-            onChangeTravelClass={setTravelClass}
+            onChangePassenger={handleUpdatePassenger}
+            onAddPassenger={handleAddPassenger}
+            onRemovePassenger={handleRemovePassenger}
             onSubmit={handleProceed}
           />
         )}
 
         {step === 'preview' && (
           <TravelTaxPreviewStep
-            passengerName={passengerName}
-            passportNumber={passportNumber}
-            destination={destination}
-            travelClass={travelClass}
-            baseAmount={amount}
+            passengers={passengers}
             onBack={() => setStep('form')}
             onPay={handlePay}
           />
@@ -136,7 +154,7 @@ export const TravelTaxView: React.FC = () => {
         {step === 'success' && completedTx && (
           <PaymentSuccessCard
             title="Sample Travel Tax Preview Recorded"
-            subtitle={`Illustrative prototype record for passport ${passportNumber} (not an official departure challan).`}
+            subtitle={`Illustrative prototype record for ${passengers.length} passenger(s) (not an official departure challan).`}
             onViewReceipt={() => setCompletedTx(completedTx)}
             onViewCertificate={() => setCertOpen(true)}
             onReturnDashboard={() => navigate('/dashboard')}
