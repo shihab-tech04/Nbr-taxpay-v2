@@ -26,6 +26,7 @@ import { CorrectionsView } from './features/corrections/CorrectionsView';
 import { SupportView } from './features/support/SupportView';
 import { ProfileView } from './features/profile';
 import { TaxCreditCertificatesView } from './features/certificates/TaxCreditCertificatesView';
+import { NotificationsView } from './features/notifications/NotificationsView';
 import './i18n/i18n';
 
 const Router = import.meta.env.BASE_URL === '/' ? BrowserRouter : HashRouter;
@@ -74,6 +75,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/drafts" element={previewView(<DraftsView />)} />
           <Route path="/corrections" element={previewView(<CorrectionsView />)} />
           <Route path="/certificates" element={previewView(<TaxCreditCertificatesView />)} />
+          <Route path="/notifications" element={previewView(<NotificationsView />)} />
           <Route path="/support" element={previewView(<SupportView />)} />
         </Routes>
       </main>

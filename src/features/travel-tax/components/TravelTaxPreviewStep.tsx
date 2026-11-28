@@ -1,9 +1,15 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import Alert from '@mui/material/Alert';
 import { ArrowRight, CheckCircle, Edit3 } from 'lucide-react';
 import { AppButton } from '../../../design-system/buttons';
 import { AppTextField } from '../../../design-system/forms';
-import type { ConfirmedPassenger, TravelDetailsInput } from '../travelTaxTypes';
+import {
+  TRAVEL_TAX_ECONOMIC_CODE,
+  TRAVEL_TAX_YEAR,
+  type ConfirmedPassenger,
+  type TravelDetailsInput,
+} from '../travelTaxTypes';
 
 interface TravelTaxPreviewStepProps {
   passengers: ReadonlyArray<ConfirmedPassenger & { ageOnTravelDate: number; amount: number }>;
@@ -11,6 +17,7 @@ interface TravelTaxPreviewStepProps {
   totalAmount: number;
   receiptMobile: string;
   mobileError?: string;
+  submitError?: string;
   isAuthenticated: boolean;
   onChangeReceiptMobile: (val: string) => void;
   onEditPassengers: () => void;
@@ -20,22 +27,27 @@ interface TravelTaxPreviewStepProps {
 }
 
 export const TravelTaxPreviewStep: React.FC<TravelTaxPreviewStepProps> = ({
-  passengers, details, totalAmount, receiptMobile, mobileError, isAuthenticated,
+  passengers, details, totalAmount, receiptMobile, mobileError, submitError, isAuthenticated,
   onChangeReceiptMobile, onEditPassengers, onEditDetails, onSaveDraft, onProceed,
 }) => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
 
   return (
-    <div data-testid="travel-stage-3" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6">
-      <h3 className="text-lg font-bold">{isBn ? 'ধাপ ৩: চূড়ান্ত ভ্রমণ কর প্রিভিউ' : 'Stage 3: Final Travel Tax Preview'}</h3>
+    <div data-testid="travel-stage-3" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <h2 className="text-lg font-bold">{isBn ? 'ধাপ ৩: চূড়ান্ত ভ্রমণ কর প্রিভিউ' : 'Stage 3: Final Travel Tax Preview'}</h2>
+        <span className="text-xs font-mono text-slate-500">
+          {t('travelTaxYearLabel')}: {TRAVEL_TAX_YEAR} · {t('travelEconomicCodeLabel')}: {TRAVEL_TAX_ECONOMIC_CODE}
+        </span>
+      </div>
+
+      {submitError && <Alert severity="error" data-testid="travel-presubmit-error">{submitError}</Alert>}
 
       <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs">
         <div className="flex items-center justify-between">
           <strong className="text-slate-900 dark:text-white">{isBn ? 'ভ্রমণের পথ ও তারিখ' : 'Route & Travel Date'}</strong>
-          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditDetails}>
-            {t('edit')}
-          </AppButton>
+          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditDetails}>{t('edit')}</AppButton>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-slate-600 dark:text-slate-300">
           <div>Mode: <strong>{details.travelMode}</strong></div>
@@ -48,9 +60,7 @@ export const TravelTaxPreviewStep: React.FC<TravelTaxPreviewStepProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <strong className="text-xs text-slate-700 dark:text-slate-200">{isBn ? 'যাত্রীভিত্তিক বিবরণ' : 'Passenger-Wise Tax Breakdown'}</strong>
-          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditPassengers}>
-            {t('edit')}
-          </AppButton>
+          <AppButton actionType="secondary" surface="ghost" size="small" startIcon={<Edit3 size={13} />} onClick={onEditPassengers}>{t('edit')}</AppButton>
         </div>
         {passengers.map((p, idx) => (
           <div key={p.id} className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl flex flex-wrap justify-between items-center gap-2 text-xs font-mono">
@@ -83,20 +93,9 @@ export const TravelTaxPreviewStep: React.FC<TravelTaxPreviewStepProps> = ({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        {isAuthenticated ? (
-          <AppButton type="button" actionType="secondary" previewRestricted onClick={onSaveDraft}>{t('saveDraft')}</AppButton>
-        ) : <span />}
-        <AppButton
-          type="button"
-          actionType="primary"
-          intent="confirm"
-          previewRestricted
-          endIcon={totalAmount > 0 ? <ArrowRight size={16} /> : <CheckCircle size={16} />}
-          onClick={onProceed}
-        >
-          {totalAmount > 0
-            ? (isBn ? 'পেমেন্ট মাধ্যমে এগিয়ে যান' : 'Proceed to Payment Channel')
-            : (isBn ? 'শূন্য-কর মূল্যায়ন সম্পন্ন করুন' : 'Complete Zero-Tax Assessment')}
+        {isAuthenticated ? <AppButton type="button" actionType="secondary" previewRestricted onClick={onSaveDraft}>{t('saveDraft')}</AppButton> : <span />}
+        <AppButton type="button" actionType="primary" intent="confirm" previewRestricted endIcon={totalAmount > 0 ? <ArrowRight size={16} /> : <CheckCircle size={16} />} onClick={onProceed}>
+          {totalAmount > 0 ? (isBn ? 'পেমেন্ট মাধ্যমে এগিয়ে যান' : 'Proceed to Payment Channel') : (isBn ? 'শূন্য-কর মূল্যায়ন সম্পন্ন করুন' : 'Complete Zero-Tax Assessment')}
         </AppButton>
       </div>
     </div>

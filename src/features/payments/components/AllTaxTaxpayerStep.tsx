@@ -55,7 +55,7 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
     setErrorMsg('');
     if (checked) {
       if (!selectedTaxpayers.some((tp) => tp.tin === b.tin)) {
-        onChangeSelectedTaxpayers([...selectedTaxpayers, { tin: b.tin, name: b.name, source: 'beneficiary' }]);
+        onChangeSelectedTaxpayers([...selectedTaxpayers, { tin: b.tin, name: b.name.trim() || b.relationship, source: 'beneficiary' }]);
       }
     } else {
       onChangeSelectedTaxpayers(selectedTaxpayers.filter((tp) => tp.tin !== b.tin));
@@ -137,7 +137,7 @@ export const AllTaxTaxpayerStep: React.FC<AllTaxTaxpayerStepProps> = ({
           <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">{isBn ? 'সংরক্ষিত বেনিফিশিয়ারি নির্বাচন করুন:' : 'Saved Beneficiaries:'}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {beneficiaries.map((b) => (
-              <AppCheckbox key={b.id} checked={selectedTaxpayers.some((tp) => tp.tin === b.tin)} onChange={(_, checked) => handleToggleBeneficiary(b, checked)} label={`${b.name} (${b.tin})`} />
+              <AppCheckbox key={b.id} checked={selectedTaxpayers.some((tp) => tp.tin === b.tin)} onChange={(_, checked) => handleToggleBeneficiary(b, checked)} label={`${b.name.trim() || b.relationship} (${b.tin})`} />
             ))}
           </div>
         </div>

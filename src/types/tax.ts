@@ -123,7 +123,7 @@ export interface PaymentTransaction {
   travelDetails?: TravelDetails;
   items: PaymentLineItem[];
   totalAmount: number;
-  paymentChannel: 'bKash' | 'Nagad' | 'Rocket' | 'Visa/Mastercard' | 'CityBank' | 'SonaliBank';
+  paymentChannel: 'bKash' | 'Nagad' | 'Rocket' | 'Visa/Mastercard' | 'CityBank' | 'SonaliBank' | 'Zero-Tax';
   status: 'Completed' | 'Pending' | 'Failed';
   createdAt: string;
   challanNumber: string;
@@ -168,4 +168,21 @@ export interface SupportTicket {
   message: string;
   status: 'Open' | 'Resolved';
   createdAt: string;
+}
+
+export interface AppNotification {
+  id: string;
+  ownerScope: string;
+  kind: 'payment' | 'recipient' | 'correction' | 'draft' | 'system';
+  titleEn: string;
+  titleBn: string;
+  bodyEn: string;
+  bodyBn: string;
+  createdAt: string;
+  readAt?: string;
+  targetRoute: string;
+  targetRef?: string;
+  amount?: number;
+  headLabel?: string;
+  assessmentYear?: string;
 }

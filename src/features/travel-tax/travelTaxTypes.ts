@@ -2,6 +2,9 @@ export type TravelMode = 'Land' | 'Water';
 export type PassportType = 'BD' | 'Foreign';
 export type TravelStage = 1 | 2 | 3;
 
+export const TRAVEL_TAX_YEAR = '2026–27';
+export const TRAVEL_TAX_ECONOMIC_CODE = '1144102';
+
 export const LAND_PORTS: readonly string[] = [
   'Benapole',
   'Burimari',

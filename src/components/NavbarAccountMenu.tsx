@@ -7,12 +7,14 @@ import { AppButton } from '../design-system/buttons';
 interface NavbarAccountMenuProps {
   userName: string;
   isAuthenticated: boolean;
+  unreadNotifications?: number;
   onSignOut: () => void;
 }
 
 export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
   userName,
   isAuthenticated,
+  unreadNotifications = 0,
   onSignOut,
 }) => {
   const { t, i18n } = useTranslation();
@@ -75,6 +77,9 @@ export const NavbarAccountMenu: React.FC<NavbarAccountMenuProps> = ({
         </MenuItem>
         <MenuItem onClick={() => { handleClose(); navigate('/certificates'); }}>
           {bn ? 'সনদসমূহ' : 'Certificates'}
+        </MenuItem>
+        <MenuItem onClick={() => { handleClose(); navigate('/notifications'); }}>
+          {t('notifications')}{unreadNotifications > 0 ? ` (${unreadNotifications})` : ''}
         </MenuItem>
         <MenuItem
           onClick={() => {

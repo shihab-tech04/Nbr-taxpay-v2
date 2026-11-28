@@ -1,3 +1,5 @@
+import { enExtras } from './enExtras';
+
 export const enTranslation = {
   appName: 'Sohojkor Citizen Portal',
   tagline: 'Smart, Fast & Secure National Tax Portal for Bangladeshi Citizens',
@@ -192,4 +194,5 @@ export const enTranslation = {
   dateMaxError: 'Date cannot be later than {{maxDate}}.',
   datePastError: 'Date cannot be in the past.',
   dateFutureError: 'Date cannot be in the future.',
+  ...enExtras,
 };

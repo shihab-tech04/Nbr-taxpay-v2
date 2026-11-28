@@ -37,13 +37,12 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
     <form id={formId} onSubmit={onSubmit} noValidate className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <AppTextField
-          label={t('name')}
+          label={t('beneficiaryNameOptional')}
           value={name}
           onChange={(e) => onChangeName(e.target.value)}
           placeholder={t('beneficiaryNamePlaceholder')}
           error={Boolean(errors.name)}
-          helperText={errors.name || t('beneficiaryNameHelper')}
-          required
+          helperText={errors.name || t('beneficiaryNameOptionalHelper')}
         />
         <AppNumberField
           label={t('twelveDigitTin')}
@@ -58,8 +57,10 @@ export const BeneficiaryForm: React.FC<BeneficiaryFormProps> = ({
         <AppSelectField
           label={t('relationship')}
           value={relationship}
+          required
+          error={Boolean(errors.relationship)}
+          helperText={errors.relationship || t('relationshipHelper')}
           onChange={(e) => onChangeRelationship(e.target.value as Beneficiary['relationship'])}
-          helperText={t('relationshipHelper')}
           options={APPROVED_RELATIONSHIPS.map((rel) => ({ value: rel, label: t(RELATIONSHIP_I18N[rel]) }))}
         />
         {relationship === 'Others' && (

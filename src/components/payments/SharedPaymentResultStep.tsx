@@ -39,7 +39,7 @@ export const SharedPaymentResultStep: React.FC<SharedPaymentResultStepProps> = (
       </div>
       <div className="flex justify-between">
         <span className="text-slate-500">Bank Ref:</span>
-        <strong>{transaction.bankRef}</strong>
+        <strong>{transaction.bankRef || (isBn ? 'প্রযোজ্য নয় (শূন্য-কর)' : 'N/A (Zero-Tax)')}</strong>
       </div>
       <div className="flex justify-between">
         <span className="text-slate-500">Sample Total:</span>

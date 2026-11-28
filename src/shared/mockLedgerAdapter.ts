@@ -46,14 +46,19 @@ export function createExperimentalTransaction(
         passportNumber: isWalkIn ? undefined : txData.travelDetails.passportNumber,
       }
     : undefined;
+  const isZeroTax = txData.category === 'travel_tax' && txData.totalAmount === 0;
+  const resolvedChannel = isZeroTax ? 'Zero-Tax' : txData.paymentChannel;
   return {
     ...txData,
+    paymentChannel: resolvedChannel,
     travelDetails: safeTravelDetails,
     walkInSessionId: isWalkIn ? txData.walkInSessionId ?? getActiveWalkInSessionId() : txData.walkInSessionId,
     id: `tx-${Date.now()}`,
     transactionRef: `SOHO-2026-${Math.floor(10000 + Math.random() * 90000)}`,
     challanNumber: `NBR-CHL-2026-${Math.floor(100000 + Math.random() * 900000)}`,
-    bankRef: `${txData.paymentChannel.substring(0, 2).toUpperCase()}-TRX-${Math.floor(1000000 + Math.random() * 9000000)}`,
+    bankRef: isZeroTax
+      ? ''
+      : `${resolvedChannel.substring(0, 2).toUpperCase()}-TRX-${Math.floor(1000000 + Math.random() * 9000000)}`,
     createdAt: new Date().toISOString(),
   };
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../shared/AppContext';
-import { ArrowRight, Award, LogIn, Plus, User } from 'lucide-react';
+import { ArrowRight, Award, Bell, LogIn, Plus, User } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentTransaction } from '../../types/tax';
 import { AppButton } from '../../design-system/buttons';
@@ -15,7 +15,7 @@ export const DashboardView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { user, isAuthenticated, transactions, beneficiaries, drafts } = useApp();
+  const { user, isAuthenticated, transactions, beneficiaries, drafts, unreadNotificationCount } = useApp();
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
 
   if (!isAuthenticated) {
@@ -85,6 +85,9 @@ export const DashboardView: React.FC = () => {
             </AppButton>
             <AppButton actionType="secondary" surface="soft" size="small" startIcon={<Award size={16} />} onClick={() => navigate('/certificates')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
               {isBn ? 'সনদসমূহ' : 'Certificates'}
+            </AppButton>
+            <AppButton actionType="secondary" surface="soft" size="small" startIcon={<Bell size={16} />} onClick={() => navigate('/notifications')} sx={{ borderRadius: '12px', px: 2, py: 1.25 }}>
+              {t('notifications')}{unreadNotificationCount > 0 ? ` (${unreadNotificationCount})` : ''}
             </AppButton>
           </div>
         </div>

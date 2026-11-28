@@ -96,7 +96,7 @@ export const BeneficiaryTimelineDialog: React.FC<BeneficiaryTimelineDialogProps>
     <AppDialog
       open={Boolean(beneficiary)}
       onClose={onClose}
-      title={`${beneficiary.name} · ${tagLabel}`}
+      title={`${beneficiary.name.trim() || beneficiary.tin} · ${tagLabel}`}
       maxWidth="md"
       responsiveBottomSheet
       id="beneficiary-timeline-dialog"

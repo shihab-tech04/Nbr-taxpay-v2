@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getDhakaTodayYmd } from '../../design-system/dates/dateUtils';
 import { sanitizePassport } from '../../design-system/forms';
@@ -8,51 +9,42 @@ import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { ActivePaymentChannel } from '../../components/payments/paymentChannels';
 import type { PaymentTransaction } from '../../types/tax';
 import {
-  calculateTravelBreakdown,
-  lookupBdPassport,
-  maskPassport,
-  validatePassengerDraft,
-  validateReceiptMobile,
-  validateTravelDetails,
+  calculateTravelBreakdown, lookupBdPassport, maskPassport, validatePassengerDraft,
+  validateReceiptMobile, validateTravelDetails, validateTravelSubmission,
 } from './travelTaxLogic';
+import { getTravelTaxMsg } from './travelTaxMessages';
 import {
-  buildTravelTransactionPayload,
-  emptyDraftPassenger,
-  extractInitialConfirmedPassengers,
-  type TravelRouteState,
+  buildTravelTransactionPayload, emptyDraftPassenger, resolveTravelRouteSeed, type TravelRouteState,
 } from './travelTaxFlowUtils';
 import type {
-  ConfirmedPassenger,
-  DraftPassengerInput,
-  TravelDetailsErrors,
-  TravelDetailsInput,
-  TravelPassengerErrors,
-  TravelStage,
+  ConfirmedPassenger, DraftPassengerInput, TravelDetailsErrors, TravelDetailsInput, TravelPassengerErrors, TravelStage,
 } from './travelTaxTypes';
 
 export function useTravelTaxFlow() {
+  const { i18n } = useTranslation();
+  const lang = i18n.language === 'bn' ? 'bn' : 'en';
+  const msg = getTravelTaxMsg(lang);
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = (location.state ?? null) as TravelRouteState | null;
-  const { user, isAuthenticated, activeScope, addTransaction, saveDraft } = useApp();
+  const { user, isAuthenticated, activeScope, drafts, transactions, addTransaction, saveDraft } = useApp();
 
-  const initialConfirmed = extractInitialConfirmedPassengers(routeState);
-  const [stage, setStage] = useState<TravelStage>(() => routeState?.resumeDraft?.travelDraft?.stage ?? 1);
+  const [seed] = useState(() =>
+    resolveTravelRouteSeed({ routeState, activeScope, isAuthenticated, drafts, transactions, lang })
+  );
+  const [routeSeedError, setRouteSeedError] = useState<string>(seed.error ?? '');
+  const [stage, setStage] = useState<TravelStage>(seed.initialStage);
   const [step, setStep] = useState<'stages' | 'channel' | 'success'>('stages');
-  const [confirmedPassengers, setConfirmedPassengers] = useState<ConfirmedPassenger[]>(initialConfirmed);
-  const [entryOpen, setEntryOpen] = useState(initialConfirmed.length === 0);
+  const [confirmedPassengers, setConfirmedPassengers] = useState<ConfirmedPassenger[]>(seed.passengers);
+  const [entryOpen, setEntryOpen] = useState(seed.passengers.length === 0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftPassengerInput>(() => emptyDraftPassenger());
   const [passengerErrors, setPassengerErrors] = useState<TravelPassengerErrors>({});
-  const [details, setDetails] = useState<TravelDetailsInput>(() => ({
-    travelMode: routeState?.resumeDraft?.travelDraft?.travelMode ?? routeState?.reuseTx?.travelDetails?.travelMode ?? 'Land',
-    departurePort: routeState?.resumeDraft?.travelDraft?.departurePort ?? routeState?.reuseTx?.travelDetails?.departurePort ?? '',
-    destination: routeState?.resumeDraft?.travelDraft?.destination ?? routeState?.reuseTx?.travelDetails?.destination ?? '',
-    travelDate: routeState?.resumeDraft?.travelDraft?.travelDate ?? '',
-  }));
+  const [details, setDetails] = useState<TravelDetailsInput>(seed.details);
   const [detailsErrors, setDetailsErrors] = useState<TravelDetailsErrors>({});
-  const [receiptMobile, setReceiptMobile] = useState(routeState?.resumeDraft?.travelDraft?.contactMobile ?? routeState?.reuseTx?.travelDetails?.contactMobile ?? '');
+  const [receiptMobile, setReceiptMobile] = useState(seed.receiptMobile);
   const [mobileError, setMobileError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [paymentChannel, setPaymentChannel] = useState<ActivePaymentChannel>('bKash');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -62,10 +54,11 @@ export function useTravelTaxFlow() {
   const breakdown = calculateTravelBreakdown(confirmedPassengers, details.travelDate);
 
   const handleCheckBdPassport = () => {
+    if (!sanitizePassport(draft.passportNumber, 12)) return;
     const sample = lookupBdPassport(draft.passportNumber);
     if (!sample) {
       setDraft((prev) => ({ ...prev, passengerName: '', dob: '', bdChecked: false }));
-      setPassengerErrors({ lookupUnavailable: true, passport: 'Passport lookup unavailable for this number. Use a valid sample passport.' });
+      setPassengerErrors({ lookupUnavailable: true, passport: msg.lookupUnavailable });
       return;
     }
     setDraft((prev) => ({ ...prev, passportNumber: sample.passportNumber, passengerName: sample.passengerName, dob: sample.dob, bdChecked: true }));
@@ -74,7 +67,7 @@ export function useTravelTaxFlow() {
 
   const handleConfirmPassenger = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
-    const errs = validatePassengerDraft(draft, confirmedPassengers, editingId, getDhakaTodayYmd());
+    const errs = validatePassengerDraft(draft, confirmedPassengers, editingId, getDhakaTodayYmd(), lang);
     if (Object.keys(errs).length > 0) { setPassengerErrors(errs); return; }
     const cleanNum = sanitizePassport(draft.passportNumber, 12);
     const confirmed: ConfirmedPassenger = {
@@ -99,26 +92,36 @@ export function useTravelTaxFlow() {
 
   const handleProceedFromDetails = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
-    const errs = validateTravelDetails(details, confirmedPassengers, getDhakaTodayYmd());
+    const errs = validateTravelDetails(details, confirmedPassengers, getDhakaTodayYmd(), lang);
     if (Object.keys(errs).length > 0) { setDetailsErrors(errs); return; }
     setDetailsErrors({}); setStage(3);
   };
 
-  const finalizeTransaction = (channel: ActivePaymentChannel, mobileNormalized: string) => {
-    if (!isRestrictedOperationAllowed('payment_submit') || submitLockRef.current || !breakdown.valid) return;
+  const runFinalSubmission = (channel: ActivePaymentChannel | 'Zero-Tax') => {
+    if (!isRestrictedOperationAllowed('payment_submit') || submitLockRef.current) return;
+    const check = validateTravelSubmission({ passengers: confirmedPassengers, details, receiptMobile, todayYmd: getDhakaTodayYmd(), lang });
+    if (!check.ok || !check.breakdown.valid) {
+      setSubmitError(check.error ?? msg.preSubmitFailed);
+      return;
+    }
+    setSubmitError('');
     submitLockRef.current = true;
+    const resolvedChannel: ActivePaymentChannel | 'Zero-Tax' = check.breakdown.totalAmount === 0 ? 'Zero-Tax' : channel;
     const tx = addTransaction(buildTravelTransactionPayload({
-      breakdownItems: breakdown.items, totalAmount: breakdown.totalAmount, details, channel, mobileNormalized,
-      isAuthenticated, userTin: user.tin, userName: user.name, activeScope,
+      breakdownItems: check.breakdown.items, totalAmount: check.breakdown.totalAmount, details, channel: resolvedChannel,
+      mobileNormalized: check.normalizedMobile, isAuthenticated, userTin: user.tin, userName: user.name, activeScope,
     }));
     setCompletedTx(tx); setShowReceipt(isAuthenticated); setStep('success');
   };
 
   const handleProceedFromPreview = () => {
-    const mob = validateReceiptMobile(receiptMobile, breakdown.totalAmount);
-    if (!mob.valid) { setMobileError(mob.error ?? 'Invalid mobile'); return; }
+    const check = validateTravelSubmission({ passengers: confirmedPassengers, details, receiptMobile, todayYmd: getDhakaTodayYmd(), lang });
+    const mob = validateReceiptMobile(receiptMobile, breakdown.totalAmount, lang);
+    if (!mob.valid) { setMobileError(mob.error ?? msg.mobileInvalid); return; }
     setMobileError('');
-    if (breakdown.totalAmount === 0) finalizeTransaction('bKash', mob.normalized);
+    if (!check.ok) { setSubmitError(check.error ?? msg.preSubmitFailed); return; }
+    setSubmitError('');
+    if (check.breakdown.totalAmount === 0) runFinalSubmission('Zero-Tax');
     else setStep('channel');
   };
 
@@ -134,7 +137,7 @@ export function useTravelTaxFlow() {
           dob: p.dob, nationality: p.nationality, ageOnTravelDate: 0, amount: 0, confirmed: true,
         })),
         travelMode: details.travelMode, departurePort: details.departurePort, destination: details.destination,
-        travelDate: details.travelDate, contactMobile: receiptMobile || undefined, stage,
+        travelDate: details.travelDate, contactMobile: receiptMobile || undefined, stage: 1,
       },
     });
     navigate('/drafts');
@@ -143,20 +146,25 @@ export function useTravelTaxFlow() {
   const resetWalkIn = () => {
     rotateWalkInSessionId(); submitLockRef.current = false; setCompletedTx(null); setShowReceipt(false); setCertOpen(false);
     setConfirmedPassengers([]); setEntryOpen(true); setEditingId(null); setDraft(emptyDraftPassenger());
-    setDetails({ travelMode: 'Land', departurePort: '', destination: '', travelDate: '' }); setReceiptMobile(''); setStage(1); setStep('stages');
+    setDetails({ travelMode: 'Land', departurePort: '', destination: '', travelDate: '' }); setReceiptMobile('');
+    setRouteSeedError(''); setSubmitError(''); setStage(1); setStep('stages');
   };
 
+  const isDirty = confirmedPassengers.length > 0 || Boolean(draft.passportNumber || details.departurePort || details.destination || details.travelDate);
+
   return {
-    isAuthenticated, stage, setStage, step, setStep, confirmedPassengers, entryOpen, editingId, draft, setDraft, passengerErrors, setPassengerErrors,
-    details, setDetails, detailsErrors, setDetailsErrors, receiptMobile, setReceiptMobile, mobileError, setMobileError,
-    paymentChannel, setPaymentChannel, completedTx, showReceipt, setShowReceipt, certOpen, setCertOpen, breakdown,
-    handleCheckBdPassport, handleConfirmPassenger, handleEditConfirmed, handleProceedFromDetails, handleProceedFromPreview,
-    handleConfirmChannelPayment: () => finalizeTransaction(paymentChannel, validateReceiptMobile(receiptMobile, breakdown.totalAmount).normalized),
+    isAuthenticated, isDirty, routeSeedError, stage, setStage, step, setStep, confirmedPassengers, entryOpen, editingId,
+    draft, setDraft, passengerErrors, setPassengerErrors, details, setDetails, detailsErrors, setDetailsErrors,
+    receiptMobile, setReceiptMobile, mobileError, setMobileError, submitError, paymentChannel, setPaymentChannel,
+    completedTx, showReceipt, setShowReceipt, certOpen, setCertOpen, breakdown, handleCheckBdPassport,
+    handleConfirmPassenger, handleEditConfirmed, handleProceedFromDetails, handleProceedFromPreview,
+    handleConfirmChannelPayment: () => runFinalSubmission(paymentChannel),
     handleOpenAddAnother: () => { setEditingId(null); setDraft(emptyDraftPassenger()); setPassengerErrors({}); setEntryOpen(true); },
     handleCancelEntry: () => { setEditingId(null); setDraft(emptyDraftPassenger()); setPassengerErrors({}); setEntryOpen(false); },
     handleRemoveConfirmed: (id: string) => setConfirmedPassengers((prev) => { const next = prev.filter((p) => p.id !== id); if (next.length === 0) setEntryOpen(true); return next; }),
     handleProceedFromPassengers: () => {
-      if (confirmedPassengers.some((p) => p.needsRevalidation)) { setPassengerErrors({ passport: 'Revalidate masked passport numbers before continuing.' }); return; }
+      if (confirmedPassengers.length === 0) { setPassengerErrors({ passport: msg.noConfirmedPassengers }); return; }
+      if (confirmedPassengers.some((p) => p.needsRevalidation)) { setPassengerErrors({ passport: msg.revalidateBeforeContinue }); return; }
       setStage(2);
     },
     handleSaveDraft, resetWalkIn, goDashboard: () => navigate(isAuthenticated ? '/dashboard' : '/'),

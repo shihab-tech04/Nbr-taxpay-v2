@@ -1,3 +1,5 @@
+import { bnExtras } from './bnExtras';
+
 export const bnTranslation = {
   appName: 'সহজকর নাগরিক পোর্টাল',
   tagline: 'বাংলাদেশী নাগরিকদের জন্য স্মার্ট, দ্রুত ও নিরাপদ জাতীয় কর প্রদান পোর্টাল',
@@ -192,4 +194,5 @@ export const bnTranslation = {
   dateMaxError: 'তারিখ {{maxDate}}-এর পরে হতে পারবে না।',
   datePastError: 'তারিখ অতীতের হতে পারবে না।',
   dateFutureError: 'তারিখ ভবিষ্যতের হতে পারবে না।',
+  ...bnExtras,
 };

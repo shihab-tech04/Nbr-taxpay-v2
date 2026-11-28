@@ -28,7 +28,7 @@ export const TAX_HEADS: TaxHeadItem[] = [
   { id: 'h7', code: '0115', nameEn: 'Source Tax / TDS on Salaries & Supply', nameBn: 'উৎস কর / বেতন ও সরবরাহ থেকে কর্তন', category: 'source_tax', isWithholding: true, descriptionEn: 'Deposit TDS/TCS as a withholding agent.' },
   { id: 'h8', code: '0116', nameEn: 'Taxes Appellate Tribunal Fee / Deposit', nameBn: 'আপিল ট্রাইব্যুনাল ফি / জমা', category: 'appellate_tribunal', descriptionEn: 'Payment under Appellate Tribunal payment head.' },
   { id: 'h9', code: '0117', nameEn: 'Property Transfer & Capital Gains Surcharge', nameBn: 'সম্পত্তি হস্তান্তর ও মূলধনী লাভ সারচার্জ', category: 'other_tax', descriptionEn: 'Other statutory income tax heads and surcharges.' },
-  { id: 'h5', code: '0120', nameEn: 'Travel Tax (Land / Water)', nameBn: 'ভ্রমণ কর (স্থল / জলপথ)', category: 'travel_tax', descriptionEn: 'Mandatory departure tax for international land and water travel.' },
+  { id: 'h5', code: '1144102', nameEn: 'Travel Tax (Land / Water)', nameBn: 'ভ্রমণ কর (স্থল / জলপথ)', category: 'travel_tax', descriptionEn: 'Mandatory departure tax for international land and water travel.' },
   { id: 'h6', code: '0130', nameEn: 'Gift Tax (দানকর)', nameBn: 'দানকর (Gift Tax)', category: 'gift_tax', descriptionEn: 'Tax on taxable gifts made to non-exempt recipients.' },
 ];
 

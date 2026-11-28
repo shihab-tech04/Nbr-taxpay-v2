@@ -137,7 +137,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs">
             <div><span className="text-slate-500 block">{t('challanNumberLabel')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.challanNumber}</strong></div>
-            <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.bankRef}</strong></div>
+            <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.bankRef || (isBn ? 'প্রযোজ্য নয় (শূন্য-কর)' : 'Not Applicable (Zero-Tax)')}</strong></div>
             <div><span className="text-slate-500 block">{isBn ? 'পরিশোধের তারিখ' : 'Payment Date'}</span><strong className="text-slate-900 dark:text-slate-100 text-sm">{new Date(transaction.createdAt).toLocaleString()}</strong></div>
             <div><span className="text-slate-500 block">{t('taxpayerTin')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm font-mono">{transaction.taxpayerTin || 'Walk-In'}</strong></div>
             <div><span className="text-slate-500 block">{t('name')}</span><strong className="text-slate-900 dark:text-slate-100 text-sm">{transaction.taxpayerName}</strong></div>

@@ -1,138 +1,27 @@
-import type {
-  Beneficiary,
-  BeneficiaryList,
-  CorrectionRequest,
-  PaymentDraft,
-  PaymentTransaction,
-  SupportTicket,
-} from '../types/tax';
-import {
-  INITIAL_BENEFICIARIES,
-  INITIAL_BENEFICIARY_LISTS,
-  INITIAL_CORRECTIONS,
-  INITIAL_DRAFTS,
-  INITIAL_SUPPORT,
-  INITIAL_TRANSACTIONS,
-} from './mockData';
-import { readJsonStorage, writeAppStorage } from './storageAdapter';
+import type { PaymentTransaction } from '../types/tax';
+import { readAppStorage, readJsonStorage, writeAppStorage } from './storageAdapter';
 import { getActiveWalkInSessionId, lookupTinIdentity } from './accountSession';
+import {
+  EMPTY_WALKIN_DATA,
+  getSeedForScope,
+  type ScopedDomainData,
+} from './scopedDomainSeeds';
 
-export interface ScopedDomainData {
-  beneficiaryLists: BeneficiaryList[];
-  beneficiaries: Beneficiary[];
-  transactions: PaymentTransaction[];
-  drafts: PaymentDraft[];
-  corrections: CorrectionRequest[];
-  supportTickets: SupportTicket[];
-}
-
-const SECONDARY_SEED: ScopedDomainData = {
-  beneficiaryLists: [
-    { id: 'list-sec-family', name: 'Family', createdAt: '2025-04-01' },
-  ],
-  beneficiaries: [
-    {
-      id: 'b-sec-1',
-      name: 'Karim Chowdhury',
-      tin: '445566778899',
-      relationship: 'Father',
-      listId: 'list-sec-family',
-      phone: '+8801911002233',
-      createdAt: '2025-04-02',
-    },
-  ],
-  transactions: [
-    {
-      id: 'tx-sec-201',
-      transactionRef: 'SOHO-2026-44109',
-      taxpayerTin: '112233445566',
-      taxpayerName: 'Tasnim Chowdhury',
-      ownerScope: 'acct_112233445566',
-      originMode: 'signed_in',
-      category: 'advance_tax',
-      items: [
-        {
-          headId: 'h2',
-          headCode: '0112',
-          headNameEn: 'Advance Income Tax (AIT)',
-          headNameBn: 'অগ্রিম আয়কর (এআইটি)',
-          assessmentYear: '2026-2027',
-          amount: 18500,
-          taxpayerTin: '112233445566',
-          taxpayerName: 'Tasnim Chowdhury',
-          category: 'advance_tax',
-          remarks: 'Chattogram advance installment',
-        },
-      ],
-      totalAmount: 18500,
-      paymentChannel: 'Nagad',
-      status: 'Completed',
-      createdAt: '2026-06-14T09:20:00Z',
-      challanNumber: 'NBR-CHL-2026-339104',
-      bankRef: 'NG-TRX-8841209',
-    },
-  ],
-  drafts: [
-    {
-      id: 'dr-sec-1',
-      title: 'Advance Tax - Chattogram Q3',
-      category: 'advance_tax',
-      items: [
-        {
-          headId: 'h2',
-          headCode: '0112',
-          headNameEn: 'Advance Income Tax (AIT)',
-          headNameBn: 'অগ্রিম আয়কর (এআইটি)',
-          assessmentYear: '2026-2027',
-          amount: 9500,
-          taxpayerTin: '112233445566',
-          taxpayerName: 'Tasnim Chowdhury',
-          category: 'advance_tax',
-          remarks: 'Q3 installment draft',
-        },
-      ],
-      updatedAt: '2026-11-22',
-    },
-  ],
-  corrections: [],
-  supportTickets: [],
-};
-
-const EMPTY_WALKIN_DATA: ScopedDomainData = {
-  beneficiaryLists: [],
-  beneficiaries: [],
-  transactions: [],
-  drafts: [],
-  corrections: [],
-  supportTickets: [],
-};
-
-export function getSeedForScope(scope: string): ScopedDomainData {
-  if (scope === 'acct_882349102384') {
-    return {
-      beneficiaryLists: [...INITIAL_BENEFICIARY_LISTS],
-      beneficiaries: [...INITIAL_BENEFICIARIES],
-      transactions: [...INITIAL_TRANSACTIONS],
-      drafts: [...INITIAL_DRAFTS],
-      corrections: [...INITIAL_CORRECTIONS],
-      supportTickets: [...INITIAL_SUPPORT],
-    };
-  }
-  if (scope === 'acct_112233445566') {
-    return {
-      beneficiaryLists: [...SECONDARY_SEED.beneficiaryLists],
-      beneficiaries: [...SECONDARY_SEED.beneficiaries],
-      transactions: [...SECONDARY_SEED.transactions],
-      drafts: [...SECONDARY_SEED.drafts],
-      corrections: [...SECONDARY_SEED.corrections],
-      supportTickets: [...SECONDARY_SEED.supportTickets],
-    };
-  }
-  return { ...EMPTY_WALKIN_DATA };
-}
+export type { ScopedDomainData };
 
 export function getScopedDomainStorageKey(scope: string): string {
   return `sohojkor_domain_${scope}`;
+}
+
+export function hasCorruptScopedDomainStorage(scope: string): boolean {
+  const saved = readAppStorage(getScopedDomainStorageKey(scope));
+  if (!saved) return false;
+  try {
+    const parsed = JSON.parse(saved);
+    return !parsed || typeof parsed !== 'object' || Array.isArray(parsed);
+  } catch {
+    return true;
+  }
 }
 
 export function readScopedDomainData(
@@ -142,8 +31,14 @@ export function readScopedDomainData(
   const seed = getSeedForScope(scope);
   const raw = readJsonStorage<ScopedDomainData>(getScopedDomainStorageKey(scope), seed);
   const lists = Array.isArray(raw.beneficiaryLists) ? raw.beneficiaryLists : seed.beneficiaryLists;
+  const notifications = Array.isArray(raw.notifications) ? raw.notifications : seed.notifications;
   if (scope !== 'walkin' || options.includeAllSessions) {
-    return { ...seed, ...raw, beneficiaryLists: lists };
+    return {
+      ...seed,
+      ...raw,
+      beneficiaryLists: lists,
+      notifications: scope === 'walkin' ? [] : notifications,
+    };
   }
   const activeGuestSession = getActiveWalkInSessionId();
   return {
@@ -152,6 +47,7 @@ export function readScopedDomainData(
     beneficiaryLists: [],
     drafts: [],
     beneficiaries: [],
+    notifications: [],
     transactions: (raw.transactions ?? []).filter(
       (tx) => !tx.walkInSessionId || tx.walkInSessionId === activeGuestSession
     ),
@@ -189,4 +85,3 @@ export function claimWalkInTransactionInStorage(
   });
   return claimed;
 }
-

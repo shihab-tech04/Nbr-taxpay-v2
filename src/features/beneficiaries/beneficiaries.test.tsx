@@ -10,9 +10,12 @@ import { AppDateLocalizationProvider } from '../../design-system/dates';
 import i18n from '../../i18n/i18n';
 import { AppProvider } from '../../shared/AppContext';
 import { INITIAL_BENEFICIARIES, INITIAL_BENEFICIARY_LISTS, INITIAL_TRANSACTIONS } from '../../shared/mockData';
+import { bulkDeleteBeneficiariesInDomain, bulkMoveBeneficiariesInDomain, deleteListFromDomain } from '../../shared/domainMutations';
+import { getSeedForScope } from '../../shared/scopedDomainSeeds';
 import type { Beneficiary, PaymentTransaction } from '../../types/tax';
 import {
   APPROVED_RELATIONSHIPS,
+  formatBeneficiaryDisplayName,
   formatBeneficiaryDisplayTag,
   getBeneficiaryTimelineEntries,
   validateBeneficiaryInput,
@@ -30,22 +33,29 @@ function renderWithProviders(node: React.ReactElement): string {
   );
 }
 
-test('beneficiaryLogic enforces 9 relationships, Others 1-80 chars, no duplicate standard tags, optional phone', () => {
+test('beneficiaryLogic allows optional name, requires 12-digit TIN + relationship, Others 1-80 chars, and BN errors', () => {
   assert.equal(APPROVED_RELATIONSHIPS.length, 9);
 
-  // Empty Others note rejected
+  // Optional blank name passes when TIN and relationship are valid
+  const optionalNameValid = validateBeneficiaryInput(
+    { name: '', tin: '551122334455', relationship: 'Mother' },
+    INITIAL_BENEFICIARIES
+  );
+  assert.deepEqual(optionalNameValid, {});
+
+  const nameless: Beneficiary = {
+    id: 'b-noname', name: '', tin: '551122334455', relationship: 'Mother', createdAt: '2026-01-01',
+  };
+  assert.equal(formatBeneficiaryDisplayName(nameless, (k) => k), 'mother (551122334455)');
+
+  // Empty Others note rejected (EN & BN)
   const emptyNote = validateBeneficiaryInput(
     { name: 'Partner A', tin: '551122334455', relationship: 'Others', relationshipNote: '' },
-    INITIAL_BENEFICIARIES
+    INITIAL_BENEFICIARIES,
+    undefined,
+    'bn'
   );
-  assert.ok(emptyNote.relationshipNote);
-
-  // Over 80 chars rejected
-  const longNote = validateBeneficiaryInput(
-    { name: 'Partner A', tin: '551122334455', relationship: 'Others', relationshipNote: 'x'.repeat(81) },
-    INITIAL_BENEFICIARIES
-  );
-  assert.ok(longNote.relationshipNote);
+  assert.match(emptyNote.relationshipNote ?? '', /১–৮০/);
 
   // Duplicate built-in relationship label rejected in Others
   const dupStandard = validateBeneficiaryInput(
@@ -69,7 +79,7 @@ test('beneficiaryLogic enforces 9 relationships, Others 1-80 chars, no duplicate
 
   // Duplicate TIN rejected for create, allowed for self-edit
   const dupTin = validateBeneficiaryInput(
-    { name: 'Clone', tin: INITIAL_BENEFICIARIES[0].tin, relationship: 'Mother' },
+    { name: '', tin: INITIAL_BENEFICIARIES[0].tin, relationship: 'Mother' },
     INITIAL_BENEFICIARIES
   );
   assert.ok(dupTin.tin);
@@ -79,6 +89,21 @@ test('beneficiaryLogic enforces 9 relationships, Others 1-80 chars, no duplicate
     INITIAL_BENEFICIARIES[0].id
   );
   assert.deepEqual(selfEdit, {});
+});
+
+test('domainMutations support safe list deletion transfer, bulk move, and bulk delete', () => {
+  const seed = getSeedForScope('acct_882349102384');
+  // Cannot delete non-empty list without a valid different transfer target
+  const blocked = deleteListFromDomain(seed, INITIAL_BENEFICIARY_LISTS[0].id);
+  assert.equal(blocked.deleted, false);
+
+  const moved = bulkMoveBeneficiariesInDomain(seed, [INITIAL_BENEFICIARIES[0].id], INITIAL_BENEFICIARY_LISTS[2].id);
+  assert.equal(moved.movedCount, 1);
+  assert.equal(moved.next.beneficiaries.find((b) => b.id === INITIAL_BENEFICIARIES[0].id)?.listId, INITIAL_BENEFICIARY_LISTS[2].id);
+
+  const deleted = bulkDeleteBeneficiariesInDomain(moved.next, [INITIAL_BENEFICIARIES[0].id, INITIAL_BENEFICIARIES[1].id]);
+  assert.equal(deleted.removedCount, 2);
+  assert.equal(deleted.next.beneficiaries.length, seed.beneficiaries.length - 2);
 });
 
 test('getBeneficiaryTimelineEntries enforces ownerScope isolation and item-level allocation sums', () => {
@@ -105,9 +130,10 @@ test('getBeneficiaryTimelineEntries enforces ownerScope isolation and item-level
   assert.equal(entries[0].transaction.transactionRef, 'SOHO-COMB-1');
 });
 
-test('BeneficiariesView, BeneficiaryListManager, and BeneficiariesTable render lists, display format, Make Payment, and omit Excel', async () => {
+test('BeneficiariesView, BeneficiaryListManager (Filter dialog), BeneficiaryBulkBar, and BeneficiariesTable render cleanly without Excel', async () => {
   const { BeneficiariesTable } = await import('./components/BeneficiariesTable');
   const { BeneficiaryListManager } = await import('./components/BeneficiaryListManager');
+  const { BeneficiaryBulkBar } = await import('./components/BeneficiaryBulkBar');
   assert.equal(INITIAL_BENEFICIARY_LISTS.length, 3);
   const viewHtml = renderWithProviders(
     <AppProvider>
@@ -117,6 +143,7 @@ test('BeneficiariesView, BeneficiaryListManager, and BeneficiariesTable render l
     </AppProvider>
   );
   assert.match(viewHtml, /data-testid="beneficiary-list-filters"/);
+  assert.match(viewHtml, /data-testid="beneficiary-filter-trigger"/);
   assert.doesNotMatch(viewHtml, /\b(Excel|CSV|XLSX|Import\s+Excel|Export\s+Excel|Export\s+CSV)\b/i);
 
   const listHtml = renderWithProviders(
@@ -130,19 +157,35 @@ test('BeneficiariesView, BeneficiaryListManager, and BeneficiariesTable render l
       onDeleteList={() => false}
     />
   );
-  assert.match(listHtml, /All \(3\)/);
-  assert.match(listHtml, /Family \(2\)/);
+  assert.match(listHtml, /Filter: All Lists \(3\)/);
+
+  const bulkHtml = renderWithProviders(
+    <BeneficiaryBulkBar
+      selectedCount={2}
+      lists={INITIAL_BENEFICIARY_LISTS}
+      onClearSelection={() => {}}
+      onConfirmMove={() => {}}
+      onConfirmDelete={() => {}}
+    />
+  );
+  assert.match(bulkHtml, /data-testid="beneficiary-bulk-bar"/);
+  assert.match(bulkHtml, /Move to List/);
+  assert.match(bulkHtml, /Delete Selected/);
 
   const tableHtml = renderWithProviders(
     <BeneficiariesTable
       beneficiaries={INITIAL_BENEFICIARIES}
       lists={INITIAL_BENEFICIARY_LISTS}
+      selectedIds={[INITIAL_BENEFICIARIES[0].id]}
+      onToggleSelect={() => {}}
+      onToggleSelectAll={() => {}}
       onMakePayment={() => {}}
       onViewTimeline={() => {}}
       onRequestEdit={() => {}}
       onRequestDelete={() => {}}
     />
   );
+  assert.match(tableHtml, /Select all visible/);
   assert.match(tableHtml, /Mrs\. Fatema Begum · Mother/);
   assert.match(tableHtml, /Make Payment/);
   assert.doesNotMatch(tableHtml, /\b(Excel|CSV|XLSX|Import\s+Excel|Export\s+Excel|Export\s+CSV)\b/i);

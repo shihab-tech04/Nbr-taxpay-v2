@@ -111,7 +111,7 @@ export const AllTaxFormStep: React.FC<AllTaxFormStepProps> = (props) => {
               helperText={props.beneficiaryError || t('selectBeneficiaryHelper')}
               options={[
                 { value: '', label: t('selectBeneficiaryOption') },
-                ...props.beneficiaries.map((b) => ({ value: b.tin, label: `${b.name} (TIN: ${b.tin} - ${b.relationship})` })),
+                ...props.beneficiaries.map((b) => ({ value: b.tin, label: `${b.name.trim() || b.relationship} (TIN: ${b.tin} - ${b.relationship})` })),
               ]}
             />
           )}

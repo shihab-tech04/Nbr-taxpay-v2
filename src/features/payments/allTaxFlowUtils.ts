@@ -15,7 +15,8 @@ export function buildInitialTaxpayers(
   state?: AllTaxRouteState | null
 ): SelectedTaxpayerEntry[] {
   if (state?.selectedBeneficiary) {
-    return [{ tin: state.selectedBeneficiary.tin, name: state.selectedBeneficiary.name, source: 'beneficiary' }];
+    const label = state.selectedBeneficiary.name.trim() || state.selectedBeneficiary.relationship;
+    return [{ tin: state.selectedBeneficiary.tin, name: label, source: 'beneficiary' }];
   }
   const fromItems = (state?.resumeDraft?.items ?? state?.reuseTx?.items ?? [])
     .filter((i) => i.taxpayerTin)

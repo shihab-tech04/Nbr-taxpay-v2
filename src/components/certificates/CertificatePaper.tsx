@@ -97,8 +97,8 @@ export const CertificatePaper: React.FC<CertificatePaperProps> = ({
 
       <section className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
         <div><span className="text-slate-500 block">{t('challanNumberLabel')}</span><strong className="font-mono break-all">{cert.challanNumber}</strong></div>
-        <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="font-mono break-all">{cert.bankRef}</strong></div>
-        <div><span className="text-slate-500 block">{isBn ? 'তারিখ ও মাধ্যম' : 'Date & Channel'}</span><strong>{new Date(cert.createdAt).toLocaleDateString()} · {cert.paymentChannel}</strong></div>
+        <div><span className="text-slate-500 block">{isBn ? 'ব্যাংক রেফারেন্স' : 'Bank Reference'}</span><strong className="font-mono break-all">{cert.bankRef || (isBn ? 'প্রযোজ্য নয় (শূন্য-কর)' : 'Not Applicable (Zero-Tax)')}</strong></div>
+        <div><span className="text-slate-500 block">{isBn ? 'তারিখ ও মাধ্যম' : 'Date & Channel'}</span><strong>{new Date(cert.createdAt).toLocaleDateString()} · {cert.paymentChannel === 'Zero-Tax' ? (isBn ? 'শূন্য-কর' : 'Zero-Tax Assessment') : cert.paymentChannel}</strong></div>
         <div><span className="text-slate-500 block">{isBn ? 'প্রদানকারী' : 'Payer'}</span><strong className="break-words">{cert.taxpayerName || (isBn ? 'ওয়াক-ইন করদাতা' : 'Walk-In Taxpayer')}</strong></div>
         <div><span className="text-slate-500 block">{t('taxpayerTin')}</span><strong className="font-mono">{cert.taxpayerTin || 'Walk-In'}</strong></div>
         <div><span className="text-slate-500 block">{t('assessmentYear')}</span><strong className="font-mono">{cert.assessmentYears}</strong></div>

@@ -1,15 +1,17 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AppBar, Toolbar } from '@mui/material';
-import { Moon, Sun } from 'lucide-react';
+import { AppBar, Badge, Toolbar } from '@mui/material';
+import { Bell, Moon, Sun } from 'lucide-react';
 import { usePreferences } from '../shared/PreferencesContext';
 import { useSession } from '../shared/SessionContext';
+import { useDomainState } from '../shared/DomainStateContext';
 import { AppButton, AppIconButton } from '../design-system/buttons';
 import { NavbarDesktopLinks } from './NavbarDesktopLinks';
 import { NavbarAccountMenu } from './NavbarAccountMenu';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, signOutClean } = useSession();
+  const { unreadNotificationCount } = useDomainState();
   const { language, setLanguage, themeMode, toggleTheme } = usePreferences();
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +66,20 @@ export const Navbar: React.FC = () => {
             {language === 'en' ? 'বাংলা' : 'EN'}
           </AppButton>
 
+          {isAuthenticated && (
+            <AppIconButton
+              aria-label={language === 'bn' ? 'বিজ্ঞপ্তি দেখুন' : 'View Notifications'}
+              onClick={() => navigate('/notifications')}
+              size="small"
+              data-testid="navbar-notifications-btn"
+              title={language === 'bn' ? 'বিজ্ঞপ্তি' : 'Notifications'}
+            >
+              <Badge badgeContent={unreadNotificationCount} color="error" max={9}>
+                <Bell size={18} />
+              </Badge>
+            </AppIconButton>
+          )}
+
           <AppIconButton aria-label="Toggle Theme" onClick={toggleTheme} size="small" title="Toggle Theme">
             {themeMode === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </AppIconButton>
@@ -71,6 +87,7 @@ export const Navbar: React.FC = () => {
           <NavbarAccountMenu
             userName={user.name}
             isAuthenticated={isAuthenticated}
+            unreadNotifications={unreadNotificationCount}
             onSignOut={handleSignOut}
           />
         </div>

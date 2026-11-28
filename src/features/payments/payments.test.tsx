@@ -22,10 +22,13 @@ import { calculateGiftTaxAmount, validateGiftPartiesStep, validateGiftValuationS
 import { GiftTaxPreviewStep } from '../gift-tax/components/GiftTaxPreviewStep';
 import { GiftTaxValuationStep } from '../gift-tax/components/GiftTaxValuationStep';
 import {
-  calcAgeOnDate, calculatePassengerTaxForAge, calculateTravelBreakdown, lookupBdPassport,
-  maskPassport, validatePassengerDraft, validateReceiptMobile, validateTravelDetails,
+  calcAgeOnDate, calculatePassengerTaxForAge, calculateTravelBreakdown, isMaskedPassportValue,
+  lookupBdPassport, maskPassport, validatePassengerDraft, validateReceiptMobile,
+  validateTravelDetails, validateTravelSubmission,
 } from '../travel-tax/travelTaxLogic';
-import { BD_SAMPLE_PASSPORTS, LAND_PORTS } from '../travel-tax/travelTaxTypes';
+import { buildTravelTransactionPayload, resolveTravelRouteSeed } from '../travel-tax/travelTaxFlowUtils';
+import { BD_SAMPLE_PASSPORTS, LAND_PORTS, TRAVEL_TAX_ECONOMIC_CODE, TRAVEL_TAX_YEAR } from '../travel-tax/travelTaxTypes';
+import { SharedPayTaxProgressiveModal } from '../../components/payments/SharedPayTaxProgressiveModal';
 import { TravelPassengerStep } from '../travel-tax/components/TravelPassengerStep';
 import { TravelDetailsStep } from '../travel-tax/components/TravelDetailsStep';
 import { TravelTaxPreviewStep } from '../travel-tax/components/TravelTaxPreviewStep';
@@ -108,7 +111,10 @@ test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, ag
   assert.equal(lookupBdPassport('TEST123456')?.passengerName, 'Md. Rafiqul Islam');
   assert.equal(lookupBdPassport('TEST230009')?.passengerName, 'Arifur Rahman');
   assert.equal(lookupBdPassport('UNKNOWN99'), null);
-  assert.equal(maskPassport('TEST123456'), 'TE******56');
+  assert.equal(maskPassport('TEST123456'), '••••3456');
+  assert.equal(isMaskedPassportValue('••••3456'), true);
+  assert.equal(TRAVEL_TAX_YEAR, '2026–27');
+  assert.equal(TRAVEL_TAX_ECONOMIC_CODE, '1144102');
 
   // Exact age boundaries on 2026-11-28: 5 -> 0, 6 -> 500, 12 -> 500, 13 -> 1000
   assert.equal(calcAgeOnDate('2021-11-29', '2026-11-28'), 4);
@@ -149,19 +155,58 @@ test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, ag
   assert.equal(validateReceiptMobile('01712345678', 1000).valid, true);
 
   const infantBreakdown = calculateTravelBreakdown([
-    { id: 'inf', passportType: 'BD', passportNumber: 'TEST230003', passportMasked: 'TE******03', passengerName: 'Ayaan Hossain', dob: '2023-02-18' },
+    { id: 'inf', passportType: 'BD', passportNumber: 'TEST230003', passportMasked: '••••0003', passengerName: 'Ayaan Hossain', dob: '2023-02-18' },
   ], '2026-11-28');
   assert.equal(infantBreakdown.valid, true);
   assert.equal(infantBreakdown.totalAmount, 0);
 
-  const walkInTravelTx = createExperimentalTransaction({
-    taxpayerTin: '', taxpayerName: 'Ayaan Hossain', ownerScope: 'walkin', originMode: 'walk_in', category: 'travel_tax',
-    travelDetails: { passportNumber: 'TEST230003', passportMasked: 'TE******03', travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2026-11-28' },
-    items: [{ headId: 'h5', headCode: '0120', headNameEn: 'Travel Tax', headNameBn: 'ভ্রমণ কর', assessmentYear: '2025-2026', amount: 0 }],
-    totalAmount: 0, paymentChannel: 'bKash', status: 'Completed',
+  // Cycle 15: Masked passport rejected & BN localized validation supported
+  const maskedErr = validatePassengerDraft({
+    id: 'm1', passportType: 'BD', passportNumber: '••••3456', passengerName: '', dob: '', nationality: '', bdChecked: true, medicalAssessment: false,
+  }, [], null, '2026-11-28', 'bn');
+  assert.match(maskedErr.passport ?? '', /মাস্ক করা/);
+  assert.equal(calculateTravelBreakdown([
+    { id: 'reval', passportType: 'BD', passportNumber: '', passportMasked: '••••3456', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14', needsRevalidation: true },
+  ], '2026-11-28').valid, false);
+
+  // Cycle 15: Zero-tax Travel Tax must NOT set bKash or fabricated bankRef, and uses 2026–27 / 1144102
+  const zeroPayload = buildTravelTransactionPayload({
+    breakdownItems: infantBreakdown.items, totalAmount: 0,
+    details: { travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2026-11-28' },
+    channel: 'bKash', mobileNormalized: '', isAuthenticated: false, userTin: '', userName: '', activeScope: 'walkin',
   });
+  assert.equal(zeroPayload.items[0].headCode, '1144102');
+  assert.equal(zeroPayload.items[0].assessmentYear, '2026–27');
+  assert.equal(zeroPayload.paymentChannel, 'Zero-Tax');
+
+  const walkInTravelTx = createExperimentalTransaction(zeroPayload);
+  assert.equal(walkInTravelTx.paymentChannel, 'Zero-Tax');
+  assert.equal(walkInTravelTx.bankRef, '');
   assert.equal(walkInTravelTx.travelDetails?.passportNumber, undefined);
   assert.equal(isTransactionReconciled(walkInTravelTx), true);
+
+  // Cycle 15: Resume draft and Pay Again enforce passport revalidation & reject forged/cross-account state
+  const forgedSeed = resolveTravelRouteSeed({
+    routeState: { reuseTx: { ...walkInTravelTx, id: 'forged-tx', ownerScope: 'acct_112233445566' } },
+    activeScope: 'acct_882349102384', isAuthenticated: true, drafts: [], transactions: [], lang: 'en',
+  });
+  assert.equal(forgedSeed.rejected, true);
+  assert.equal(forgedSeed.passengers.length, 0);
+
+  const validReuseSeed = resolveTravelRouteSeed({
+    routeState: { reuseTx: { ...walkInTravelTx, ownerScope: 'acct_882349102384' } },
+    activeScope: 'acct_882349102384', isAuthenticated: true, drafts: [], transactions: [{ ...walkInTravelTx, ownerScope: 'acct_882349102384' }],
+  });
+  assert.equal(validReuseSeed.rejected, false);
+  assert.equal(validReuseSeed.passengers[0].passportNumber, '');
+  assert.equal(validReuseSeed.passengers[0].needsRevalidation, true);
+
+  // Pre-submit validation rechecks mobile, date, and revalidation
+  assert.equal(validateTravelSubmission({
+    passengers: validReuseSeed.passengers,
+    details: { travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2026-11-28' },
+    receiptMobile: '01712345678', todayYmd: '2026-11-28', lang: 'bn',
+  }).ok, false);
 });
 
 test('Walk-in claim rejects mismatched owner, forged ref, stale session, and preserves original payer identity', () => {
@@ -183,7 +228,7 @@ test('Walk-in claim rejects mismatched owner, forged ref, stale session, and pre
   try {
     const s1 = rotateWalkInSessionId();
     writeScopedDomainData('walkin', {
-      beneficiaryLists: [], beneficiaries: [], drafts: [], corrections: [], supportTickets: [],
+      beneficiaryLists: [], beneficiaries: [], drafts: [], corrections: [], supportTickets: [], notifications: [],
       transactions: [{ ...INITIAL_TRANSACTIONS[0], id: 'wk-1', transactionRef: 'SOHO-WK-TEST-1', ownerScope: 'walkin', originMode: 'walk_in', walkInSessionId: s1 }],
     });
     assert.deepEqual(claimWalkInTransactionWithResult('FORGED-REF', '882349102384'), { ok: false, reason: 'not_found_or_forged' });
@@ -229,6 +274,11 @@ test('AllTax, Gift Tax, and Travel Tax 3 stages render cleanly with shared chann
   const walkInResultHtml = renderPaymentsWithProviders(<AllTaxResultStep transaction={INITIAL_TRANSACTIONS[0]} isAuthenticated={false} onViewReceipt={() => {}} onViewCertificate={() => {}} onSignInToClaim={() => {}} onContinueWalkIn={() => {}} onReturnDashboard={() => {}} />);
   assert.match(walkInResultHtml, /Sign in to Claim Payment/);
 
+  const stage1EmptyHtml = renderPaymentsWithProviders(
+    <TravelPassengerStep confirmedPassengers={[]} draft={{ id: 'd1', passportType: 'BD', passportNumber: '', passengerName: '', dob: '', nationality: '', bdChecked: false, medicalAssessment: false }} entryOpen editingId={null} errors={{}} isAuthenticated={false} onChangeDraft={() => {}} onCheckBdPassport={() => {}} onConfirmPassenger={() => {}} onOpenAddAnother={() => {}} onCancelEntry={() => {}} onEditConfirmed={() => {}} onRemoveConfirmed={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
+  );
+  assert.match(stage1EmptyHtml, /disabled=""[^>]*>.*Check Passport|Check Passport/);
+
   const stage1Html = renderPaymentsWithProviders(
     <TravelPassengerStep confirmedPassengers={[]} draft={{ id: 'd1', passportType: 'BD', passportNumber: 'TEST123456', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14', nationality: '', bdChecked: true, medicalAssessment: false }} entryOpen editingId={null} errors={{}} isAuthenticated={false} onChangeDraft={() => {}} onCheckBdPassport={() => {}} onConfirmPassenger={() => {}} onOpenAddAnother={() => {}} onCancelEntry={() => {}} onEditConfirmed={() => {}} onRemoveConfirmed={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
   );
@@ -236,16 +286,26 @@ test('AllTax, Gift Tax, and Travel Tax 3 stages render cleanly with shared chann
   assert.match(stage1Html, /Stage 1: Passenger Information/);
 
   const stage2Html = renderPaymentsWithProviders(
-    <TravelDetailsStep passengers={[{ id: 'p1', passportType: 'BD', passportNumber: 'TEST123456', passportMasked: 'TE******56', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14' }]} details={{ travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2099-01-01' }} errors={{}} isAuthenticated={false} onChangeDetails={() => {}} onBack={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
+    <TravelDetailsStep passengers={[{ id: 'p1', passportType: 'BD', passportNumber: 'TEST123456', passportMasked: '••••3456', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14' }]} details={{ travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2099-01-01' }} errors={{}} isAuthenticated={false} onChangeDetails={() => {}} onBack={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
   );
   assert.match(stage2Html, /By Land/);
   assert.match(stage2Html, /Combined Illustrative Total/);
 
   const stage3Html = renderPaymentsWithProviders(
-    <TravelTaxPreviewStep passengers={[{ id: 'p1', passportType: 'BD', passportNumber: 'TEST123456', passportMasked: 'TE******56', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14', ageOnTravelDate: 38, amount: 1000 }]} details={{ travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2099-01-01' }} totalAmount={1000} receiptMobile="01712345678" isAuthenticated={false} onChangeReceiptMobile={() => {}} onEditPassengers={() => {}} onEditDetails={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
+    <TravelTaxPreviewStep passengers={[{ id: 'p1', passportType: 'BD', passportNumber: 'TEST123456', passportMasked: '••••3456', passengerName: 'Md. Rafiqul Islam', dob: '1988-05-14', ageOnTravelDate: 38, amount: 1000 }]} details={{ travelMode: 'Land', departurePort: 'Benapole', destination: 'Kolkata', travelDate: '2099-01-01' }} totalAmount={1000} receiptMobile="01712345678" isAuthenticated={false} onChangeReceiptMobile={() => {}} onEditPassengers={() => {}} onEditDetails={() => {}} onSaveDraft={() => {}} onProceed={() => {}} />
   );
-  assert.match(stage3Html, /TE\*\*\*\*\*\*56/);
+  assert.match(stage3Html, /••••3456/);
+  assert.match(stage3Html, /1144102/);
+  assert.match(stage3Html, /2026–27/);
   assert.match(stage3Html, /Proceed to Payment Channel/);
+
+  const progressiveModalHtml = renderPaymentsWithProviders(
+    <SharedPayTaxProgressiveModal open disablePortal onClose={() => {}} onBack={() => {}} title="Travel Tax" subtitle="Tax Year 2026–27" stepIndicator="Stage 1 of 3" summaryTitle="Live Assessment Summary" summaryMetaBadges={['1144102']} summaryLines={[]} summaryEmptyText="Empty" summaryTotalLabel="Total Payable" summaryTotalAmount={0}>
+      <div>Body</div>
+    </SharedPayTaxProgressiveModal>
+  );
+  assert.match(progressiveModalHtml, /progressive-modal-summary-rail/);
+  assert.match(progressiveModalHtml, /progressive-modal-mobile-footer/);
 
   const giftTx = INITIAL_TRANSACTIONS.find((tx) => tx.category === 'gift_tax')!;
   const receiptHtml = renderPaymentsWithProviders(<ReceiptModal open disablePortal onClose={() => {}} transaction={{ ...giftTx, giftDate: '2026-04-10' }} />);

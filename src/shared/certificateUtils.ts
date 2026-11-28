@@ -38,7 +38,8 @@ export function buildPaymentCertificateRecord(
   fallbackAuthenticated = false
 ): PaymentCertificateRecord | null {
   if (tx.status !== 'Completed') return null;
-  if (!tx.transactionRef.trim() || !tx.challanNumber.trim() || !tx.bankRef.trim()) return null;
+  const isZeroTravel = tx.category === 'travel_tax' && tx.totalAmount === 0;
+  if (!tx.transactionRef.trim() || !tx.challanNumber.trim() || (!isZeroTravel && !tx.bankRef.trim())) return null;
   if (!isTransactionReconciled(tx)) return null;
 
   const years = Array.from(new Set(tx.items.map((item) => item.assessmentYear))).filter(Boolean);
@@ -53,7 +54,7 @@ export function buildPaymentCertificateRecord(
     challanNumber: tx.challanNumber,
     bankRef: tx.bankRef,
     createdAt: tx.createdAt,
-    paymentChannel: tx.paymentChannel,
+    paymentChannel: isZeroTravel ? 'Zero-Tax' : tx.paymentChannel,
     ownerScope,
     taxpayerTin: tx.taxpayerTin,
     taxpayerName: tx.taxpayerName,
@@ -77,12 +78,14 @@ export function buildPaymentCertificateRecord(
 }
 
 export function buildCertificatePdfLines(cert: PaymentCertificateRecord): string[] {
+  const bankShow = cert.bankRef.trim() || 'Not Applicable (Zero-Tax)';
+  const channelShow = cert.paymentChannel === 'Zero-Tax' ? 'Zero-Tax Assessment' : cert.paymentChannel;
   const lines = [
     'SOHOJKOR CITIZEN PORTAL · সহজকর নাগরিক পোর্টাল — SAMPLE PAYMENT CERTIFICATE',
     'Illustrative UI preview only. Never official NBR settlement or Tax Credit verification.',
     `Certificate ID: ${cert.certificateId}`,
     `Transaction Ref: ${cert.transactionRef} | Challan: ${cert.challanNumber}`,
-    `Bank Ref: ${cert.bankRef} | Channel: ${cert.paymentChannel}`,
+    `Bank Ref: ${bankShow} | Channel: ${channelShow}`,
     `Date: ${cert.createdAt} | Origin: ${cert.lifecycleMode === 'signed_in' ? 'Signed-In' : 'Walk-In'}`,
     `Payer: ${cert.taxpayerName || 'Walk-In Taxpayer'} (TIN: ${cert.taxpayerTin || 'Walk-In'})`,
   ];
