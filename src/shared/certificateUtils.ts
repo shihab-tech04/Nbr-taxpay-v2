@@ -28,7 +28,7 @@ export interface PaymentCertificateRecord {
 
 export function isTransactionReconciled(tx: PaymentTransaction): boolean {
   if (!tx.items.length || !Number.isFinite(tx.totalAmount)) return false;
-  const allowZero = tx.category === 'travel_tax';
+  const allowZero = tx.category === 'travel_tax' || tx.category === 'gift_tax';
   if (allowZero ? tx.totalAmount < 0 : tx.totalAmount <= 0) return false;
   if (tx.items.some((i) => !Number.isFinite(i.amount) || i.amount < 0)) return false;
   const itemsTotal = tx.items.reduce((sum, item) => sum + item.amount, 0);
@@ -40,8 +40,8 @@ export function buildPaymentCertificateRecord(
   fallbackAuthenticated = false
 ): PaymentCertificateRecord | null {
   if (tx.status !== 'Completed') return null;
-  const isZeroTravel = tx.category === 'travel_tax' && tx.totalAmount === 0;
-  if (!tx.transactionRef.trim() || !tx.challanNumber.trim() || (!isZeroTravel && !tx.bankRef.trim())) return null;
+  const isZeroTax = (tx.category === 'travel_tax' || tx.category === 'gift_tax') && tx.totalAmount === 0;
+  if (!tx.transactionRef.trim() || !tx.challanNumber.trim() || (!isZeroTax && !tx.bankRef.trim())) return null;
   if (!isTransactionReconciled(tx)) return null;
 
   const years = Array.from(new Set(tx.items.map((item) => item.assessmentYear))).filter(Boolean);
@@ -56,7 +56,7 @@ export function buildPaymentCertificateRecord(
     challanNumber: tx.challanNumber,
     bankRef: tx.bankRef,
     createdAt: tx.createdAt,
-    paymentChannel: isZeroTravel ? 'Zero-Tax' : tx.paymentChannel,
+    paymentChannel: isZeroTax ? 'Zero-Tax' : tx.paymentChannel,
     ownerScope,
     taxpayerTin: tx.taxpayerTin,
     taxpayerName: tx.taxpayerName,

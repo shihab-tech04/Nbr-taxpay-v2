@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { AppButton, AppIconButton } from '../../../design-system/buttons';
 import { maskTinForDisplay } from '../../../design-system/forms';
-import { getRelationshipLabel } from '../giftTaxLogic';
+import { canUndoGiftPartyRemoval, getRelationshipLabel } from '../giftTaxLogic';
 import type { GiftPartyRecord, GiftRelationship, RemovedPartyUndoState } from '../giftTaxTypes';
 
 interface GiftTaxRightRailExtrasProps {
@@ -30,15 +30,18 @@ export const GiftTaxRightRailExtras: React.FC<GiftTaxRightRailExtrasProps> = ({
   const { i18n } = useTranslation();
   const lang = i18n.language === 'bn' ? 'bn' : 'en';
   const isBn = lang === 'bn';
+  const undoCheck = canUndoGiftPartyRemoval(undoParty, donor, donee);
 
   return (
     <div className="space-y-2.5" data-testid="gift-right-rail-parties">
       {undoParty && (
         <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2">
           <span className="text-[11px] text-amber-900 dark:text-amber-200 truncate">
-            {isBn ? `${undoParty.party.name} সরানো হয়েছে` : `Removed ${undoParty.party.name}`}
+            {!undoCheck.ok
+              ? (isBn ? 'টিআইএন ইতিমধ্যে অন্য পক্ষে যুক্ত' : 'Cannot undo (duplicate TIN)')
+              : (isBn ? `${undoParty.party.name} সরানো হয়েছে` : `Removed ${undoParty.party.name}`)}
           </span>
-          <AppButton actionType="secondary" surface="soft" size="small" startIcon={<RotateCcw size={12} />} onClick={onUndoRemove} data-testid="gift-rail-undo-btn">
+          <AppButton actionType="secondary" surface="soft" size="small" disabled={!undoCheck.ok} startIcon={<RotateCcw size={12} />} onClick={onUndoRemove} data-testid="gift-rail-undo-btn">
             {isBn ? 'পূর্বাবস্থায়' : 'Undo'}
           </AppButton>
         </div>

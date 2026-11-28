@@ -1,6 +1,10 @@
 import type { PaymentTransaction } from '../../types/tax';
 
 export function formatTxBeneficiarySummary(tx: PaymentTransaction, isBn: boolean): string {
+  if (tx.category === 'gift_tax' && tx.giftDetails) {
+    const g = tx.giftDetails;
+    return `${isBn ? 'মাধ্যমে' : 'Through'}: ${g.throughName} (${g.throughTin}) · ${g.relationshipTag}`;
+  }
   if (tx.beneficiaryTin || tx.beneficiaryName) {
     return `${tx.beneficiaryName || (isBn ? 'প্রাপক' : 'Beneficiary')}${tx.beneficiaryTin ? ` (${tx.beneficiaryTin})` : ''}`;
   }
@@ -25,6 +29,10 @@ export function formatTxHeadSummary(tx: PaymentTransaction, isBn: boolean): stri
   const first = tx.items[0];
   if (!first) return tx.category.replace(/_/g, ' ');
   const label = `[${first.headCode}] ${isBn ? first.headNameBn : first.headNameEn}`;
+  if (tx.category === 'gift_tax' && tx.giftDetails) {
+    const meta = [tx.giftDetails.giftDate, tx.giftDetails.remarks].filter(Boolean).join(' · ');
+    return meta ? `${label} (${meta})` : label;
+  }
   return tx.items.length > 1 ? `${label} (+${tx.items.length - 1})` : label;
 }
 
@@ -43,6 +51,11 @@ export function matchesHistorySearch(tx: PaymentTransaction, rawQuery: string, i
     tx.taxpayerName,
     tx.beneficiaryTin ?? '',
     tx.beneficiaryName ?? '',
+    tx.giftDetails?.onBehalfOfName ?? '',
+    tx.giftDetails?.throughName ?? '',
+    tx.giftDetails?.relationshipTag ?? '',
+    tx.giftDetails?.giftDate ?? '',
+    tx.giftDetails?.remarks ?? '',
     tx.category,
     tx.paymentChannel,
     formatTxHeadSummary(tx, isBn),

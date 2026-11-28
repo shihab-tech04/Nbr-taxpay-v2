@@ -1,17 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { executePaymentAttempt } from '../../components/payments/paymentSubmission';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { PaymentLineItem, PaymentTransaction, TaxHeadCategory } from '../../types/tax';
 import { getHeadsForCategory } from './allTaxCatalogue';
 import { resolveInitialAllTaxState, type AllTaxRouteState } from './allTaxFlowUtils';
 import {
-  calculateItemsTotal,
-  rankFrequentPaymentCategories,
-  reconcileItemsWithTaxpayers,
-  validateAndBuildTaxItem,
-  validateCombinedLineAddition,
+  calculateItemsTotal, rankFrequentPaymentCategories, reconcileItemsWithTaxpayers,
+  resolveAllTaxPayerAndRecipients, validateAndBuildTaxItem, validateCombinedLineAddition,
 } from './allTaxLogic';
 import type { SelectedTaxpayerEntry } from './components/AllTaxTaxpayerStep';
 import type { ActivePaymentChannel } from './paymentChannels';
@@ -27,11 +25,9 @@ export function useAllTaxPaymentFlow() {
 
   const [init] = useState(() =>
     resolveInitialAllTaxState({
-      routeState,
-      draftIdParam: searchParams.get('draftId'),
-      reuseRefParam: searchParams.get('reuseRef'),
-      beneficiaryIdParam: searchParams.get('beneficiaryId'),
-      drafts, transactions, beneficiaries, activeScope, isAuthenticated, userTin: user.tin, userName: user.name, isBn,
+      routeState, draftIdParam: searchParams.get('draftId'), reuseRefParam: searchParams.get('reuseRef'),
+      beneficiaryIdParam: searchParams.get('beneficiaryId'), drafts, transactions, beneficiaries,
+      activeScope, isAuthenticated, userTin: user.tin, userName: user.name, isBn,
     })
   );
 
@@ -46,13 +42,10 @@ export function useAllTaxPaymentFlow() {
   const [amountError, setAmountError] = useState('');
   const [beneficiaryError, setBeneficiaryError] = useState('');
   const [formBannerError, setFormBannerError] = useState(init.initialBanner);
+  const [submitError, setSubmitError] = useState('');
   const [remarks, setRemarks] = useState(init.resolvedDraft?.remarks ?? '');
-  const [isForBeneficiary, setIsForBeneficiary] = useState(
-    Boolean(init.resolvedBeneficiary || init.resolvedDraft?.beneficiaryTin || init.resolvedTx?.beneficiaryTin)
-  );
-  const [beneficiaryTin, setBeneficiaryTin] = useState(
-    init.resolvedBeneficiary?.tin ?? init.resolvedDraft?.beneficiaryTin ?? init.resolvedTx?.beneficiaryTin ?? ''
-  );
+  const [isForBeneficiary, setIsForBeneficiary] = useState(Boolean(init.resolvedBeneficiary || init.resolvedDraft?.beneficiaryTin || init.resolvedTx?.beneficiaryTin));
+  const [beneficiaryTin, setBeneficiaryTin] = useState(init.resolvedBeneficiary?.tin ?? init.resolvedDraft?.beneficiaryTin ?? init.resolvedTx?.beneficiaryTin ?? '');
   const [paymentChannel, setPaymentChannel] = useState<ActivePaymentChannel>('bKash');
   const [items, setItems] = useState<PaymentLineItem[]>(init.initialReconciled.validItems);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -62,23 +55,29 @@ export function useAllTaxPaymentFlow() {
 
   const frequentCategories = useMemo(() => rankFrequentPaymentCategories(transactions, isAuthenticated, 5), [transactions, isAuthenticated]);
   const totalAmount = calculateItemsTotal(items);
-  const hasValidatedTotal = Boolean(
-    completedTx || (step !== 'chooser' && step !== 'taxpayer' && items.length > 0 && editingIndex === null && reconcileItemsWithTaxpayers(items, selectedTaxpayers, liabilityMode).removedCount === 0)
-  );
+  const hasValidatedTotal = Boolean(completedTx || (items.length > 0 && editingIndex === null && reconcileItemsWithTaxpayers(items, selectedTaxpayers, liabilityMode).removedCount === 0));
+  const payerAndRecipients = useMemo(() => resolveAllTaxPayerAndRecipients({
+    isAuthenticated, userTin: user.tin, userName: user.name, selectedTaxpayers, items,
+    legacyBeneficiaryTin: isForBeneficiary ? beneficiaryTin : undefined,
+    legacyBeneficiaryName: isForBeneficiary ? beneficiaries.find((b) => b.tin === beneficiaryTin)?.name : undefined,
+  }), [beneficiaries, beneficiaryTin, isAuthenticated, isForBeneficiary, items, selectedTaxpayers, user.name, user.tin]);
+
+  const handleCancelEdit = () => { setEditingIndex(null); setAmountInput(''); setRemarks(''); setAmountError(''); setFormBannerError(''); };
 
   const applyTaxpayerReconciliation = (nextTaxpayers: SelectedTaxpayerEntry[], nextMode: 'own' | 'facilitation') => {
     const rec = reconcileItemsWithTaxpayers(items, nextTaxpayers, nextMode);
     if (rec.removedCount > 0) {
       setItems(rec.validItems);
-      setEditingIndex(null);
+      handleCancelEdit();
       setFormBannerError(isBn ? `করদাতা পরিবর্তনের ফলে ${rec.removedCount}টি অসঙ্গত খাত বাদ দেওয়া হয়েছে।` : `Removed ${rec.removedCount} allocation(s) belonging to deselected taxpayers.`);
     }
   };
 
   const setLiabilityMode = (mode: 'own' | 'facilitation') => {
     setLiabilityModeState(mode);
-    const nextTaxpayers = mode === 'own' && isAuthenticated && user.tin ? [{ tin: user.tin, name: user.name, source: 'self' as const }] : selectedTaxpayers;
-    if (mode === 'own' && isAuthenticated && user.tin) { setSelectedTaxpayersState(nextTaxpayers); setSelectedTaxpayerTin(user.tin); }
+    const nextTaxpayers = mode === 'own' && isAuthenticated && user.tin ? [{ tin: user.tin, name: user.name, source: 'self' as const }] : mode === 'own' ? selectedTaxpayers.slice(0, 1) : selectedTaxpayers;
+    setSelectedTaxpayersState(nextTaxpayers);
+    if (nextTaxpayers.length > 0 && !nextTaxpayers.some((tp) => tp.tin === selectedTaxpayerTin)) setSelectedTaxpayerTin(nextTaxpayers[0].tin);
     applyTaxpayerReconciliation(nextTaxpayers, mode);
   };
 
@@ -89,17 +88,10 @@ export function useAllTaxPaymentFlow() {
   };
 
   const handleSelectCategory = (cat: TaxHeadCategory) => {
-    if (cat !== selectedCategory && items.length > 0 && cat !== 'other_tax') {
-      const catMatches = items.filter((item) => item.category === cat);
-      if (catMatches.length !== items.length) { setItems(catMatches); setEditingIndex(null); }
-    }
     setSelectedCategory(cat);
     const firstHead = getHeadsForCategory(cat)[0];
     if (firstHead) setSelectedHeadId(firstHead.id);
-    if (selectedTaxpayers.length === 0 && isAuthenticated && user.tin) {
-      setSelectedTaxpayersState([{ tin: user.tin, name: user.name, source: 'self' }]);
-      setSelectedTaxpayerTin(user.tin);
-    }
+    if (selectedTaxpayers.length === 0 && isAuthenticated && user.tin) { setSelectedTaxpayersState([{ tin: user.tin, name: user.name, source: 'self' }]); setSelectedTaxpayerTin(user.tin); }
     setStep('taxpayer');
   };
 
@@ -108,17 +100,16 @@ export function useAllTaxPaymentFlow() {
     const activeTp = selectedTaxpayers.find((tp) => tp.tin === selectedTaxpayerTin) ?? selectedTaxpayers[0];
     const result = validateAndBuildTaxItem({ selectedHeadId, amountInput, assessmentYear, remarks, taxpayerTin: activeTp?.tin, taxpayerName: activeTp?.name });
     if (!result.ok) {
-      if (result.reason !== 'missing_head') setAmountError(result.reason === 'min' ? t('amountMinError', { amount: '100' }) : t('amountInvalidError'));
+      if (result.reason === 'missing_taxpayer') setFormBannerError(isBn ? 'অনুগ্রহ করে বৈধ করদাতা নির্বাচন করুন।' : 'Select a valid taxpayer before adding an allocation.');
+      else if (result.reason !== 'missing_head') setAmountError(result.reason === 'min' ? t('amountMinError', { amount: '100' }) : t('amountInvalidError'));
       return;
     }
     const baseItems = editingIndex !== null ? items.filter((_, idx) => idx !== editingIndex) : items;
     const ruleCheck = validateCombinedLineAddition(baseItems, result.item, activeTp?.tin || user.tin || 'WALKIN');
     if (!ruleCheck.ok) {
       setFormBannerError(
-        ruleCheck.reason === 'duplicate_line'
-          ? (isBn ? 'একই করদাতা, কর খাত ও কর বর্ষ ইতিমধ্যে যুক্ত আছে।' : 'This taxpayer, tax head, and assessment year is already in your challan.')
-          : ruleCheck.reason === 'return_single_ay_per_taxpayer'
-          ? (isBn ? 'একই করদাতার রিটার্নসহ করের জন্য কেবল ১টি কর বর্ষ অনুমোদিত।' : 'Tax with Return permits only one Assessment Year per taxpayer.')
+        ruleCheck.reason === 'duplicate_line' ? (isBn ? 'একই করদাতা, কর খাত ও কর বর্ষ ইতিমধ্যে যুক্ত আছে।' : 'This taxpayer, tax head, and assessment year is already in your challan.')
+          : ruleCheck.reason === 'return_single_ay_per_taxpayer' ? (isBn ? 'একই করদাতার রিটার্নসহ করের জন্য কেবল ১টি কর বর্ষ অনুমোদিত।' : 'Tax with Return permits only one Assessment Year per taxpayer.')
           : (isBn ? 'একই করদাতার জন্য রিটার্নসহ কর ও অন্যান্য খাত একসাথে যোগ করা যাবে না।' : 'Cannot mix Tax with Return and non-Return heads for the same taxpayer (allowed across different taxpayers).')
       );
       return;
@@ -129,16 +120,11 @@ export function useAllTaxPaymentFlow() {
   };
 
   const handleEditItem = (idx: number) => {
-    const target = items[idx];
-    if (!target) return;
-    setEditingIndex(idx);
-    if (target.taxpayerTin) setSelectedTaxpayerTin(target.taxpayerTin);
+    const target = items[idx]; if (!target) return;
+    setEditingIndex(idx); if (target.taxpayerTin) setSelectedTaxpayerTin(target.taxpayerTin);
     setSelectedHeadId(target.headId); setAssessmentYear(target.assessmentYear);
-    setAmountInput(String(target.amount)); setRemarks(target.remarks ?? '');
-    setAmountError(''); setFormBannerError('');
+    setAmountInput(String(target.amount)); setRemarks(target.remarks ?? ''); setAmountError(''); setFormBannerError('');
   };
-
-  const handleCancelEdit = () => { setEditingIndex(null); setAmountInput(''); setRemarks(''); setAmountError(''); setFormBannerError(''); };
 
   const handleRemoveItem = (idx: number) => {
     setItems((prev) => prev.filter((_, i) => i !== idx));
@@ -151,29 +137,31 @@ export function useAllTaxPaymentFlow() {
     const rec = reconcileItemsWithTaxpayers(items, selectedTaxpayers, liabilityMode);
     if (rec.removedCount > 0) { setItems(rec.validItems); setFormBannerError(isBn ? 'অসঙ্গত করদাতার খাত বাদ দেওয়া হয়েছে।' : 'Orphan taxpayer allocations were removed.'); return; }
     if (rec.validItems.length === 0) { setFormBannerError(t('noItemsError')); return; }
-    setBeneficiaryError(''); setFormBannerError(''); setStep('preview');
+    setBeneficiaryError(''); setFormBannerError(''); setSubmitError(''); setStep('preview');
   };
 
   const handleConfirmPayment = () => {
-    if (!isRestrictedOperationAllowed('payment_submit') || submitLockRef.current) return;
+    if (!isRestrictedOperationAllowed('payment_submit')) return;
     const rec = reconcileItemsWithTaxpayers(items, selectedTaxpayers, liabilityMode);
     if (rec.removedCount > 0 || rec.validItems.length === 0) { setItems(rec.validItems); setStep('form'); setFormBannerError(isBn ? 'জমা দেওয়ার আগে অসঙ্গত খাত বাদ দেওয়া হয়েছে।' : 'Orphan allocations rejected before submission.'); return; }
-    submitLockRef.current = true;
-    const primaryTp = selectedTaxpayers[0];
-    const extraTp = selectedTaxpayers.find((tp) => tp.source === 'beneficiary');
-    const tx = addTransaction({
-      taxpayerTin: isAuthenticated ? user.tin : primaryTp?.tin ?? '', taxpayerName: isAuthenticated ? user.name : primaryTp?.name ?? 'Walk-In Taxpayer',
-      ownerScope: activeScope, originMode: isAuthenticated ? 'signed_in' : 'walk_in',
-      beneficiaryTin: extraTp?.tin ?? (isForBeneficiary ? beneficiaryTin : undefined),
-      beneficiaryName: extraTp?.name ?? (isForBeneficiary ? beneficiaries.find((b) => b.tin === beneficiaryTin)?.name : undefined),
-      category: selectedCategory, items: rec.validItems, totalAmount: calculateItemsTotal(rec.validItems), paymentChannel, status: 'Completed',
+    setSubmitError('');
+    executePaymentAttempt({
+      lockRef: submitLockRef,
+      fallbackError: isBn ? 'পেমেন্ট জমা ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' : 'Payment submission failed. Please try again.',
+      run: () => addTransaction({
+        taxpayerTin: payerAndRecipients.payerTin, taxpayerName: payerAndRecipients.payerName,
+        ownerScope: activeScope, originMode: isAuthenticated ? 'signed_in' : 'walk_in',
+        beneficiaryTin: payerAndRecipients.beneficiaryTin, beneficiaryName: payerAndRecipients.beneficiaryName,
+        category: selectedCategory, items: rec.validItems, totalAmount: calculateItemsTotal(rec.validItems), paymentChannel, status: 'Completed',
+      }),
+      onSuccess: (tx) => { setCompletedTx(tx); setShowReceipt(isAuthenticated); setStep('success'); },
+      onError: setSubmitError,
     });
-    setCompletedTx(tx); setShowReceipt(isAuthenticated); setStep('success');
   };
 
   const handleSaveDraft = () => {
     if (!isRestrictedOperationAllowed('draft_write') || !isAuthenticated) return;
-    saveDraft({ title: `${selectedCategory.replace(/_/g, ' ')} - AY ${assessmentYear}`, category: selectedCategory, beneficiaryTin: beneficiaryTin || undefined, remarks: remarks || undefined, items });
+    saveDraft({ title: `${selectedCategory.replace(/_/g, ' ')} - AY ${assessmentYear}`, category: selectedCategory, beneficiaryTin: payerAndRecipients.beneficiaryTin, remarks: remarks || undefined, items });
     navigate('/drafts');
   };
 
@@ -182,12 +170,12 @@ export function useAllTaxPaymentFlow() {
     user, isAuthenticated, beneficiaries, addBeneficiary, frequentCategories, step, stepNumber, setStep,
     selectedCategory, handleSelectCategory, liabilityMode, setLiabilityMode, selectedTaxpayers, setSelectedTaxpayers,
     selectedTaxpayerTin, setSelectedTaxpayerTin, assessmentYear, setAssessmentYear, selectedHeadId, setSelectedHeadId,
-    amountInput, setAmountInput, amountError, setAmountError, beneficiaryError, setBeneficiaryError, formBannerError,
+    amountInput, setAmountInput, amountError, setAmountError, beneficiaryError, setBeneficiaryError, formBannerError, submitError,
     remarks, setRemarks, isForBeneficiary, setIsForBeneficiary, beneficiaryTin, setBeneficiaryTin, paymentChannel, setPaymentChannel,
-    items, editingIndex, totalAmount, hasValidatedTotal, completedTx, showReceipt, setShowReceipt,
+    items, editingIndex, totalAmount, hasValidatedTotal, payerAndRecipients, completedTx, showReceipt, setShowReceipt,
     handleAddItem: handleAddOrUpdateItem, handleEditItem, handleCancelEdit, handleRemoveItem,
     handleProceedToPreview, handleConfirmPayment, handleSaveDraft,
-    resetWalkIn: () => { submitLockRef.current = false; setCompletedTx(null); setShowReceipt(false); setItems([]); setAmountInput(''); setRemarks(''); setEditingIndex(null); setStep('chooser'); },
+    resetWalkIn: () => { submitLockRef.current = false; setCompletedTx(null); setShowReceipt(false); setSubmitError(''); setItems([]); setAmountInput(''); setRemarks(''); setEditingIndex(null); setStep('chooser'); },
     goDashboard: () => navigate(isAuthenticated ? '/dashboard' : '/'),
   };
 }

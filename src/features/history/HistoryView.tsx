@@ -61,7 +61,7 @@ export const HistoryView: React.FC = () => {
 
   const columns: AppColumn<PaymentTransaction>[] = [
     { key: 'transactionRef', header: isBn ? 'রেফারেন্স ও চালান' : 'Reference & Challan', sortable: true, accessor: (tx) => tx.transactionRef, cell: (tx) => <div><div className="font-bold font-mono text-slate-900 dark:text-white">{tx.transactionRef}</div><div className="text-[11px] text-slate-500 font-mono">{tx.challanNumber} · {tx.paymentChannel === 'Zero-Tax' ? (isBn ? 'শূন্য-কর' : 'Zero-Tax') : tx.paymentChannel}</div></div> },
-    { key: 'taxpayerName', header: isBn ? 'করদাতা' : 'Payer', sortable: true, accessor: (tx) => tx.taxpayerName, cell: (tx) => <div className="text-xs"><div className="font-medium">{tx.taxpayerName || (isBn ? 'ওয়াক-ইন' : 'Walk-In')}</div><div className="text-[11px] text-slate-500 font-mono">{tx.taxpayerTin || 'Walk-In'}</div></div> },
+    { key: 'taxpayerName', header: isBn ? 'করদাতা' : 'Payer', sortable: true, accessor: (tx) => tx.taxpayerName, cell: (tx) => <div className="text-xs"><div className="font-medium">{tx.taxpayerName || (isBn ? 'ওয়াক-ইন' : 'Walk-In')}</div><div className="text-[11px] text-slate-500 font-mono">{tx.taxpayerTin || 'Walk-In'}{tx.giftDetails ? (isBn ? ' · পক্ষে / ক্রেডিট (দাতা)' : ' · On Behalf Of (Donor Credit)') : ''}</div></div> },
     { key: 'beneficiaryName', header: isBn ? 'প্রাপক' : 'Beneficiary', cell: (tx) => <span className="text-xs text-slate-600 dark:text-slate-300">{formatTxBeneficiarySummary(tx, isBn)}</span> },
     { key: 'head', header: isBn ? 'কর খাত' : 'Tax Head', cell: (tx) => <span className="text-xs">{formatTxHeadSummary(tx, isBn)}</span> },
     { key: 'ay', header: isBn ? 'কর বর্ষ' : 'AY', cell: (tx) => <span className="font-mono text-xs">{formatTxAySummary(tx)}</span> },

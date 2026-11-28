@@ -45,7 +45,7 @@ export const SharedPaymentResultStep: React.FC<SharedPaymentResultStepProps> = (
         <span className="text-slate-500">Sample Total:</span>
         <strong className="text-teal-700">৳ {transaction.totalAmount.toLocaleString()}</strong>
       </div>
-      {transaction.category === 'travel_tax' && transaction.totalAmount === 0 && (
+      {(transaction.category === 'travel_tax' || transaction.category === 'gift_tax') && transaction.totalAmount === 0 && (
         <div className="pt-1 border-t border-slate-200 dark:border-slate-700 text-emerald-700 dark:text-emerald-300 font-semibold">
           {isBn ? 'শূন্য-কর মূল্যায়ন সম্পন্ন — অনলাইন পেমেন্ট প্রয়োজন নেই' : 'Zero-tax assessment completed — no online payment required'}
         </div>

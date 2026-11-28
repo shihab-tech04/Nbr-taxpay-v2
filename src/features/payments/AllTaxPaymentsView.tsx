@@ -33,11 +33,12 @@ export const AllTaxPaymentsView: React.FC = () => {
   const summaryLines = flow.items.map((item, idx) => ({
     id: `${item.headId}-${item.taxpayerTin ?? idx}-${item.assessmentYear}`,
     label: `[${item.headCode}] ${isBn ? item.headNameBn : item.headNameEn}`,
-    meta: `AY ${item.assessmentYear}${item.taxpayerTin ? ` · ${item.taxpayerTin}` : ''}`,
+    meta: `AY ${item.assessmentYear}${item.taxpayerTin ? ` · ${item.taxpayerName ?? ''} (${item.taxpayerTin})` : ''}`,
     amountText: `৳ ${item.amount.toLocaleString()}`,
   }));
 
   const stepLabel = flow.step === 'chooser' ? (isBn ? 'বিভাগ নির্বাচন' : 'Category Chooser') : `${isBn ? 'ধাপ' : 'Step'} ${flow.stepNumber} of 5`;
+  const isDirty = flow.step !== 'success' && (flow.items.length > 0 || Boolean(flow.amountInput || flow.remarks || (flow.liabilityMode === 'facilitation' && flow.selectedTaxpayers.length > 0)));
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-12">
@@ -45,8 +46,10 @@ export const AllTaxPaymentsView: React.FC = () => {
         open
         disablePortal
         onClose={flow.goDashboard}
-        onBack={handleModalBack}
-        isDirty={flow.step !== 'success' && (flow.items.length > 0 || Boolean(flow.amountInput || flow.remarks))}
+        onBack={flow.step !== 'chooser' && flow.step !== 'success' ? handleModalBack : undefined}
+        isDirty={isDirty}
+        onSaveDraft={flow.isAuthenticated ? flow.handleSaveDraft : undefined}
+        dirtyCancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         icon={<Landmark className="text-teal-700" size={20} />}
         title={isBn ? 'সকল কর প্রদান (Pay Tax)' : 'All Tax Payments (সকল কর প্রদান)'}
         subtitle={isBn ? 'আয়কর, অগ্রিম কর, উৎসে কর, জরিমানা ও অন্যান্য খাত' : 'Return Tax, Advance Tax, Assessed Demand, Penalty, Source Tax & Other Heads'}
@@ -96,15 +99,17 @@ export const AllTaxPaymentsView: React.FC = () => {
         )}
         {flow.step === 'preview' && (
           <AllTaxPreviewStep
-            userTin={flow.selectedTaxpayers[0]?.tin || flow.user.tin} userName={flow.selectedTaxpayers[0]?.name || flow.user.name}
-            isForBeneficiary={flow.isForBeneficiary} beneficiaryTin={flow.beneficiaryTin} selectedCategory={flow.selectedCategory}
+            userTin={flow.payerAndRecipients.payerTin} userName={flow.payerAndRecipients.payerName}
+            isForBeneficiary={flow.isForBeneficiary} beneficiaryTin={flow.payerAndRecipients.beneficiaryTin ?? ''}
+            recipients={flow.payerAndRecipients.recipients} selectedCategory={flow.selectedCategory}
             items={flow.items} totalAmount={flow.totalAmount} onBack={() => flow.setStep('form')} onProceedToChannel={() => flow.setStep('channel')}
           />
         )}
         {flow.step === 'channel' && (
           <AllTaxChannelStep
             paymentChannel={flow.paymentChannel} totalAmount={flow.totalAmount} itemCount={flow.items.length}
-            onChangeChannel={flow.setPaymentChannel} onBack={() => flow.setStep('preview')} onConfirmPayment={flow.handleConfirmPayment}
+            submitError={flow.submitError} onChangeChannel={flow.setPaymentChannel}
+            onBack={() => flow.setStep('preview')} onConfirmPayment={flow.handleConfirmPayment}
           />
         )}
         {flow.step === 'success' && flow.completedTx && (

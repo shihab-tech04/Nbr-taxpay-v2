@@ -10,6 +10,7 @@ interface AllTaxPreviewStepProps {
   userName: string;
   isForBeneficiary: boolean;
   beneficiaryTin: string;
+  recipients?: ReadonlyArray<{ tin: string; name: string }>;
   selectedCategory: TaxHeadCategory;
   items?: readonly PaymentLineItem[];
   totalAmount: number;
@@ -22,6 +23,7 @@ export const AllTaxPreviewStep: React.FC<AllTaxPreviewStepProps> = ({
   userName,
   isForBeneficiary,
   beneficiaryTin,
+  recipients = [],
   selectedCategory,
   items = [],
   totalAmount,
@@ -31,6 +33,9 @@ export const AllTaxPreviewStep: React.FC<AllTaxPreviewStepProps> = ({
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const catSpec = getAllTaxCategorySpec(selectedCategory);
+  const recipientDisplay = recipients.length > 0
+    ? recipients.map((r) => `${r.name} (${r.tin})`).join(', ')
+    : (isForBeneficiary && beneficiaryTin ? beneficiaryTin : '');
 
   return (
     <div
@@ -43,15 +48,17 @@ export const AllTaxPreviewStep: React.FC<AllTaxPreviewStepProps> = ({
 
       <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2 text-xs">
         <div className="flex justify-between gap-2">
-          <span className="text-slate-500">{isBn ? 'প্রাথমিক প্রদানকারী:' : 'Payer:'}</span>
-          <strong className="font-mono text-right">
+          <span className="text-slate-500">{isBn ? 'প্রদানকারী (Payer):' : 'Payer:'}</span>
+          <strong className="font-mono text-right" data-testid="alltax-preview-payer">
             {userTin || 'Walk-In'} ({userName})
           </strong>
         </div>
-        {isForBeneficiary && beneficiaryTin && (
+        {recipientDisplay && (
           <div className="flex justify-between gap-2">
-            <span className="text-slate-500">{isBn ? 'প্রাপকের টিআইএন:' : 'Beneficiary TIN:'}</span>
-            <strong className="font-mono">{beneficiaryTin}</strong>
+            <span className="text-slate-500">{isBn ? 'প্রাপক / করদাতা (Recipient):' : 'Recipient Taxpayer(s):'}</span>
+            <strong className="font-mono text-right" data-testid="alltax-preview-recipients">
+              {recipientDisplay}
+            </strong>
           </div>
         )}
         <div className="flex justify-between gap-2">

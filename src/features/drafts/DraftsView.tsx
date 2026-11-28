@@ -142,8 +142,10 @@ export const DraftsView: React.FC = () => {
                 </div>
               )}
               {linkedDraft.giftDraft && (
-                <div className="pt-1 border-t border-slate-200 dark:border-slate-700">
-                  {linkedDraft.giftDraft.donor?.name ?? '—'} → {linkedDraft.giftDraft.donee?.name ?? '—'} ({linkedDraft.giftDraft.donee?.relationshipTag || linkedDraft.giftDraft.donee?.relationship || '—'})
+                <div className="pt-1 border-t border-slate-200 dark:border-slate-700 space-y-0.5">
+                  <div>{isBn ? 'পক্ষে (দাতা):' : 'On Behalf Of (Donor):'} {linkedDraft.giftDraft.donor?.name ?? '—'} → {isBn ? 'মাধ্যমে (গ্রহীতা):' : 'Through (Donee):'} {linkedDraft.giftDraft.donee?.name ?? '—'} ({linkedDraft.giftDraft.relationshipTag || linkedDraft.giftDraft.donee?.relationshipTag || linkedDraft.giftDraft.relationship || linkedDraft.giftDraft.donee?.relationship || '—'})</div>
+                  {linkedDraft.giftDraft.giftDate && <div>{t('giftDate')}: {linkedDraft.giftDraft.giftDate}</div>}
+                  {linkedDraft.giftDraft.remarks && <div>{t('giftRemarksOptional')}: {linkedDraft.giftDraft.remarks}</div>}
                 </div>
               )}
             </div>

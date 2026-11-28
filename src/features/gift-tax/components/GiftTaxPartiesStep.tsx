@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowRight, CheckCircle2, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { AppButton, AppIconButton } from '../../../design-system/buttons';
 import { AppSelectField, AppTextField, AppTinLookupField, AppTinResultCard, maskTinForDisplay, sanitizeTinResultForDisplay } from '../../../design-system/forms';
-import { GIFT_SUGGESTED_TINS, getRelationshipLabel } from '../giftTaxLogic';
+import { GIFT_SUGGESTED_TINS, canUndoGiftPartyRemoval, getRelationshipLabel, isGiftRelationshipValid } from '../giftTaxLogic';
 import { APPROVED_GIFT_RELATIONSHIPS, type GiftFormErrors, type GiftPartyRecord, type GiftRelationship, type RemovedPartyUndoState } from '../giftTaxTypes';
 
 interface GiftTaxPartiesStepProps {
@@ -39,8 +39,14 @@ export const GiftTaxPartiesStep: React.FC<GiftTaxPartiesStepProps> = (p) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language === 'bn' ? 'bn' : 'en';
   const isBn = lang === 'bn';
+  const relationshipValid = isGiftRelationshipValid(p.relationship, p.relationshipTag);
+  const undoCheck = canUndoGiftPartyRemoval(p.undoParty, p.donor, p.donee);
   const donorDupMsg = p.donorLookupResult && p.donee && p.donorLookupResult.tin === p.donee.tin ? (isBn ? 'দাতা ও গ্রহীতার টিআইএন ভিন্ন হতে হবে।' : 'Donor TIN must differ from confirmed Donee TIN.') : undefined;
-  const doneeDupMsg = p.doneeLookupResult && p.donor && p.doneeLookupResult.tin === p.donor.tin ? (isBn ? 'দাতা ও গ্রহীতার টিআইএন ভিন্ন হতে হবে।' : 'Donee TIN must differ from confirmed Donor TIN.') : undefined;
+  const doneeDupMsg = p.doneeLookupResult && p.donor && p.doneeLookupResult.tin === p.donor.tin
+    ? (isBn ? 'দাতা ও গ্রহীতার টিআইএন ভিন্ন হতে হবে।' : 'Donee TIN must differ from confirmed Donor TIN.')
+    : !relationshipValid && p.doneeLookupResult
+      ? (isBn ? 'গ্রহীতা যোগ করার আগে বৈধ সম্পর্ক (এবং অন্যান্য হলে ১–৮০ অক্ষরের বিবরণ) দিন।' : 'Select a valid Donee relationship (and 1–80 char custom label for Others) before clicking Add Donee.')
+      : undefined;
   const donorResultDisplay = p.donorLookupResult ? sanitizeTinResultForDisplay({ tin: p.donorLookupResult.tin, name: p.donorLookupResult.name, classification: p.donorLookupResult.classification, allowRevealTin: false }) : null;
   const doneeResultDisplay = p.doneeLookupResult ? sanitizeTinResultForDisplay({ tin: p.doneeLookupResult.tin, name: p.doneeLookupResult.name, classification: p.doneeLookupResult.classification, allowRevealTin: false }) : null;
 
@@ -53,8 +59,14 @@ export const GiftTaxPartiesStep: React.FC<GiftTaxPartiesStepProps> = (p) => {
 
       {p.undoParty && (
         <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2 text-xs">
-          <span>{isBn ? `${p.undoParty.party.name} সরানো হয়েছে` : `Removed ${p.undoParty.party.name}`}</span>
-          <AppButton actionType="secondary" surface="soft" size="small" startIcon={<RotateCcw size={14} />} onClick={p.onUndoRemove}>{isBn ? 'পূর্বাবস্থায় ফেরান' : 'Undo'}</AppButton>
+          <span>
+            {!undoCheck.ok
+              ? (isBn ? `পূর্বাবস্থায় ফেরানো যাবে না: ${p.undoParty.party.name}-এর টিআইএন অন্য পক্ষে ব্যবহৃত হচ্ছে।` : `Cannot undo ${p.undoParty.party.name}: TIN is already confirmed on the other party.`)
+              : (isBn ? `${p.undoParty.party.name} সরানো হয়েছে` : `Removed ${p.undoParty.party.name}`)}
+          </span>
+          <AppButton actionType="secondary" surface="soft" size="small" disabled={!undoCheck.ok} startIcon={<RotateCcw size={14} />} onClick={p.onUndoRemove} data-testid="gift-undo-remove-btn">
+            {isBn ? 'পূর্বাবস্থায় ফেরান' : 'Undo'}
+          </AppButton>
         </div>
       )}
 
@@ -92,14 +104,16 @@ export const GiftTaxPartiesStep: React.FC<GiftTaxPartiesStepProps> = (p) => {
             </div>
           </div>
         )}
+        <div className={`grid grid-cols-1 ${p.relationship === 'Others' ? 'sm:grid-cols-2' : ''} gap-3`}>
+          <AppSelectField label={t('relationship')} value={p.relationship} required error={Boolean(p.errors.relationship)} helperText={p.errors.relationship || t('relationshipHelper')} onChange={(e) => p.onSelectRelationship(String(e.target.value) as GiftRelationship)} options={[{ value: '', label: isBn ? '— সম্পর্ক নির্বাচন করুন —' : '— Select relationship —' }, ...APPROVED_GIFT_RELATIONSHIPS.map((rel) => ({ value: rel, label: getRelationshipLabel(rel, lang) }))]} />
+          {p.relationship === 'Others' && (
+            <AppTextField data-testid="gift-others-relationship-input" label={isBn ? 'অন্যান্য সম্পর্কের বিবরণ (১–৮০ অক্ষর)' : 'Custom Relationship / Tag (1–80 chars)'} value={p.relationshipTag} required error={Boolean(p.errors.relationshipTag)} helperText={p.errors.relationshipTag || (isBn ? 'অন্যান্য সম্পর্কের বিবরণ দিন (১–৮০ অক্ষর)' : 'Required for Others (1–80 characters)')} onChange={(e) => p.onChangeRelationshipTag(e.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} />
+          )}
+        </div>
         <AppTinLookupField id="gift-donee-tin-lookup" label={t('giftDoneeTin')} searchLabel={isBn ? 'গ্রহীতার টিআইএন খুঁজুন' : 'Search Donee TIN'} value={p.doneeTinInput} onChange={p.onChangeDoneeTin} onSearch={p.onSearchDonee} canSearch={p.doneeTinInput.length === 12} suggestedTins={[...GIFT_SUGGESTED_TINS]} submitOnEnter error={Boolean(p.doneeLookupError || p.errors.donee)} helperText={p.doneeLookupError || p.errors.donee || t('tinHelperText')} inputTestId="gift-donee-tin-input" />
         {doneeResultDisplay && (
-          <AppTinResultCard testId="gift-donee-result-card" addButtonTestId="gift-add-donee-btn" name={doneeResultDisplay.name} maskedTin={doneeResultDisplay.maskedTin} classification={doneeResultDisplay.classification} duplicateMessage={doneeDupMsg} canAdd={!doneeDupMsg} onAdd={p.onAddDonee} addLabel={isBn ? 'গ্রহীতা যোগ করুন' : 'Add Donee'} />
+          <AppTinResultCard testId="gift-donee-result-card" addButtonTestId="gift-add-donee-btn" name={doneeResultDisplay.name} maskedTin={doneeResultDisplay.maskedTin} classification={doneeResultDisplay.classification} duplicateMessage={doneeDupMsg} canAdd={!doneeDupMsg && relationshipValid} onAdd={p.onAddDonee} addLabel={isBn ? 'গ্রহীতা যোগ করুন' : 'Add Donee'} />
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-          <AppSelectField label={t('relationship')} value={p.relationship} required error={Boolean(p.errors.relationship)} helperText={p.errors.relationship || t('relationshipHelper')} onChange={(e) => p.onSelectRelationship(String(e.target.value) as GiftRelationship)} options={[{ value: '', label: isBn ? '— সম্পর্ক নির্বাচন করুন —' : '— Select relationship —' }, ...APPROVED_GIFT_RELATIONSHIPS.map((rel) => ({ value: rel, label: getRelationshipLabel(rel, lang) }))]} />
-          <AppTextField label={isBn ? 'গ্রহীতার ট্যাগ / সম্পর্কের বিবরণ (১–৮০ অক্ষর)' : 'Donee Tag / Relationship Label (1–80 chars)'} value={p.relationshipTag} required error={Boolean(p.errors.relationshipTag)} helperText={p.errors.relationshipTag || (isBn ? 'যেমন: মা, বড় ভাই, ক্লায়েন্ট' : 'Required label (1–80 characters)')} onChange={(e) => p.onChangeRelationshipTag(e.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} />
-        </div>
       </section>
 
       <div className="flex flex-wrap justify-between items-center gap-3 pt-2">

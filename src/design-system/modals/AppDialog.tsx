@@ -27,6 +27,8 @@ export interface AppDialogProps {
   disableBackdropClick?: boolean;
   isDirty?: boolean;
   confirmCloseMessage?: string;
+  onSaveDraft?: () => void;
+  dirtyCancelLabel?: string;
   onBack?: () => void;
   backLabel?: string;
   showClose?: boolean;
@@ -51,6 +53,8 @@ export const AppDialog: React.FC<AppDialogProps> = ({
   disableBackdropClick = false,
   isDirty = false,
   confirmCloseMessage,
+  onSaveDraft,
+  dirtyCancelLabel,
   onBack,
   backLabel = 'Go back',
   showClose = true,
@@ -86,6 +90,8 @@ export const AppDialog: React.FC<AppDialogProps> = ({
         disableBackdropClick={disableBackdropClick}
         isDirty={isDirty}
         confirmCloseMessage={confirmCloseMessage}
+        onSaveDraft={onSaveDraft}
+        dirtyCancelLabel={dirtyCancelLabel}
         onBack={onBack}
         backLabel={backLabel}
         showClose={showClose}
@@ -146,6 +152,8 @@ export const AppDialog: React.FC<AppDialogProps> = ({
         {showDiscardPrompt && (
           <DirtyCloseBanner
             message={confirmCloseMessage}
+            onSaveDraft={onSaveDraft ? () => { cancelDiscard(); onSaveDraft(); } : undefined}
+            cancelLabel={dirtyCancelLabel}
             onConfirmDiscard={confirmDiscard}
             onCancelDiscard={cancelDiscard}
           />

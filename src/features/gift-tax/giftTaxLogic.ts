@@ -1,21 +1,15 @@
 import { parseCurrencyAmount, validateCurrencyAmount, validateGiftDate, validateTin } from '../../design-system/forms';
-import { lookupTinIdentity } from '../../shared/accountSession';
+import { DIRECTORY_SUGGESTED_TINS, lookupTaxpayerDirectoryRecord } from '../../shared/taxpayerDirectory';
 import type { Beneficiary, Language } from '../../types/tax';
-import type { GiftFormErrors, GiftPartyRecord, GiftRelationship, GiftTaxBracketLine, GiftTaxCalculation } from './giftTaxTypes';
+import type {
+  GiftFormErrors, GiftPartyRecord, GiftRelationship, GiftTaxBracketLine, GiftTaxCalculation, RemovedPartyUndoState,
+} from './giftTaxTypes';
 import { APPROVED_GIFT_RELATIONSHIPS } from './giftTaxTypes';
 
 export { buildGiftTransactionPayload, resolveGiftTaxRouteSeed } from './giftTaxFlowUtils';
 
 export const GIFT_EXEMPT_ALLOWANCE = 20000;
-export const GIFT_SUGGESTED_TINS: readonly string[] = ['882349102384', '992384102938', '773492019283', '112938475601', '112233445566', '445566778899'];
-
-const SAMPLE_TAXPAYERS: readonly GiftPartyRecord[] = [
-  { tin: '992384102938', name: 'Mrs. Fatema Begum', classification: 'Individual' },
-  { tin: '773492019283', name: 'Tanvir Islam', classification: 'Individual' },
-  { tin: '112938475601', name: 'GreenCorp Ltd.', classification: 'Company' },
-  { tin: '445566778899', name: 'Karim Chowdhury', classification: 'Individual' },
-  { tin: '556677889900', name: 'Farhana Rahman', classification: 'Individual' },
-];
+export const GIFT_SUGGESTED_TINS: readonly string[] = DIRECTORY_SUGGESTED_TINS;
 
 const BRACKET_SCHEDULE = [
   { id: 'b1', cap: 500000, rate: 0.05, labelEn: 'First ৳500,000 @ 5%', labelBn: 'প্রথম ৫,০০,০০০ টাকা @ ৫%' },
@@ -25,14 +19,31 @@ const BRACKET_SCHEDULE = [
 ] as const;
 
 export function lookupGiftTaxpayer(rawTin: string, beneficiaries: readonly Beneficiary[] = []): GiftPartyRecord | null {
-  const cleanTin = rawTin.trim();
-  if (!/^\d{12}$/.test(cleanTin)) return null;
-  const acct = lookupTinIdentity(cleanTin);
-  if (acct) return { tin: acct.tin, name: acct.profile.name, classification: acct.profile.taxpayerType };
-  const ben = beneficiaries.find((b) => b.tin.trim() === cleanTin);
-  if (ben) return { tin: cleanTin, name: ben.name.trim() || 'Saved Beneficiary', classification: 'Saved Beneficiary' };
-  const sample = SAMPLE_TAXPAYERS.find((p) => p.tin === cleanTin);
-  return sample ? { ...sample } : null;
+  return lookupTaxpayerDirectoryRecord(rawTin, beneficiaries);
+}
+
+export function isGiftRelationshipValid(relationship: GiftRelationship | '', relationshipTag: string): boolean {
+  if (!relationship || !APPROVED_GIFT_RELATIONSHIPS.includes(relationship)) return false;
+  if (relationship === 'Others') {
+    const len = relationshipTag.trim().length;
+    return len >= 1 && len <= 80;
+  }
+  return true;
+}
+
+export function canUndoGiftPartyRemoval(
+  undoParty: RemovedPartyUndoState | null,
+  donor: GiftPartyRecord | null,
+  donee: GiftPartyRecord | null
+): { ok: true } | { ok: false; reason: 'empty' | 'duplicate_tin' } {
+  if (!undoParty) return { ok: false, reason: 'empty' };
+  if (undoParty.role === 'donor' && donee && donee.tin === undoParty.party.tin) {
+    return { ok: false, reason: 'duplicate_tin' };
+  }
+  if (undoParty.role === 'donee' && donor && donor.tin === undoParty.party.tin) {
+    return { ok: false, reason: 'duplicate_tin' };
+  }
+  return { ok: true };
 }
 
 export function calculateGiftTaxAmount(giftAmountInput: string): GiftTaxCalculation {
@@ -77,11 +88,12 @@ export function validateGiftPartiesStep(
     errors.donee = isBn ? 'দাতা এবং গ্রহীতার টিআইএন অবশ্যই ভিন্ন হতে হবে।' : 'Donor and Donee must have distinct 12-digit TINs.';
   }
   if (!input.relationship || !APPROVED_GIFT_RELATIONSHIPS.includes(input.relationship)) {
-    errors.relationship = isBn ? 'গ্রহীতার সম্পর্ক নির্বাচন করুন।' : 'Select the Donee relationship.';
-  }
-  const tagLen = input.relationshipTag.trim().length;
-  if (tagLen < 1 || tagLen > 80) {
-    errors.relationshipTag = isBn ? 'সম্পর্ক / ট্যাগ ১ থেকে ৮০ অক্ষরের মধ্যে হতে হবে।' : 'Relationship tag is required (1–80 characters).';
+    errors.relationship = isBn ? 'গ্রহীতার সম্পর্ক নির্বাচন করুন।' : 'Select a valid Donee relationship.';
+  } else if (input.relationship === 'Others') {
+    const tagLen = input.relationshipTag.trim().length;
+    if (tagLen < 1 || tagLen > 80) {
+      errors.relationshipTag = isBn ? 'অন্যান্য সম্পর্কের বিবরণ ১ থেকে ৮০ অক্ষরের মধ্যে হতে হবে।' : 'Custom relationship description is required for Others (1–80 characters).';
+    }
   }
   return errors;
 }
@@ -94,11 +106,8 @@ export function validateGiftValuationStep(
   const isBn = lang === 'bn';
   const errors: GiftFormErrors = {};
   const amountCheck = validateCurrencyAmount(input.giftAmountInput, { minAmount: 1, decimalScale: 2, required: true });
-  const parsed = parseCurrencyAmount(input.giftAmountInput) ?? 0;
   if (!amountCheck.valid) {
-    errors.giftAmount = isBn ? 'বৈধ দানের মূল্য (টাকা) লিখুন।' : 'Enter a valid Gift Value amount.';
-  } else if (parsed <= GIFT_EXEMPT_ALLOWANCE) {
-    errors.giftAmount = isBn ? 'দানের মূল্য ২০,০০০ টাকার অব্যাহতি সীমার চেয়ে বেশি হতে হবে।' : 'Gift Value must exceed the ৳20,000 exempt allowance to calculate a payable estimate.';
+    errors.giftAmount = isBn ? 'বৈধ দানের মূল্য (সর্বনিম্ন ১ টাকা) লিখুন।' : 'Enter a valid Gift Value amount (minimum ৳1).';
   }
   const dateCheck = validateGiftDate(input.giftDate, todayYmd);
   if (!dateCheck.valid) {

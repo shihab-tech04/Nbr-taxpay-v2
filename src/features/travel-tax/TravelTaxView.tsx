@@ -55,8 +55,10 @@ export const TravelTaxView: React.FC = () => {
         open
         disablePortal
         onClose={flow.goDashboard}
-        onBack={handleModalBack}
+        onBack={flow.step !== 'success' && (flow.step === 'channel' || flow.stage > 1) ? handleModalBack : undefined}
         isDirty={flow.step !== 'success' && flow.isDirty}
+        onSaveDraft={flow.isAuthenticated ? flow.handleSaveDraft : undefined}
+        dirtyCancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         icon={<Ship className="text-teal-700" size={20} />}
         title={t('travelTax')}
         subtitle={t('travelTaxModalSubtitle')}
@@ -101,6 +103,7 @@ export const TravelTaxView: React.FC = () => {
           <SharedPaymentChannelStep
             testId="travel-tax-channel-step" paymentChannel={flow.paymentChannel} totalAmount={flow.breakdown.totalAmount}
             itemCount={flow.breakdown.items.length}
+            submitError={flow.submitError}
             itemCountLabel={isBn ? `${flow.breakdown.items.length} জন যাত্রীর ভ্রমণ কর পরিশোধের মাধ্যম বেছে নিন।` : `Select an illustrative payment channel for ${flow.breakdown.items.length} confirmed passenger(s).`}
             onChangeChannel={flow.setPaymentChannel} onBack={() => flow.setStep('stages')} onConfirmPayment={flow.handleConfirmChannelPayment}
           />

@@ -38,9 +38,16 @@ export interface GiftDetails {
 export interface GiftDraftSnapshot {
   donor: GiftPartyRecord | null;
   donee: GiftPartyRecord | null;
+  relationship?: BeneficiaryRelationship | '';
+  relationshipTag?: string;
   giftAmountInput: string;
   giftDate: string;
   description: string;
   remarks?: string;
+  creditAttributionRole?: 'donor';
+  throughTin?: string;
+  throughName?: string;
+  onBehalfOfTin?: string;
+  onBehalfOfName?: string;
   stage?: 1 | 2 | 3;
 }

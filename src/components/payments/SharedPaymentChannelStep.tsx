@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import Alert from '@mui/material/Alert';
 import { CheckCircle, ShieldCheck } from 'lucide-react';
 import { AppButton } from '../../design-system/buttons';
-import { AppRadioCard, AppRadioGroup } from '../../design-system/selection';
+import { AppCheckbox, AppRadioCard, AppRadioGroup } from '../../design-system/selection';
 import {
   ACTIVE_PAYMENT_CHANNEL_OPTIONS,
   type ActivePaymentChannel,
@@ -14,6 +15,13 @@ export interface SharedPaymentChannelStepProps {
   itemCount: number;
   itemCountLabel?: string;
   testId?: string;
+  requireAcknowledgement?: boolean;
+  acknowledged?: boolean;
+  acknowledgementLabel?: string;
+  acknowledgementError?: string;
+  submitError?: string;
+  isSubmitting?: boolean;
+  onChangeAcknowledged?: (checked: boolean) => void;
   onChangeChannel: (channel: ActivePaymentChannel) => void;
   onBack: () => void;
   onConfirmPayment: () => void;
@@ -25,6 +33,13 @@ export const SharedPaymentChannelStep: React.FC<SharedPaymentChannelStepProps> =
   itemCount,
   itemCountLabel,
   testId = 'all-tax-channel-step',
+  requireAcknowledgement = false,
+  acknowledged = false,
+  acknowledgementLabel,
+  acknowledgementError,
+  submitError,
+  isSubmitting = false,
+  onChangeAcknowledged,
   onChangeChannel,
   onBack,
   onConfirmPayment,
@@ -48,6 +63,12 @@ export const SharedPaymentChannelStep: React.FC<SharedPaymentChannelStepProps> =
               : `Choose an illustrative payment gateway for ${itemCount} configured tax head(s).`)}
         </p>
       </div>
+
+      {submitError && (
+        <Alert severity="error" data-testid="payment-submit-error">
+          {submitError}
+        </Alert>
+      )}
 
       <AppRadioGroup
         label={t('selectPaymentChannel')}
@@ -80,19 +101,43 @@ export const SharedPaymentChannelStep: React.FC<SharedPaymentChannelStepProps> =
         <ShieldCheck className="text-emerald-600" size={32} />
       </div>
 
+      {requireAcknowledgement && onChangeAcknowledged && (
+        <div className="space-y-2">
+          <AppCheckbox
+            data-testid="channel-acknowledgement-checkbox"
+            checked={acknowledged}
+            previewRestricted
+            onChange={(_, checked) => onChangeAcknowledged(checked)}
+            label={
+              acknowledgementLabel ??
+              (isBn
+                ? 'আমি উপরের করের বিবরণ, ক্রেডিট প্রাপক ও উদাহরণমূলক প্রিভিউ শর্তাবলি নিশ্চিত করছি।'
+                : 'I confirm the tax attribution, preview details, and understand this is an illustrative prototype payment.')
+            }
+          />
+          {acknowledgementError && (
+            <Alert severity="error" data-testid="channel-acknowledgement-error">
+              {acknowledgementError}
+            </Alert>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-4 pt-2">
-        <AppButton actionType="secondary" onClick={onBack} sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>
+        <AppButton actionType="secondary" onClick={onBack} disabled={isSubmitting} sx={{ width: '33.333%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem' }}>
           {t('back')}
         </AppButton>
         <AppButton
           actionType="primary"
           intent="confirm"
           previewRestricted
+          disabled={isSubmitting}
           endIcon={<CheckCircle size={16} />}
           onClick={onConfirmPayment}
+          data-testid="confirm-channel-payment-btn"
           sx={{ width: '66.667%', borderRadius: '12px', py: 1.5, fontSize: '0.75rem', boxShadow: 2 }}
         >
-          {t('confirmPayment')}
+          {submitError ? (isBn ? 'আবার চেষ্টা করুন' : 'Retry Payment') : t('confirmPayment')}
         </AppButton>
       </div>
     </div>

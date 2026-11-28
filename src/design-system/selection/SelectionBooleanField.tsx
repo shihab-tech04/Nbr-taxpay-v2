@@ -31,6 +31,7 @@ export interface SelectionBooleanBaseProps {
   publicCapability?: PublicCapability;
   previewRestricted?: boolean;
   className?: string;
+  'data-testid'?: string;
 }
 
 export interface SelectionBooleanControlRenderProps {
@@ -50,6 +51,7 @@ export interface SelectionBooleanControlRenderProps {
     'aria-readonly'?: true;
     'aria-invalid'?: true;
     'aria-describedby'?: string;
+    'data-testid'?: string;
   };
 }
 
@@ -81,6 +83,7 @@ export const SelectionBooleanField: React.FC<SelectionBooleanFieldProps> = ({
   publicCapability = 'none',
   previewRestricted = false,
   className = '',
+  'data-testid': dataTestId,
   renderControl,
 }) => {
   const generatedId = useId();
@@ -159,6 +162,7 @@ export const SelectionBooleanField: React.FC<SelectionBooleanFieldProps> = ({
             'aria-readonly': effectiveReadOnly || undefined,
             'aria-invalid': error || undefined,
             'aria-describedby': describedBy,
+            'data-testid': dataTestId,
           },
         })}
       />

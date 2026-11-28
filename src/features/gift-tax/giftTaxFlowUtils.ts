@@ -14,7 +14,7 @@ export function buildGiftTransactionPayload(params: {
   remarks?: string;
   calculatedTax: number;
   assessmentYear?: string;
-  channel: ActivePaymentChannel;
+  channel: ActivePaymentChannel | 'Zero-Tax';
   isAuthenticated: boolean;
   activeScope: string;
 }): Omit<PaymentTransaction, 'id' | 'createdAt' | 'transactionRef' | 'challanNumber' | 'bankRef'> {
@@ -23,8 +23,13 @@ export function buildGiftTransactionPayload(params: {
   }
   const cleanDesc = params.description.trim();
   const cleanRemarks = params.remarks?.trim() || undefined;
-  const cleanTag = params.relationshipTag.trim() || params.relationship;
+  const cleanTag = params.relationship === 'Others'
+    ? (params.relationshipTag.trim() || 'Others')
+    : params.relationship;
   const ay = params.assessmentYear?.trim() || '2025-2026';
+  const resolvedChannel: PaymentTransaction['paymentChannel'] =
+    params.calculatedTax === 0 ? 'Zero-Tax' : params.channel;
+
   const giftDetails: GiftDetails = {
     donorTin: params.donor.tin,
     donorName: params.donor.name,
@@ -59,7 +64,7 @@ export function buildGiftTransactionPayload(params: {
       category: 'gift_tax', remarks: cleanRemarks ? `${cleanDesc} · ${cleanRemarks}` : cleanDesc,
     }],
     totalAmount: params.calculatedTax,
-    paymentChannel: params.channel,
+    paymentChannel: resolvedChannel,
     status: 'Completed',
   };
 }
@@ -85,9 +90,11 @@ export function resolveGiftTaxRouteSeed(params: {
     const foundDraft = isAuthenticated ? drafts.find((d) => d.id === draftId && d.category === 'gift_tax') ?? null : null;
     if (!foundDraft?.giftDraft) return emptySeed(true);
     const gd = foundDraft.giftDraft;
+    const rel = (gd.relationship || gd.donee?.relationship || '') as GiftRelationship | '';
+    const relTag = gd.relationshipTag ?? gd.donee?.relationshipTag ?? (rel && rel !== 'Others' ? rel : '');
     return {
-      rejected: false, donor: gd.donor, donee: gd.donee, relationship: (gd.donee?.relationship ?? '') as GiftRelationship | '',
-      relationshipTag: gd.donee?.relationshipTag ?? '', giftAmountInput: gd.giftAmountInput, giftDate: gd.giftDate,
+      rejected: false, donor: gd.donor, donee: gd.donee, relationship: rel,
+      relationshipTag: relTag, giftAmountInput: gd.giftAmountInput, giftDate: gd.giftDate,
       description: gd.description, remarks: gd.remarks ?? '', assessmentYear: foundDraft.items[0]?.assessmentYear || '2025-2026', stage: (gd.stage ?? 1) as 1 | 2 | 3,
     };
   }

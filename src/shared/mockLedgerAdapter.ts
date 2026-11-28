@@ -47,7 +47,8 @@ export function createExperimentalTransaction(
         passportNumber: isWalkIn ? undefined : txData.travelDetails.passportNumber,
       }
     : undefined;
-  const isZeroTax = txData.category === 'travel_tax' && txData.totalAmount === 0;
+  const isZeroTax =
+    (txData.category === 'travel_tax' || txData.category === 'gift_tax') && txData.totalAmount === 0;
   const resolvedChannel = isZeroTax ? 'Zero-Tax' : txData.paymentChannel;
   return {
     ...txData,

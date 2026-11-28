@@ -6,6 +6,7 @@ import { sanitizePassport } from '../../design-system/forms';
 import { useApp } from '../../shared/AppContext';
 import { rotateWalkInSessionId } from '../../shared/accountSession';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
+import { executePaymentAttempt } from '../../components/payments/paymentSubmission';
 import type { ActivePaymentChannel } from '../../components/payments/paymentChannels';
 import type { PaymentTransaction } from '../../types/tax';
 import {
@@ -119,13 +120,19 @@ export function useTravelTaxFlow() {
       return;
     }
     setSubmitError('');
-    submitLockRef.current = true;
     const resolvedChannel: ActivePaymentChannel | 'Zero-Tax' = check.breakdown.totalAmount === 0 ? 'Zero-Tax' : channel;
-    const tx = addTransaction(buildTravelTransactionPayload({
-      breakdownItems: check.breakdown.items, totalAmount: check.breakdown.totalAmount, details, channel: resolvedChannel,
-      mobileNormalized: check.normalizedMobile, isAuthenticated, userTin: user.tin, userName: user.name, activeScope,
-    }));
-    setCompletedTx(tx); setShowReceipt(isAuthenticated); setStep('success');
+    executePaymentAttempt({
+      lockRef: submitLockRef,
+      run: () => addTransaction(buildTravelTransactionPayload({
+        breakdownItems: check.breakdown.items, totalAmount: check.breakdown.totalAmount, details, channel: resolvedChannel,
+        mobileNormalized: check.normalizedMobile, isAuthenticated, userTin: user.tin, userName: user.name, activeScope,
+      })),
+      onSuccess: (tx) => {
+        setCompletedTx(tx); setShowReceipt(isAuthenticated); setStep('success');
+      },
+      onError: setSubmitError,
+      fallbackError: msg.preSubmitFailed,
+    });
   };
 
   const handleProceedFromPreview = () => {

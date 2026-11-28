@@ -7,18 +7,29 @@ interface DirtyCloseBannerProps {
   message?: string;
   onConfirmDiscard: () => void;
   onCancelDiscard: () => void;
+  onSaveDraft?: () => void;
+  saveDraftLabel?: string;
+  discardLabel?: string;
+  cancelLabel?: string;
 }
 
 export const DirtyCloseBanner: React.FC<DirtyCloseBannerProps> = ({
   message,
   onConfirmDiscard,
   onCancelDiscard,
+  onSaveDraft,
+  saveDraftLabel,
+  discardLabel,
+  cancelLabel,
 }) => {
   const { i18n } = useTranslation();
   const isBn = i18n?.language === 'bn';
   const defaultMsg = isBn
     ? 'আপনার অসংরক্ষিত পরিবর্তন রয়েছে। আপনি কি নিশ্চিতভাবে বন্ধ করতে চান?'
     : 'You have unsaved changes. Discard unfinished work and close?';
+
+  const resolvedCancel =
+    cancelLabel ?? (onSaveDraft ? (isBn ? 'বাতিল' : 'Cancel') : (isBn ? 'সম্পাদনা চালিয়ে যান' : 'Keep editing'));
 
   return (
     <div
@@ -30,17 +41,34 @@ export const DirtyCloseBanner: React.FC<DirtyCloseBannerProps> = ({
         <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
         <span className="font-medium">{message ?? defaultMsg}</span>
       </div>
-      <div className="flex items-center justify-end gap-2 shrink-0">
-        <AppButton actionType="secondary" size="small" onClick={onCancelDiscard}>
-          {isBn ? 'সম্পাদনা চালিয়ে যান' : 'Keep editing'}
-        </AppButton>
+      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+        {onSaveDraft && (
+          <AppButton
+            actionType="primary"
+            size="small"
+            data-testid="dirty-guard-save-draft"
+            previewRestricted
+            onClick={onSaveDraft}
+          >
+            {saveDraftLabel ?? (isBn ? 'খসড়া সংরক্ষণ' : 'Save Draft')}
+          </AppButton>
+        )}
         <AppButton
           actionType="primary"
           intent="destructive"
           size="small"
+          data-testid="dirty-guard-discard"
           onClick={onConfirmDiscard}
         >
-          {isBn ? 'বাতিল করুন' : 'Discard'}
+          {discardLabel ?? (isBn ? 'বাতিল করে বন্ধ করুন' : 'Discard')}
+        </AppButton>
+        <AppButton
+          actionType="secondary"
+          size="small"
+          data-testid="dirty-guard-cancel"
+          onClick={onCancelDiscard}
+        >
+          {resolvedCancel}
         </AppButton>
       </div>
     </div>

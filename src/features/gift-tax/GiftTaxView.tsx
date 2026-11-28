@@ -5,6 +5,7 @@ import { Gift } from 'lucide-react';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { PaymentCertificateDialog } from '../../components/certificates/PaymentCertificateDialog';
 import { SharedPayTaxProgressiveModal } from '../../components/payments/SharedPayTaxProgressiveModal';
+import { SharedPaymentChannelStep } from '../../components/payments/SharedPaymentChannelStep';
 import { SharedPaymentResultStep } from '../../components/payments/SharedPaymentResultStep';
 import { GiftTaxPartiesStep } from './components/GiftTaxPartiesStep';
 import { GiftTaxPreviewStep } from './components/GiftTaxPreviewStep';
@@ -18,14 +19,17 @@ export const GiftTaxView: React.FC = () => {
   const navigate = useNavigate();
   const flow = useGiftTaxFlow();
 
-  const bnStageDigits = ['০', '১', '২', '৩', '৪'][flow.stage] ?? String(flow.stage);
-  const stepLabel = flow.stage === 4
-    ? (isBn ? 'ধাপ ৪ / ৪ · সম্পন্ন' : 'Stage 4 of 4 · Complete')
-    : isBn ? `ধাপ ${bnStageDigits} / ৪` : `Stage ${flow.stage} of 4`;
+  const bnStageDigits = ['০', '১', '২', '৩'][flow.stage] ?? String(flow.stage);
+  const stepLabel =
+    flow.step === 'channel'
+      ? (isBn ? 'পেমেন্ট মাধ্যম' : 'Payment Channel')
+      : flow.step === 'success'
+      ? (isBn ? 'সম্পন্ন' : 'Complete')
+      : isBn ? `ধাপ ${bnStageDigits} / ৩` : `Stage ${flow.stage} of 3`;
 
   const handleModalBack = () => {
-    if (flow.stage === 2) { flow.setStage(1); return; }
-    if (flow.stage === 3) { flow.setStage(2); return; }
+    if (flow.step === 'channel') { flow.setStep('stages'); return; }
+    if (flow.step === 'stages' && flow.stage > 1) { flow.setStage((flow.stage - 1) as 1 | 2); return; }
     flow.goDashboard();
   };
 
@@ -52,8 +56,10 @@ export const GiftTaxView: React.FC = () => {
         open
         disablePortal
         onClose={flow.goDashboard}
-        onBack={handleModalBack}
+        onBack={flow.step !== 'success' && (flow.step === 'channel' || flow.stage > 1) ? handleModalBack : undefined}
         isDirty={flow.isDirty}
+        onSaveDraft={flow.isAuthenticated ? flow.handleSaveDraft : undefined}
+        dirtyCancelLabel={isBn ? 'বাতিল' : 'Cancel'}
         icon={<Gift className="text-teal-700" size={20} />}
         title={t('giftTax')}
         subtitle={t('giftTaxModalSubtitle')}
@@ -61,7 +67,7 @@ export const GiftTaxView: React.FC = () => {
         summaryTitle={t('giftSummaryTitle')}
         summaryMetaBadges={[isBn ? 'খাত 0130 · দানকর' : 'Code 0130 · Gift Tax']}
         summaryCustomContent={
-          flow.stage < 4 ? (
+          flow.step !== 'success' ? (
             <GiftTaxRightRailExtras
               donor={flow.donor}
               donee={flow.donee}
@@ -87,91 +93,77 @@ export const GiftTaxView: React.FC = () => {
           </div>
         )}
 
-        {flow.stage === 1 && (
+        {flow.step === 'stages' && flow.stage === 1 && (
           <GiftTaxPartiesStep
-            donor={flow.donor}
-            donee={flow.donee}
-            donorTinInput={flow.donorTinInput}
-            doneeTinInput={flow.doneeTinInput}
-            donorLookupResult={flow.donorLookupResult}
-            doneeLookupResult={flow.doneeLookupResult}
-            donorLookupError={flow.donorLookupError}
-            doneeLookupError={flow.doneeLookupError}
-            relationship={flow.relationship}
-            relationshipTag={flow.relationshipTag}
-            undoParty={flow.undoParty}
-            errors={flow.errors}
-            isAuthenticated={flow.isAuthenticated}
+            donor={flow.donor} donee={flow.donee} donorTinInput={flow.donorTinInput} doneeTinInput={flow.doneeTinInput}
+            donorLookupResult={flow.donorLookupResult} doneeLookupResult={flow.doneeLookupResult}
+            donorLookupError={flow.donorLookupError} doneeLookupError={flow.doneeLookupError}
+            relationship={flow.relationship} relationshipTag={flow.relationshipTag} undoParty={flow.undoParty}
+            errors={flow.errors} isAuthenticated={flow.isAuthenticated}
             onChangeDonorTin={(v) => { flow.setDonorTinInput(v); flow.setDonorLookupResult(null); flow.setDonorLookupError(''); }}
             onChangeDoneeTin={(v) => { flow.setDoneeTinInput(v); flow.setDoneeLookupResult(null); flow.setDoneeLookupError(''); }}
-            onSearchDonor={flow.handleSearchDonor}
-            onSearchDonee={flow.handleSearchDonee}
-            onAddDonor={flow.handleAddDonor}
-            onAddDonee={flow.handleAddDonee}
-            onEditParty={flow.handleEditParty}
-            onRemoveParty={flow.handleRemoveParty}
-            onUndoRemove={flow.handleUndoRemove}
-            onSelectRelationship={flow.handleSelectRelationship}
-            onChangeRelationshipTag={flow.handleChangeRelationshipTag}
-            onSaveDraft={flow.handleSaveDraft}
-            onNext={flow.handleProceedStage1}
+            onSearchDonor={flow.handleSearchDonor} onSearchDonee={flow.handleSearchDonee}
+            onAddDonor={flow.handleAddDonor} onAddDonee={flow.handleAddDonee}
+            onEditParty={flow.handleEditParty} onRemoveParty={flow.handleRemoveParty} onUndoRemove={flow.handleUndoRemove}
+            onSelectRelationship={flow.handleSelectRelationship} onChangeRelationshipTag={flow.handleChangeRelationshipTag}
+            onSaveDraft={flow.handleSaveDraft} onNext={flow.handleProceedStage1}
           />
         )}
 
-        {flow.stage === 2 && (
+        {flow.step === 'stages' && flow.stage === 2 && (
           <GiftTaxValuationStep
-            giftAmountInput={flow.giftAmountInput}
-            description={flow.description}
-            giftDate={flow.giftDate}
-            remarks={flow.remarks}
-            calculation={flow.calculation}
-            errors={flow.errors}
-            isAuthenticated={flow.isAuthenticated}
+            giftAmountInput={flow.giftAmountInput} description={flow.description} giftDate={flow.giftDate} remarks={flow.remarks}
+            calculation={flow.calculation} errors={flow.errors} isAuthenticated={flow.isAuthenticated}
             onChangeAmount={(v) => { flow.setGiftAmountInput(v); if (flow.errors.giftAmount) flow.setErrors((p) => ({ ...p, giftAmount: undefined })); }}
             onChangeDescription={(v) => { flow.setDescription(v); if (flow.errors.description) flow.setErrors((p) => ({ ...p, description: undefined })); }}
             onChangeGiftDate={(v) => { flow.setGiftDate(v); if (flow.errors.giftDate) flow.setErrors((p) => ({ ...p, giftDate: undefined })); }}
             onChangeRemarks={(v) => { flow.setRemarks(v); if (flow.errors.remarks) flow.setErrors((p) => ({ ...p, remarks: undefined })); }}
-            onSaveDraft={flow.handleSaveDraft}
-            onBack={() => flow.setStage(1)}
-            onNext={flow.handleProceedStage2}
+            onSaveDraft={flow.handleSaveDraft} onBack={() => flow.setStage(1)} onNext={flow.handleProceedStage2}
           />
         )}
 
-        {flow.stage === 3 && flow.donor && flow.donee && flow.relationship && (
+        {flow.step === 'stages' && flow.stage === 3 && flow.donor && flow.donee && flow.relationship && (
           <GiftTaxPreviewStep
-            donor={flow.donor}
-            donee={flow.donee}
-            relationship={flow.relationship}
-            relationshipTag={flow.relationshipTag}
-            giftDate={flow.giftDate}
-            description={flow.description}
-            remarks={flow.remarks}
-            calculation={flow.calculation}
-            paymentChannel={flow.paymentChannel}
+            donor={flow.donor} donee={flow.donee} relationship={flow.relationship} relationshipTag={flow.relationshipTag}
+            giftDate={flow.giftDate} description={flow.description} remarks={flow.remarks} calculation={flow.calculation}
+            acknowledged={flow.acknowledged} ackError={flow.ackError} submitError={flow.submitError}
             isAuthenticated={flow.isAuthenticated}
-            onChangeChannel={flow.setPaymentChannel}
-            onEditParties={() => flow.setStage(1)}
-            onEditValuation={() => flow.setStage(2)}
-            onSaveDraft={flow.handleSaveDraft}
-            onBack={() => flow.setStage(2)}
-            onPay={flow.handlePay}
+            onChangeAcknowledged={(c) => { flow.setAcknowledged(c); if (c) flow.setAckError(''); }}
+            onEditParties={() => flow.setStage(1)} onEditValuation={() => flow.setStage(2)}
+            onSaveDraft={flow.handleSaveDraft} onBack={() => flow.setStage(2)} onProceed={flow.handleProceedFromPreview}
           />
         )}
 
-        {flow.stage === 4 && flow.completedTx && (
+        {flow.step === 'channel' && (
+          <SharedPaymentChannelStep
+            testId="gift-tax-channel-step"
+            paymentChannel={flow.paymentChannel}
+            totalAmount={flow.calculation.calculatedTax}
+            itemCount={1}
+            itemCountLabel={isBn ? `দাতা ${flow.donor?.name ?? ''} (পক্ষে) এবং গ্রহীতা ${flow.donee?.name ?? ''} (মাধ্যমে) — পেমেন্ট মাধ্যম নির্বাচন করুন।` : `Select an illustrative payment channel for Donor ${flow.donor?.name ?? ''} (On Behalf Of) via ${flow.donee?.name ?? ''} (Through).`}
+            requireAcknowledgement
+            acknowledged={flow.acknowledged}
+            acknowledgementLabel={isBn ? 'আমি নিশ্চিত করছি যে দাতার নামে কর ক্রেডিট (On Behalf Of) এবং গ্রহীতার (Through) বিবরণ ও উদাহরণমূলক প্রাক্কলন সঠিক।' : 'I confirm Donor credit attribution (On Behalf Of: Donor), Donee details (Through: Donee), and understand this is an illustrative prototype payment.'}
+            acknowledgementError={flow.ackError}
+            submitError={flow.submitError}
+            onChangeAcknowledged={(c) => { flow.setAcknowledged(c); if (c) flow.setAckError(''); }}
+            onChangeChannel={flow.setPaymentChannel}
+            onBack={() => flow.setStep('stages')}
+            onConfirmPayment={flow.handleConfirmChannelPayment}
+          />
+        )}
+
+        {flow.step === 'success' && flow.completedTx && (
           <SharedPaymentResultStep
-            transaction={flow.completedTx}
-            isAuthenticated={flow.isAuthenticated}
-            onViewReceipt={() => flow.setShowReceipt(true)}
-            onViewCertificate={() => flow.setCertOpen(true)}
+            transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated}
+            onViewReceipt={() => flow.setShowReceipt(true)} onViewCertificate={() => flow.setCertOpen(true)}
             onSignInToClaim={() => navigate(`/login?returnTo=${encodeURIComponent(`/history?claimRef=${flow.completedTx!.transactionRef}`)}`)}
-            onContinueWalkIn={flow.resetWalkIn}
-            onReturnDashboard={flow.goDashboard}
+            onContinueWalkIn={flow.resetWalkIn} onReturnDashboard={flow.goDashboard}
           />
         )}
       </SharedPayTaxProgressiveModal>
 
-      <ReceiptModal open={Boolean(flow.completedTx && flow.stage === 4 && flow.showReceipt && !flow.certOpen)} onClose={() => flow.setShowReceipt(false)} transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated} />
+      <ReceiptModal open={Boolean(flow.completedTx && flow.step === 'success' && flow.showReceipt && !flow.certOpen)} onClose={() => flow.setShowReceipt(false)} transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated} />
       <PaymentCertificateDialog open={flow.certOpen} onClose={() => flow.setCertOpen(false)} transaction={flow.completedTx} isAuthenticated={flow.isAuthenticated} />
     </div>
   );

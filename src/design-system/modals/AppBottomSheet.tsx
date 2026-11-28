@@ -18,6 +18,8 @@ export interface AppBottomSheetProps {
   disableBackdropClick?: boolean;
   isDirty?: boolean;
   confirmCloseMessage?: string;
+  onSaveDraft?: () => void;
+  dirtyCancelLabel?: string;
   onBack?: () => void;
   backLabel?: string;
   showClose?: boolean;
@@ -38,6 +40,8 @@ export const AppBottomSheet: React.FC<AppBottomSheetProps> = ({
   disableBackdropClick = false,
   isDirty = false,
   confirmCloseMessage,
+  onSaveDraft,
+  dirtyCancelLabel,
   onBack,
   backLabel = 'Go back',
   showClose = true,
@@ -96,6 +100,8 @@ export const AppBottomSheet: React.FC<AppBottomSheetProps> = ({
         {showDiscardPrompt && (
           <DirtyCloseBanner
             message={confirmCloseMessage}
+            onSaveDraft={onSaveDraft ? () => { cancelDiscard(); onSaveDraft(); } : undefined}
+            cancelLabel={dirtyCancelLabel}
             onConfirmDiscard={confirmDiscard}
             onCancelDiscard={cancelDiscard}
           />

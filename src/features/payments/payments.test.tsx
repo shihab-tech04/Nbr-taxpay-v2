@@ -36,8 +36,10 @@ import { ALL_TAX_CATEGORIES } from './allTaxCatalogue';
 import {
   calculateItemsTotal, INITIAL_ALL_TAX_ITEMS, normalizeChallanRemarks,
   rankFrequentPaymentCategories, reconcileItemsWithTaxpayers,
-  validateAndBuildTaxItem, validateCombinedLineAddition, validateResumedOrReusedSeed,
+  resolveAllTaxPayerAndRecipients, validateAndBuildTaxItem,
+  validateCombinedLineAddition, validateResumedOrReusedSeed,
 } from './allTaxLogic';
+import { lookupTaxpayerDirectoryRecord } from '../../shared/taxpayerDirectory';
 import { AppProvider } from '../../shared/AppContext';
 import { AllTaxPaymentsView } from './AllTaxPaymentsView';
 import { AllTaxCategoryStep } from './components/AllTaxCategoryStep';
@@ -45,6 +47,7 @@ import { AllTaxChannelStep } from './components/AllTaxChannelStep';
 import { AllTaxFormStep } from './components/AllTaxFormStep';
 import { AllTaxPreviewStep } from './components/AllTaxPreviewStep';
 import { AllTaxResultStep } from './components/AllTaxResultStep';
+import { AllTaxTaxpayerStep } from './components/AllTaxTaxpayerStep';
 import { ACTIVE_PAYMENT_CHANNEL_OPTIONS } from './paymentChannels';
 
 function renderPaymentsWithProviders(node: React.ReactElement): string {
@@ -98,7 +101,22 @@ test('allTaxCatalogue and allTaxLogic enforce 7 categories, max 5 frequent, Retu
   assert.equal(mismatch.items.length, 0);
 
   assert.equal(normalizeChallanRemarks('Line 1\r\nবাংলা মন্তব্য'), 'Line 1\nবাংলা মন্তব্য');
-  assert.equal(validateAndBuildTaxItem({ selectedHeadId: TAX_HEADS[0].id, amountInput: '2500.50', assessmentYear: '2025-2026', remarks: 'Q1\nLine 2' }).ok, true);
+  assert.equal(validateAndBuildTaxItem({ selectedHeadId: TAX_HEADS[0].id, amountInput: '2500.50', assessmentYear: '2025-2026', remarks: 'Q1\nLine 2', taxpayerTin: '882349102384' }).ok, true);
+  assert.deepEqual(validateAndBuildTaxItem({ selectedHeadId: TAX_HEADS[0].id, amountInput: '2500', assessmentYear: '2025-2026', remarks: '' }), { ok: false, reason: 'missing_taxpayer' });
+  assert.equal(lookupTaxpayerDirectoryRecord('999988887777', INITIAL_BENEFICIARIES), null);
+  assert.equal(lookupTaxpayerDirectoryRecord('992384102938', INITIAL_BENEFICIARIES)?.name, 'Mrs. Fatema Begum');
+
+  // Payer and recipients stay cleanly separated for facilitation payments
+  const separated = resolveAllTaxPayerAndRecipients({
+    isAuthenticated: true,
+    userTin: '882349102384',
+    userName: 'Md. Rafiqul Islam',
+    selectedTaxpayers: [{ tin: '992384102938', name: 'Mrs. Fatema Begum' }],
+    items: [{ ...taxpayerBAdvance, taxpayerTin: '992384102938', taxpayerName: 'Mrs. Fatema Begum' }],
+  });
+  assert.equal(separated.payerTin, '882349102384');
+  assert.equal(separated.beneficiaryTin, '992384102938');
+  assert.equal(separated.recipients.length, 1);
 });
 
 test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, age rates, medical block, walk-in privacy)', () => {
@@ -106,7 +124,7 @@ test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, ag
   assert.equal(gtCalc.giftAmount, 250000);
   assert.equal(gtCalc.calculatedTax, 11500);
   assert.ok(validateGiftPartiesStep({ donor: { tin: '882349102384', name: 'Donor' }, donee: { tin: '882349102384', name: 'Donee' }, relationship: 'Mother', relationshipTag: 'Mother' }, 'en').donee);
-  assert.ok(validateGiftValuationStep({ giftAmountInput: '500', description: '', giftDate: '2099-01-01' }, 'en', '2026-11-28').giftAmount);
+  assert.ok(validateGiftValuationStep({ giftAmountInput: '0', description: '', giftDate: '2099-01-01' }, 'en', '2026-11-28').giftAmount);
 
   assert.equal(LAND_PORTS.length, 16);
   assert.equal(BD_SAMPLE_PASSPORTS.length, 10);
@@ -268,13 +286,25 @@ test('AllTax, Gift Tax, and Travel Tax 3 stages render cleanly with shared chann
   assert.match(chooserHtml, /data-testid="frequent-tax-categories"/);
 
   const formHtml = renderPaymentsWithProviders(
-    <AllTaxFormStep selectedCategory="tax_with_return" assessmentYear="2025-2026" selectedHeadId={TAX_HEADS[0].id} amountInput="" amountError="" beneficiaryError="" formBannerError="" remarks="" isAuthenticated={false} isForBeneficiary beneficiaryTin="" beneficiaries={INITIAL_BENEFICIARIES} items={INITIAL_ALL_TAX_ITEMS} totalAmount={15000} onChangeCategory={() => {}} onToggleBeneficiary={() => {}} onChangeBeneficiaryTin={() => {}} onChangeAssessmentYear={() => {}} onChangeSelectedHeadId={() => {}} onChangeAmountInput={() => {}} onChangeRemarks={() => {}} onAddItem={() => {}} onEditItem={() => {}} onRemoveItem={() => {}} onSaveDraft={() => {}} onProceedToPreview={() => {}} />
+    <AllTaxFormStep selectedCategory="tax_with_return" assessmentYear="2025-2026" selectedHeadId={TAX_HEADS[0].id} selectedTaxpayerTin="882349102384" amountInput="" amountError="" beneficiaryError="" formBannerError="" remarks="" editingIndex={null} isAuthenticated={false} isForBeneficiary beneficiaryTin="" beneficiaries={INITIAL_BENEFICIARIES} activeTaxpayers={[{ tin: '882349102384', name: 'Md. Rafiqul Islam', source: 'one_time' }]} items={INITIAL_ALL_TAX_ITEMS} totalAmount={15000} onChangeCategory={() => {}} onBackToTaxpayers={() => {}} onToggleBeneficiary={() => {}} onChangeBeneficiaryTin={() => {}} onChangeSelectedTaxpayerTin={() => {}} onChangeAssessmentYear={() => {}} onChangeSelectedHeadId={() => {}} onChangeAmountInput={() => {}} onChangeRemarks={() => {}} onAddItem={() => {}} onEditItem={() => {}} onCancelEdit={() => {}} onRemoveItem={() => {}} onSaveDraft={() => {}} onProceedToPreview={() => {}} />
   );
   assert.match(formHtml, /role="combobox"/);
   assert.doesNotMatch(formHtml, /Save as Draft/);
 
-  const previewHtml = renderPaymentsWithProviders(<AllTaxPreviewStep userTin="882349102384" userName="Md. Rafiqul Islam" isForBeneficiary={false} beneficiaryTin="" selectedCategory="tax_with_return" items={INITIAL_ALL_TAX_ITEMS} totalAmount={15000} onBack={() => {}} onProceedToChannel={() => {}} />);
+  const ownSignedInHtml = renderPaymentsWithProviders(
+    <AllTaxTaxpayerStep isAuthenticated userTin="882349102384" userName="Md. Rafiqul Islam" liabilityMode="own" beneficiaries={INITIAL_BENEFICIARIES} selectedTaxpayers={[{ tin: '882349102384', name: 'Md. Rafiqul Islam', source: 'self' }]} onChangeLiabilityMode={() => {}} onChangeSelectedTaxpayers={() => {}} onBack={() => {}} onNext={() => {}} />
+  );
+  assert.doesNotMatch(ownSignedInHtml, /alltax-tin-lookup-box/);
+
+  const facilitationSignedInHtml = renderPaymentsWithProviders(
+    <AllTaxTaxpayerStep isAuthenticated userTin="882349102384" userName="Md. Rafiqul Islam" liabilityMode="facilitation" beneficiaries={INITIAL_BENEFICIARIES} selectedTaxpayers={[]} onChangeLiabilityMode={() => {}} onChangeSelectedTaxpayers={() => {}} onBack={() => {}} onNext={() => {}} />
+  );
+  assert.match(facilitationSignedInHtml, /facilitation-select-all-beneficiaries/);
+  assert.match(facilitationSignedInHtml, /alltax-tin-lookup-box/);
+
+  const previewHtml = renderPaymentsWithProviders(<AllTaxPreviewStep userTin="882349102384" userName="Md. Rafiqul Islam" isForBeneficiary beneficiaryTin="992384102938" recipients={[{ tin: '992384102938', name: 'Mrs. Fatema Begum' }]} selectedCategory="tax_with_return" items={INITIAL_ALL_TAX_ITEMS} totalAmount={15000} onBack={() => {}} onProceedToChannel={() => {}} />);
   assert.match(previewHtml, /Proceed to Payment Channel/);
+  assert.match(previewHtml, /Mrs\. Fatema Begum \(992384102938\)/);
 
   const channelHtml = renderPaymentsWithProviders(<AllTaxChannelStep paymentChannel="bKash" totalAmount={15000} itemCount={1} onChangeChannel={() => {}} onBack={() => {}} onConfirmPayment={() => {}} />);
   assert.equal((channelHtml.match(/type="radio"/g) ?? []).length, ACTIVE_PAYMENT_CHANNEL_OPTIONS.length);
@@ -322,7 +352,7 @@ test('AllTax, Gift Tax, and Travel Tax 3 stages render cleanly with shared chann
   const calc = calculateGiftTaxAmount('500000');
   const valHtml = renderPaymentsWithProviders(<GiftTaxValuationStep giftAmountInput="500000" giftDate="2026-04-10" description="Land gift" remarks="" calculation={calc} errors={{}} isAuthenticated={false} onChangeAmount={() => {}} onChangeGiftDate={() => {}} onChangeDescription={() => {}} onChangeRemarks={() => {}} onSaveDraft={() => {}} onBack={() => {}} onNext={() => {}} />);
   assert.match(valHtml, /Illustrative Progressive Gift Tax Estimate/);
-  const gpHtml = renderPaymentsWithProviders(<GiftTaxPreviewStep donor={{ tin: '882349102384', name: 'Donor' }} donee={{ tin: '992384102938', name: 'Donee' }} relationship="Mother" relationshipTag="Mother" giftDate="2026-04-10" description="Land gift" remarks="" calculation={calc} paymentChannel="bKash" isAuthenticated={false} onChangeChannel={() => {}} onEditParties={() => {}} onEditValuation={() => {}} onSaveDraft={() => {}} onBack={() => {}} onPay={() => {}} />);
+  const gpHtml = renderPaymentsWithProviders(<GiftTaxPreviewStep donor={{ tin: '882349102384', name: 'Donor' }} donee={{ tin: '992384102938', name: 'Donee' }} relationship="Mother" relationshipTag="Mother" giftDate="2026-04-10" description="Land gift" remarks="" calculation={calc} acknowledged={false} isAuthenticated={false} onChangeAcknowledged={() => {}} onEditParties={() => {}} onEditValuation={() => {}} onSaveDraft={() => {}} onBack={() => {}} onProceed={() => {}} />);
   assert.match(gpHtml, /Illustrative Gift Tax Estimate/);
   assert.match(renderPaymentsWithProviders(<PaymentSuccessCard title="Sample" subtitle="Illustrative" onViewReceipt={() => {}} onReturnDashboard={() => {}} />), /View Sample Receipt/);
   assert.equal(isRestrictedOperationAllowed('payment_submit', true), false);

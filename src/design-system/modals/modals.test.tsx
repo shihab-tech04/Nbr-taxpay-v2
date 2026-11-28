@@ -90,3 +90,34 @@ test('AppConfirmDialog renders confirmation and destructive action variants', as
   assert.match(confirmHtml, /Yes, Delete/);
   assert.match(confirmHtml, /aria-labelledby="delete-confirm-title"/);
 });
+
+import { DirtyCloseBanner } from './DirtyCloseBanner';
+
+test('DirtyCloseBanner renders Save Draft / Discard / Cancel for signed-in flows and Discard / Cancel for guests', async () => {
+  await i18n.changeLanguage('en');
+  const signedInHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <DirtyCloseBanner onSaveDraft={() => {}} onConfirmDiscard={() => {}} onCancelDiscard={() => {}} />
+    </I18nextProvider>
+  );
+  assert.match(signedInHtml, /Save Draft/);
+  assert.match(signedInHtml, /Discard/);
+  assert.match(signedInHtml, /Cancel/);
+
+  const guestHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <DirtyCloseBanner onConfirmDiscard={() => {}} onCancelDiscard={() => {}} cancelLabel="Cancel" />
+    </I18nextProvider>
+  );
+  assert.doesNotMatch(guestHtml, /Save Draft/);
+  assert.match(guestHtml, /Discard/);
+  assert.match(guestHtml, /Cancel/);
+
+  const legacyHtml = renderToStaticMarkup(
+    <I18nextProvider i18n={i18n}>
+      <DirtyCloseBanner onConfirmDiscard={() => {}} onCancelDiscard={() => {}} />
+    </I18nextProvider>
+  );
+  assert.doesNotMatch(legacyHtml, /Save Draft/);
+  assert.match(legacyHtml, /Keep editing/);
+});

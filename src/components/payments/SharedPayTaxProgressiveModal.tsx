@@ -20,6 +20,8 @@ export interface SharedPayTaxProgressiveModalProps {
   disablePortal?: boolean;
   isDirty?: boolean;
   confirmCloseMessage?: string;
+  onSaveDraft?: () => void;
+  dirtyCancelLabel?: string;
   icon?: React.ReactNode;
   title: string;
   subtitle: string;
@@ -46,6 +48,8 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
   disablePortal = true,
   isDirty = false,
   confirmCloseMessage,
+  onSaveDraft,
+  dirtyCancelLabel,
   icon,
   title,
   subtitle,
@@ -121,6 +125,8 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
       fullWidth
       isDirty={isDirty}
       confirmCloseMessage={confirmCloseMessage}
+      onSaveDraft={onSaveDraft}
+      dirtyCancelLabel={dirtyCancelLabel}
       id="shared-pay-tax-modal"
       className="!max-w-[1040px] w-full max-sm:!m-2 max-sm:!w-[calc(100%-16px)]"
       title={
