@@ -1,3 +1,4 @@
+import type { PaymentTransaction } from '../../types/tax';
 import {
   parseCurrencyAmount,
   validateCurrencyAmount,
@@ -6,6 +7,22 @@ import {
 } from '../../design-system/forms';
 
 export const GIFT_TAX_RATE = 0.05;
+
+export function resolveGiftTaxReuseSeed(params: {
+  routeState: { reuseTxRef?: string; reuseTx?: unknown } | null;
+  reuseRefParam?: string | null;
+  transactions: readonly PaymentTransaction[];
+  activeScope: string;
+}): { tx: PaymentTransaction | null; rejected: boolean } {
+  const { routeState, reuseRefParam, transactions, activeScope } = params;
+  if (routeState?.reuseTx !== undefined) return { tx: null, rejected: true };
+  const ref = routeState?.reuseTxRef || reuseRefParam || '';
+  if (!ref) return { tx: null, rejected: false };
+  const found = transactions.find(
+    (item) => (item.transactionRef === ref || item.id === ref) && item.category === 'gift_tax' && (!item.ownerScope || item.ownerScope === activeScope)
+  ) ?? null;
+  return { tx: found, rejected: !found };
+}
 
 export interface GiftFormErrors {
   donorTin?: string;

@@ -30,6 +30,8 @@ export interface SharedPayTaxProgressiveModalProps {
   summaryEmptyText: string;
   summaryTotalLabel: string;
   summaryTotalAmount: number;
+  summaryTotalValidated?: boolean;
+  summaryPendingTotalText?: string;
   summaryFooterNote?: string;
   children: React.ReactNode;
 }
@@ -53,12 +55,17 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
   summaryEmptyText,
   summaryTotalLabel,
   summaryTotalAmount,
+  summaryTotalValidated = true,
+  summaryPendingTotalText,
   summaryFooterNote,
   children,
 }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const [mobileExpanded, setMobileExpanded] = useState(false);
+  const totalDisplay = summaryTotalValidated
+    ? `৳ ${summaryTotalAmount.toLocaleString()}`
+    : (summaryPendingTotalText ?? t('pendingValidationLabel'));
 
   const summaryBody = (
     <div className="space-y-3 text-xs">
@@ -91,8 +98,8 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
       )}
       <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
         <span className="font-bold text-slate-700 dark:text-slate-200">{summaryTotalLabel}</span>
-        <strong data-testid="progressive-summary-total" className="text-base font-mono text-teal-700 dark:text-teal-300">
-          ৳ {summaryTotalAmount.toLocaleString()}
+        <strong data-testid="progressive-summary-total" className={`font-mono ${summaryTotalValidated ? 'text-base text-teal-700 dark:text-teal-300' : 'text-xs text-slate-500 dark:text-slate-400'}`}>
+          {totalDisplay}
         </strong>
       </div>
       {summaryFooterNote && <p className="text-[11px] text-slate-500 dark:text-slate-400">{summaryFooterNote}</p>}
@@ -153,8 +160,8 @@ export const SharedPayTaxProgressiveModal: React.FC<SharedPayTaxProgressiveModal
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{summaryTotalLabel}</div>
-            <div className="text-sm font-bold font-mono text-teal-700 dark:text-teal-300">
-              ৳ {summaryTotalAmount.toLocaleString()}
+            <div data-testid="progressive-mobile-summary-total" className={`font-bold font-mono ${summaryTotalValidated ? 'text-sm text-teal-700 dark:text-teal-300' : 'text-xs text-slate-500 dark:text-slate-400'}`}>
+              {totalDisplay}
             </div>
           </div>
           <AppButton

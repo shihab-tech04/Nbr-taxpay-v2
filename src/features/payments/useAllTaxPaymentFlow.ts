@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../shared/AppContext';
 import { isRestrictedOperationAllowed } from '../../shared/previewPolicy';
 import type { PaymentLineItem, PaymentTransaction, TaxHeadCategory } from '../../types/tax';
@@ -21,12 +21,19 @@ export function useAllTaxPaymentFlow() {
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const routeState = (location.state ?? null) as AllTaxRouteState | null;
-  const { user, isAuthenticated, activeScope, beneficiaries, addBeneficiary, transactions, addTransaction, saveDraft } = useApp();
+  const { user, isAuthenticated, activeScope, beneficiaries, addBeneficiary, drafts, transactions, addTransaction, saveDraft } = useApp();
 
-  const init = resolveInitialAllTaxState({
-    routeState, activeScope, isAuthenticated, userTin: user.tin, userName: user.name, isBn,
-  });
+  const [init] = useState(() =>
+    resolveInitialAllTaxState({
+      routeState,
+      draftIdParam: searchParams.get('draftId'),
+      reuseRefParam: searchParams.get('reuseRef'),
+      beneficiaryIdParam: searchParams.get('beneficiaryId'),
+      drafts, transactions, beneficiaries, activeScope, isAuthenticated, userTin: user.tin, userName: user.name, isBn,
+    })
+  );
 
   const [step, setStep] = useState<'chooser' | 'taxpayer' | 'form' | 'preview' | 'channel' | 'success'>(init.initialStep);
   const [selectedCategory, setSelectedCategory] = useState<TaxHeadCategory>(init.initialSeed?.category ?? 'tax_with_return');
@@ -39,12 +46,12 @@ export function useAllTaxPaymentFlow() {
   const [amountError, setAmountError] = useState('');
   const [beneficiaryError, setBeneficiaryError] = useState('');
   const [formBannerError, setFormBannerError] = useState(init.initialBanner);
-  const [remarks, setRemarks] = useState(routeState?.resumeDraft?.remarks ?? '');
+  const [remarks, setRemarks] = useState(init.resolvedDraft?.remarks ?? '');
   const [isForBeneficiary, setIsForBeneficiary] = useState(
-    Boolean(routeState?.selectedBeneficiary || routeState?.resumeDraft?.beneficiaryTin || routeState?.reuseTx?.beneficiaryTin)
+    Boolean(init.resolvedBeneficiary || init.resolvedDraft?.beneficiaryTin || init.resolvedTx?.beneficiaryTin)
   );
   const [beneficiaryTin, setBeneficiaryTin] = useState(
-    routeState?.selectedBeneficiary?.tin ?? routeState?.resumeDraft?.beneficiaryTin ?? routeState?.reuseTx?.beneficiaryTin ?? ''
+    init.resolvedBeneficiary?.tin ?? init.resolvedDraft?.beneficiaryTin ?? init.resolvedTx?.beneficiaryTin ?? ''
   );
   const [paymentChannel, setPaymentChannel] = useState<ActivePaymentChannel>('bKash');
   const [items, setItems] = useState<PaymentLineItem[]>(init.initialReconciled.validItems);
@@ -55,6 +62,9 @@ export function useAllTaxPaymentFlow() {
 
   const frequentCategories = useMemo(() => rankFrequentPaymentCategories(transactions, isAuthenticated, 5), [transactions, isAuthenticated]);
   const totalAmount = calculateItemsTotal(items);
+  const hasValidatedTotal = Boolean(
+    completedTx || (step !== 'chooser' && step !== 'taxpayer' && items.length > 0 && editingIndex === null && reconcileItemsWithTaxpayers(items, selectedTaxpayers, liabilityMode).removedCount === 0)
+  );
 
   const applyTaxpayerReconciliation = (nextTaxpayers: SelectedTaxpayerEntry[], nextMode: 'own' | 'facilitation') => {
     const rec = reconcileItemsWithTaxpayers(items, nextTaxpayers, nextMode);
@@ -68,10 +78,7 @@ export function useAllTaxPaymentFlow() {
   const setLiabilityMode = (mode: 'own' | 'facilitation') => {
     setLiabilityModeState(mode);
     const nextTaxpayers = mode === 'own' && isAuthenticated && user.tin ? [{ tin: user.tin, name: user.name, source: 'self' as const }] : selectedTaxpayers;
-    if (mode === 'own' && isAuthenticated && user.tin) {
-      setSelectedTaxpayersState(nextTaxpayers);
-      setSelectedTaxpayerTin(user.tin);
-    }
+    if (mode === 'own' && isAuthenticated && user.tin) { setSelectedTaxpayersState(nextTaxpayers); setSelectedTaxpayerTin(user.tin); }
     applyTaxpayerReconciliation(nextTaxpayers, mode);
   };
 
@@ -177,7 +184,7 @@ export function useAllTaxPaymentFlow() {
     selectedTaxpayerTin, setSelectedTaxpayerTin, assessmentYear, setAssessmentYear, selectedHeadId, setSelectedHeadId,
     amountInput, setAmountInput, amountError, setAmountError, beneficiaryError, setBeneficiaryError, formBannerError,
     remarks, setRemarks, isForBeneficiary, setIsForBeneficiary, beneficiaryTin, setBeneficiaryTin, paymentChannel, setPaymentChannel,
-    items, editingIndex, totalAmount, completedTx, showReceipt, setShowReceipt,
+    items, editingIndex, totalAmount, hasValidatedTotal, completedTx, showReceipt, setShowReceipt,
     handleAddItem: handleAddOrUpdateItem, handleEditItem, handleCancelEdit, handleRemoveItem,
     handleProceedToPreview, handleConfirmPayment, handleSaveDraft,
     resetWalkIn: () => { submitLockRef.current = false; setCompletedTx(null); setShowReceipt(false); setItems([]); setAmountInput(''); setRemarks(''); setEditingIndex(null); setStep('chooser'); },

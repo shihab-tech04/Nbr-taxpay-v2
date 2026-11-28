@@ -33,4 +33,13 @@ export const bnExtras = {
   travelTaxYearLabel: 'ভ্রমণ কর বর্ষ',
   travelEconomicCodeLabel: 'ইকোনমিক কোড',
   travelSummaryTitle: 'তাৎক্ষণিক মূল্যায়ন সারাংশ',
+  pendingValidationLabel: 'যাচাইয়ের অপেক্ষায়',
+  applyForCorrection: 'সংশোধনের আবেদন',
+  viewCorrectionRequests: 'সংশোধন আবেদনসমূহ দেখুন',
+  unverifiedInquiryAction: 'অযাচাইকৃত সংশোধন অনুসন্ধান',
+  correctionRequestsSummary: 'সংশোধন আবেদনের সারাংশ',
+  correctionTicketLabel: 'নিশ্চিতকরণ টিকিট',
+  requestedChangesLabel: 'প্রস্তাবিত পরিবর্তন',
+  submissionDateLabel: 'জমার তারিখ',
+  viewDetailsLabel: 'বিস্তারিত দেখুন',
 };

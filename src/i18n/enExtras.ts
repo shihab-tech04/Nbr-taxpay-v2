@@ -33,4 +33,13 @@ export const enExtras = {
   travelTaxYearLabel: 'Travel Tax Year',
   travelEconomicCodeLabel: 'Economic Code',
   travelSummaryTitle: 'Live Assessment Summary',
+  pendingValidationLabel: 'Pending validation',
+  applyForCorrection: 'Apply for Correction',
+  viewCorrectionRequests: 'View Correction Requests',
+  unverifiedInquiryAction: 'Unverified Correction Inquiry',
+  correctionRequestsSummary: 'Correction Requests Summary',
+  correctionTicketLabel: 'Confirmation Ticket',
+  requestedChangesLabel: 'Requested Changes',
+  submissionDateLabel: 'Submission Date',
+  viewDetailsLabel: 'View Details',
 };

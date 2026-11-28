@@ -185,7 +185,7 @@ test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, ag
   assert.equal(walkInTravelTx.travelDetails?.passportNumber, undefined);
   assert.equal(isTransactionReconciled(walkInTravelTx), true);
 
-  // Cycle 15: Resume draft and Pay Again enforce passport revalidation & reject forged/cross-account state
+  // Cycle 15/16: Resume draft and Pay Again reject inline payloads, load from stored IDs, and enforce passport revalidation
   const forgedSeed = resolveTravelRouteSeed({
     routeState: { reuseTx: { ...walkInTravelTx, id: 'forged-tx', ownerScope: 'acct_112233445566' } },
     activeScope: 'acct_882349102384', isAuthenticated: true, drafts: [], transactions: [], lang: 'en',
@@ -193,8 +193,14 @@ test('giftTaxLogic and approved Travel Tax (Land/Water, 16 ports, BD samples, ag
   assert.equal(forgedSeed.rejected, true);
   assert.equal(forgedSeed.passengers.length, 0);
 
-  const validReuseSeed = resolveTravelRouteSeed({
+  const inlineSameOwnerRejected = resolveTravelRouteSeed({
     routeState: { reuseTx: { ...walkInTravelTx, ownerScope: 'acct_882349102384' } },
+    activeScope: 'acct_882349102384', isAuthenticated: true, drafts: [], transactions: [{ ...walkInTravelTx, ownerScope: 'acct_882349102384' }],
+  });
+  assert.equal(inlineSameOwnerRejected.rejected, true);
+
+  const validReuseSeed = resolveTravelRouteSeed({
+    routeState: { reuseTxRef: walkInTravelTx.transactionRef },
     activeScope: 'acct_882349102384', isAuthenticated: true, drafts: [], transactions: [{ ...walkInTravelTx, ownerScope: 'acct_882349102384' }],
   });
   assert.equal(validReuseSeed.rejected, false);
@@ -228,7 +234,7 @@ test('Walk-in claim rejects mismatched owner, forged ref, stale session, and pre
   try {
     const s1 = rotateWalkInSessionId();
     writeScopedDomainData('walkin', {
-      beneficiaryLists: [], beneficiaries: [], drafts: [], corrections: [], supportTickets: [], notifications: [],
+      beneficiaryLists: [], beneficiaries: [], drafts: [], corrections: [], unverifiedInquiries: [], supportTickets: [], notifications: [],
       transactions: [{ ...INITIAL_TRANSACTIONS[0], id: 'wk-1', transactionRef: 'SOHO-WK-TEST-1', ownerScope: 'walkin', originMode: 'walk_in', walkInSessionId: s1 }],
     });
     assert.deepEqual(claimWalkInTransactionWithResult('FORGED-REF', '882349102384'), { ok: false, reason: 'not_found_or_forged' });

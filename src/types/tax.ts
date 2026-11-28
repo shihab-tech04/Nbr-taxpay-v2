@@ -21,16 +21,7 @@ export interface Beneficiary {
   id: string;
   name: string;
   tin: string;
-  relationship:
-    | 'Father'
-    | 'Mother'
-    | 'Siblings'
-    | 'Son'
-    | 'Daughter'
-    | 'Spouse'
-    | 'Friends'
-    | 'Clients'
-    | 'Others';
+  relationship: 'Father' | 'Mother' | 'Siblings' | 'Son' | 'Daughter' | 'Spouse' | 'Friends' | 'Clients' | 'Others';
   relationshipNote?: string;
   listId?: string;
   phone?: string;
@@ -39,15 +30,8 @@ export interface Beneficiary {
 }
 
 export type TaxHeadCategory =
-  | 'tax_with_return'
-  | 'advance_tax'
-  | 'assessed_demand'
-  | 'penalty'
-  | 'source_tax'
-  | 'appellate_tribunal'
-  | 'other_tax'
-  | 'travel_tax'
-  | 'gift_tax';
+  | 'tax_with_return' | 'advance_tax' | 'assessed_demand' | 'penalty'
+  | 'source_tax' | 'appellate_tribunal' | 'other_tax' | 'travel_tax' | 'gift_tax';
 
 export interface TaxHeadItem {
   id: string;
@@ -153,11 +137,37 @@ export interface PaymentDraft {
 
 export interface CorrectionRequest {
   id: string;
+  ticketNumber?: string;
+  ownerScope?: string;
   transactionId: string;
+  transactionRef?: string;
   challanNumber: string;
+  allocationIndex?: number;
+  taxpayerTin?: string;
+  currentAssessmentYear?: string;
+  currentCircle?: string;
+  currentHeadCode?: string;
+  currentHeadName?: string;
+  proposedAssessmentYear?: string;
+  proposedCircle?: string;
+  proposedHeadCode?: string;
+  proposedHeadName?: string;
   reason: string;
   description: string;
   status: 'Submitted' | 'Under Review' | 'Approved' | 'Rejected';
+  createdAt: string;
+}
+
+export interface UnverifiedCorrectionInquiry {
+  id: string;
+  ticketNumber: string;
+  ownerScope: string;
+  walkInSessionId?: string;
+  originalReference: string;
+  reason: string;
+  requestedOutcome: string;
+  evidenceNote?: string;
+  status: 'Logged (Unverified Inquiry)';
   createdAt: string;
 }
 

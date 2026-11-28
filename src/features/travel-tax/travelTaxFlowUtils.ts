@@ -10,8 +10,10 @@ import {
 } from './travelTaxTypes';
 
 export interface TravelRouteState {
-  resumeDraft?: PaymentDraft;
-  reuseTx?: PaymentTransaction;
+  draftId?: string;
+  reuseTxRef?: string;
+  resumeDraft?: unknown;
+  reuseTx?: unknown;
 }
 
 export interface TravelSeedResolution {
@@ -35,62 +37,74 @@ export function emptyDraftPassenger(id = `tp-${Date.now()}`): DraftPassengerInpu
 
 export function resolveTravelRouteSeed(params: {
   routeState: TravelRouteState | null;
+  draftIdParam?: string | null;
+  reuseRefParam?: string | null;
   activeScope: string;
   isAuthenticated: boolean;
   drafts: readonly PaymentDraft[];
   transactions: readonly PaymentTransaction[];
   lang?: TravelLang;
 }): TravelSeedResolution {
-  const { routeState, activeScope, isAuthenticated, drafts, transactions, lang = 'en' } = params;
+  const { routeState, draftIdParam, reuseRefParam, activeScope, isAuthenticated, drafts, transactions, lang = 'en' } = params;
   const emptyDetails: TravelDetailsInput = { travelMode: 'Land', departurePort: '', destination: '', travelDate: '' };
-  if (!routeState?.resumeDraft && !routeState?.reuseTx) {
-    return { passengers: [], details: emptyDetails, receiptMobile: '', initialStage: 1, rejected: false };
-  }
   const msg = getTravelTaxMsg(lang);
 
-  if (routeState.resumeDraft) {
-    const d = routeState.resumeDraft;
-    const owned = isAuthenticated && d.category === 'travel_tax' && drafts.some((item) => item.id === d.id);
-    if (!owned || !d.travelDraft?.passengers?.length) {
+  // Never trust inline payload objects from routeState; only resolve stored owner-scoped IDs/refs.
+  if (routeState?.resumeDraft !== undefined || routeState?.reuseTx !== undefined) {
+    return { passengers: [], details: emptyDetails, receiptMobile: '', initialStage: 1, rejected: true, error: msg.routeStateRejected };
+  }
+
+  const targetDraftId = routeState?.draftId || draftIdParam || '';
+  const targetReuseRef = routeState?.reuseTxRef || reuseRefParam || '';
+  if (!targetDraftId && !targetReuseRef) {
+    return { passengers: [], details: emptyDetails, receiptMobile: '', initialStage: 1, rejected: false };
+  }
+
+  if (targetDraftId) {
+    const storedDraft = isAuthenticated
+      ? drafts.find((item) => item.id === targetDraftId && item.category === 'travel_tax')
+      : undefined;
+    if (!storedDraft || !storedDraft.travelDraft?.passengers?.length) {
       return { passengers: [], details: emptyDetails, receiptMobile: '', initialStage: 1, rejected: true, error: msg.routeStateRejected };
     }
     return {
-      passengers: d.travelDraft.passengers.map((p) => ({
+      passengers: storedDraft.travelDraft.passengers.map((p) => ({
         id: p.id, passportType: p.passportType, passportNumber: '', passportMasked: normalizeMaskedDisplay(p.passportMasked),
         passengerName: p.passengerName, dob: p.dob, nationality: p.nationality, needsRevalidation: true,
       })),
       details: {
-        travelMode: d.travelDraft.travelMode ?? 'Land',
-        departurePort: d.travelDraft.departurePort ?? '',
-        destination: d.travelDraft.destination ?? '',
-        travelDate: d.travelDraft.travelDate ?? '',
+        travelMode: storedDraft.travelDraft.travelMode ?? 'Land',
+        departurePort: storedDraft.travelDraft.departurePort ?? '',
+        destination: storedDraft.travelDraft.destination ?? '',
+        travelDate: storedDraft.travelDraft.travelDate ?? '',
       },
-      receiptMobile: d.travelDraft.contactMobile ?? '',
+      receiptMobile: storedDraft.travelDraft.contactMobile ?? '',
       initialStage: 1,
       rejected: false,
     };
   }
 
-  const tx = routeState.reuseTx!;
-  const owned =
-    tx.category === 'travel_tax' &&
-    (!tx.ownerScope || tx.ownerScope === activeScope) &&
-    transactions.some((item) => item.id === tx.id || item.transactionRef === tx.transactionRef);
-  if (!owned || !tx.travelDetails?.passengers?.length) {
+  const storedTx = transactions.find(
+    (item) =>
+      (item.transactionRef === targetReuseRef || item.id === targetReuseRef) &&
+      item.category === 'travel_tax' &&
+      (!item.ownerScope || item.ownerScope === activeScope)
+  );
+  if (!storedTx || !storedTx.travelDetails?.passengers?.length) {
     return { passengers: [], details: emptyDetails, receiptMobile: '', initialStage: 1, rejected: true, error: msg.routeStateRejected };
   }
   return {
-    passengers: tx.travelDetails.passengers.map((p) => ({
+    passengers: storedTx.travelDetails.passengers.map((p) => ({
       id: p.id, passportType: p.passportType, passportNumber: '', passportMasked: normalizeMaskedDisplay(p.passportMasked),
       passengerName: p.passengerName, dob: p.dob, nationality: p.nationality, needsRevalidation: true,
     })),
     details: {
-      travelMode: tx.travelDetails.travelMode ?? 'Land',
-      departurePort: tx.travelDetails.departurePort ?? '',
-      destination: tx.travelDetails.destination ?? '',
+      travelMode: storedTx.travelDetails.travelMode ?? 'Land',
+      departurePort: storedTx.travelDetails.departurePort ?? '',
+      destination: storedTx.travelDetails.destination ?? '',
       travelDate: '',
     },
-    receiptMobile: tx.travelDetails.contactMobile ?? '',
+    receiptMobile: storedTx.travelDetails.contactMobile ?? '',
     initialStage: 1,
     rejected: false,
   };

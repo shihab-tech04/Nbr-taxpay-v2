@@ -5,6 +5,7 @@ import {
   PaymentDraft,
   PaymentTransaction,
   SupportTicket,
+  UnverifiedCorrectionInquiry,
 } from '../types/tax';
 import { isValidYmd } from '../design-system/dates/dateUtils';
 import { getActiveWalkInSessionId } from './accountSession';
@@ -79,7 +80,22 @@ export function createExperimentalCorrection(
   return {
     ...data,
     id: `cor-${Date.now()}`,
+    ticketNumber: data.ticketNumber ?? `CORR-2026-${Math.floor(100000 + Math.random() * 900000)}`,
     status: 'Submitted',
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+}
+
+export function createExperimentalUnverifiedInquiry(
+  data: Omit<UnverifiedCorrectionInquiry, 'id' | 'ticketNumber' | 'createdAt' | 'status'>
+): UnverifiedCorrectionInquiry {
+  const isWalkIn = data.ownerScope === 'walkin';
+  return {
+    ...data,
+    walkInSessionId: isWalkIn ? data.walkInSessionId ?? getActiveWalkInSessionId() : data.walkInSessionId,
+    id: `inq-${Date.now()}`,
+    ticketNumber: `INQ-2026-${Math.floor(100000 + Math.random() * 900000)}`,
+    status: 'Logged (Unverified Inquiry)',
     createdAt: new Date().toISOString().split('T')[0],
   };
 }

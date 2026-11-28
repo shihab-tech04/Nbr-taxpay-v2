@@ -55,7 +55,7 @@ export function buildDraftNotification(
     bodyEn: `${draft.items.length} item(s) · ৳ ${total.toLocaleString()} saved to resume later.`,
     bodyBn: `${draft.items.length}টি আইটেম · ৳ ${total.toLocaleString()} পরবর্তীতে সম্পন্ন করার জন্য সংরক্ষিত।`,
     createdAt: new Date().toISOString(),
-    targetRoute: '/drafts',
+    targetRoute: `/drafts?draftId=${encodeURIComponent(draft.id)}`,
     targetRef: draft.id,
     amount: total,
     assessmentYear: first?.assessmentYear,
@@ -70,13 +70,13 @@ export function buildCorrectionNotification(
     id: `notif-${correction.id}`,
     ownerScope: scope,
     kind: 'correction',
-    titleEn: `Correction Submitted (${correction.challanNumber})`,
-    titleBn: `সংশোধনের আবেদন জমা হয়েছে (${correction.challanNumber})`,
+    titleEn: `Correction Submitted (${correction.ticketNumber ?? correction.challanNumber})`,
+    titleBn: `সংশোধনের আবেদন জমা হয়েছে (${correction.ticketNumber ?? correction.challanNumber})`,
     bodyEn: `${correction.reason} — request logged for review.`,
     bodyBn: `${correction.reason} — পর্যালোচনার জন্য নথিভুক্ত হয়েছে।`,
     createdAt: new Date().toISOString(),
-    targetRoute: '/corrections',
-    targetRef: correction.challanNumber,
+    targetRoute: `/corrections?ticketId=${encodeURIComponent(correction.id)}`,
+    targetRef: correction.ticketNumber ?? correction.challanNumber,
   };
 }
 

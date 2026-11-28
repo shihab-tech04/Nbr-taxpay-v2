@@ -3,22 +3,29 @@ import { reconcileItemsWithTaxpayers, validateResumedOrReusedSeed } from './allT
 import type { SelectedTaxpayerEntry } from './components/AllTaxTaxpayerStep';
 
 export interface AllTaxRouteState {
-  resumeDraft?: PaymentDraft;
-  reuseTx?: PaymentTransaction;
-  selectedBeneficiary?: Beneficiary;
+  draftId?: string;
+  reuseTxRef?: string;
+  beneficiaryId?: string;
+  resumeDraft?: unknown;
+  reuseTx?: unknown;
+  selectedBeneficiary?: unknown;
 }
 
 export function buildInitialTaxpayers(
   isAuthenticated: boolean,
   userTin: string,
   userName: string,
-  state?: AllTaxRouteState | null
-): SelectedTaxpayerEntry[] {
-  if (state?.selectedBeneficiary) {
-    const label = state.selectedBeneficiary.name.trim() || state.selectedBeneficiary.relationship;
-    return [{ tin: state.selectedBeneficiary.tin, name: label, source: 'beneficiary' }];
+  seed?: {
+    resolvedBeneficiary?: Beneficiary | null;
+    resolvedDraft?: PaymentDraft | null;
+    resolvedTx?: PaymentTransaction | null;
   }
-  const fromItems = (state?.resumeDraft?.items ?? state?.reuseTx?.items ?? [])
+): SelectedTaxpayerEntry[] {
+  if (seed?.resolvedBeneficiary) {
+    const label = seed.resolvedBeneficiary.name.trim() || seed.resolvedBeneficiary.relationship;
+    return [{ tin: seed.resolvedBeneficiary.tin, name: label, source: 'beneficiary' }];
+  }
+  const fromItems = (seed?.resolvedDraft?.items ?? seed?.resolvedTx?.items ?? [])
     .filter((i) => i.taxpayerTin)
     .map((i) => ({ tin: i.taxpayerTin!, name: i.taxpayerName ?? i.taxpayerTin!, source: 'one_time' as const }));
   if (fromItems.length > 0) {
@@ -31,32 +38,79 @@ export function buildInitialTaxpayers(
 
 export function resolveInitialAllTaxState(params: {
   routeState: AllTaxRouteState | null;
+  draftIdParam?: string | null;
+  reuseRefParam?: string | null;
+  beneficiaryIdParam?: string | null;
+  drafts: readonly PaymentDraft[];
+  transactions: readonly PaymentTransaction[];
+  beneficiaries: readonly Beneficiary[];
   activeScope: string;
   isAuthenticated: boolean;
   userTin: string;
   userName: string;
   isBn: boolean;
 }) {
-  const { routeState, activeScope, isAuthenticated, userTin, userName, isBn } = params;
-  const initialSeed = routeState?.resumeDraft ?? routeState?.reuseTx ?? null;
+  const {
+    routeState, draftIdParam, reuseRefParam, beneficiaryIdParam,
+    drafts, transactions, beneficiaries, activeScope, isAuthenticated, userTin, userName, isBn,
+  } = params;
+
+  const hasInlinePayload = Boolean(
+    routeState?.resumeDraft !== undefined ||
+    routeState?.reuseTx !== undefined ||
+    routeState?.selectedBeneficiary !== undefined
+  );
+  const draftId = routeState?.draftId || draftIdParam || '';
+  const reuseTxRef = routeState?.reuseTxRef || reuseRefParam || '';
+  const beneficiaryId = routeState?.beneficiaryId || beneficiaryIdParam || '';
+
+  const resolvedDraft = !hasInlinePayload && draftId && isAuthenticated
+    ? drafts.find((d) => d.id === draftId && d.category !== 'travel_tax') ?? null
+    : null;
+  const resolvedTx = !hasInlinePayload && reuseTxRef
+    ? transactions.find((tx) => (tx.transactionRef === reuseTxRef || tx.id === reuseTxRef) && (!tx.ownerScope || tx.ownerScope === activeScope)) ?? null
+    : null;
+  const resolvedBeneficiary = !hasInlinePayload && beneficiaryId && isAuthenticated
+    ? beneficiaries.find((b) => b.id === beneficiaryId) ?? null
+    : null;
+
+  const rejectedMissingOrForeign =
+    hasInlinePayload ||
+    (Boolean(draftId) && !resolvedDraft) ||
+    (Boolean(reuseTxRef) && !resolvedTx) ||
+    (Boolean(beneficiaryId) && !resolvedBeneficiary);
+
+  const initialSeed = resolvedDraft ?? resolvedTx ?? null;
   const seedValidation = validateResumedOrReusedSeed({
-    draft: routeState?.resumeDraft,
-    reuseTx: routeState?.reuseTx,
+    draft: resolvedDraft ?? undefined,
+    reuseTx: resolvedTx ?? undefined,
     activeScope,
     isAuthenticated,
     userTin,
   });
-  const initialTaxpayers = buildInitialTaxpayers(isAuthenticated, userTin, userName, routeState);
+  const initialTaxpayers = buildInitialTaxpayers(isAuthenticated, userTin, userName, {
+    resolvedBeneficiary, resolvedDraft, resolvedTx,
+  });
   const initialMode: 'own' | 'facilitation' =
-    routeState?.selectedBeneficiary || initialTaxpayers.length > 1 ? 'facilitation' : 'own';
+    resolvedBeneficiary || initialTaxpayers.length > 1 ? 'facilitation' : 'own';
   const initialReconciled = reconcileItemsWithTaxpayers(seedValidation.items, initialTaxpayers, initialMode);
-  const initialBanner =
-    seedValidation.warning === 'owner_mismatch'
-      ? isBn ? 'পূর্বের লেনদেনটি বর্তমান অ্যাকাউন্টের সাথে মেলে না।' : 'Reused transaction does not match current signed-in owner.'
-      : seedValidation.warning === 'pruned_invalid' || initialReconciled.removedCount > 0
-      ? isBn ? 'অকার্যকর বা অসঙ্গত খাতসমূহ সমন্বয় করে বাদ দেওয়া হয়েছে।' : 'Incompatible or invalid line items were pruned under current rules.'
-      : '';
+
+  let initialBanner = '';
+  if (rejectedMissingOrForeign || seedValidation.warning === 'owner_mismatch') {
+    initialBanner = isBn
+      ? 'অনুরোধকৃত রেকর্ডটি বর্তমান অ্যাকাউন্টে উপলব্ধ বা অনুমোদিত নয়।'
+      : 'Requested draft or transaction is unavailable or does not belong to the active account.';
+  } else if (seedValidation.warning === 'pruned_invalid' || initialReconciled.removedCount > 0) {
+    initialBanner = isBn
+      ? 'অকার্যকর বা অসঙ্গত খাতসমূহ সমন্বয় করে বাদ দেওয়া হয়েছে।'
+      : 'Incompatible or invalid line items were pruned under current rules.';
+  }
+
   const initialStep: 'chooser' | 'form' =
-    routeState?.selectedBeneficiary || (initialSeed && initialReconciled.validItems.length > 0) ? 'form' : 'chooser';
-  return { initialSeed, initialTaxpayers, initialMode, initialReconciled, initialBanner, initialStep };
+    resolvedBeneficiary || (initialSeed && initialReconciled.validItems.length > 0) ? 'form' : 'chooser';
+
+  return {
+    initialSeed, resolvedDraft, resolvedTx, resolvedBeneficiary,
+    initialTaxpayers, initialMode, initialReconciled, initialBanner, initialStep,
+  };
 }

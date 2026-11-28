@@ -94,7 +94,7 @@ export const BeneficiaryListManager: React.FC<BeneficiaryListManagerProps> = ({
                 <AppButton actionType="secondary" size="small" previewRestricted startIcon={<Pencil size={14} />} onClick={() => { setListNameInput(activeList.name); setErrorMsg(''); setSubMode('rename'); }}>
                   {t('editListAction')}
                 </AppButton>
-                <AppButton actionType="secondary" intent="destructive" size="small" previewRestricted startIcon={<Trash2 size={14} />} onClick={() => { setTransferToListId(otherLists[0]?.id ?? ''); setErrorMsg(''); setSubMode('delete'); }}>
+                <AppButton actionType="secondary" intent="destructive" size="small" previewRestricted startIcon={<Trash2 size={14} />} onClick={() => { setTransferToListId(''); setErrorMsg(''); setSubMode('delete'); }}>
                   {t('deleteListAction')}
                 </AppButton>
               </>

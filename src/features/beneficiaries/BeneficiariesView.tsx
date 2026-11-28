@@ -159,7 +159,7 @@ export const BeneficiariesView: React.FC = () => {
           beneficiaries={filteredBeneficiaries} lists={beneficiaryLists} selectedIds={activeSelectedIds}
           onToggleSelect={(id, checked) => setSelectedIds((prev) => (checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)))}
           onToggleSelectAll={(ids, checked) => setSelectedIds((prev) => (checked ? [...new Set([...prev, ...ids])] : prev.filter((x) => !ids.includes(x))))}
-          onMakePayment={(b) => navigate('/all-taxes', { state: { selectedBeneficiary: b } })}
+          onMakePayment={(b) => navigate('/all-taxes', { state: { beneficiaryId: b.id } })}
           onViewTimeline={(b) => setTimelineTarget(b)}
           onRequestEdit={(b) => { if (isRestrictedOperationAllowed('beneficiary_write')) openEditModal(b); }}
           onRequestDelete={(b) => { if (isRestrictedOperationAllowed('beneficiary_write')) setDeleteTarget(b); }}

@@ -32,11 +32,13 @@ export function readScopedDomainData(
   const raw = readJsonStorage<ScopedDomainData>(getScopedDomainStorageKey(scope), seed);
   const lists = Array.isArray(raw.beneficiaryLists) ? raw.beneficiaryLists : seed.beneficiaryLists;
   const notifications = Array.isArray(raw.notifications) ? raw.notifications : seed.notifications;
+  const inquiries = Array.isArray(raw.unverifiedInquiries) ? raw.unverifiedInquiries : seed.unverifiedInquiries;
   if (scope !== 'walkin' || options.includeAllSessions) {
     return {
       ...seed,
       ...raw,
       beneficiaryLists: lists,
+      unverifiedInquiries: inquiries,
       notifications: scope === 'walkin' ? [] : notifications,
     };
   }
@@ -48,6 +50,9 @@ export function readScopedDomainData(
     drafts: [],
     beneficiaries: [],
     notifications: [],
+    unverifiedInquiries: inquiries.filter(
+      (inq) => !inq.walkInSessionId || inq.walkInSessionId === activeGuestSession
+    ),
     transactions: (raw.transactions ?? []).filter(
       (tx) => !tx.walkInSessionId || tx.walkInSessionId === activeGuestSession
     ),

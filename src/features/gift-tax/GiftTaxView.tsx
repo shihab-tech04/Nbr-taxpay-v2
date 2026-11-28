@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Gift } from 'lucide-react';
 import { getDhakaTodayYmd, isValidYmd } from '../../design-system/forms';
 import { ReceiptModal } from '../../components/ReceiptModal';
@@ -15,65 +15,58 @@ import { GiftTaxPreviewStep } from './components/GiftTaxPreviewStep';
 import { GiftTaxValuationStep } from './components/GiftTaxValuationStep';
 import {
   calculateGiftTaxAmount,
+  resolveGiftTaxReuseSeed,
   validateGiftPartiesStep,
   validateGiftValuationStep,
   type GiftFormErrors,
 } from './giftTaxLogic';
 
 export const GiftTaxView: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { user, isAuthenticated, activeScope, addTransaction } = useApp();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { user, isAuthenticated, activeScope, transactions, addTransaction } = useApp();
+  const [seed] = useState(() =>
+    resolveGiftTaxReuseSeed({
+      routeState: (location.state ?? null) as { reuseTxRef?: string; reuseTx?: unknown } | null,
+      reuseRefParam: searchParams.get('reuseRef'),
+      transactions,
+      activeScope,
+    })
+  );
 
   const [stage, setStage] = useState<1 | 2 | 3 | 4>(1);
-  const [donorTin, setDonorTin] = useState(isAuthenticated ? user.tin : '');
-  const [donorName, setDonorName] = useState(isAuthenticated ? user.name : '');
-  const [doneeTin, setDoneeTin] = useState('992384102938');
-  const [doneeName, setDoneeName] = useState('Mrs. Fatema Begum');
+  const [donorTin, setDonorTin] = useState(seed.tx?.taxpayerTin || (isAuthenticated ? user.tin : ''));
+  const [donorName, setDonorName] = useState(seed.tx?.taxpayerName || (isAuthenticated ? user.name : ''));
+  const [doneeTin, setDoneeTin] = useState(seed.tx?.beneficiaryTin || '992384102938');
+  const [doneeName, setDoneeName] = useState(seed.tx?.beneficiaryName || 'Mrs. Fatema Begum');
   const [relationship, setRelationship] = useState('Mother');
-  const [giftAmountInput, setGiftAmountInput] = useState<string>('500000');
+  const [giftAmountInput, setGiftAmountInput] = useState<string>(seed.tx ? String(Math.round(seed.tx.totalAmount / 0.05)) : '500000');
   const [giftDate, setGiftDate] = useState<string>(() => getDhakaTodayYmd());
-  const [description, setDescription] = useState('Residential land transfer as family gift');
+  const [description, setDescription] = useState(seed.tx?.items[0]?.remarks || 'Residential land transfer as family gift');
   const [completedTx, setCompletedTx] = useState<PaymentTransaction | null>(null);
   const [certOpen, setCertOpen] = useState(false);
   const [errors, setErrors] = useState<GiftFormErrors>({});
 
   const { giftAmount, calculatedTax } = calculateGiftTaxAmount(giftAmountInput);
 
-  const valuationMessages = {
-    amountMin: t('amountMinError', { amount: '1,000' }),
-    amountInvalid: t('amountInvalidError'),
-    requiredDescription: t('requiredGiftDescriptionError'),
-    requiredGiftDate: t('dateRequiredError'),
-    invalidGiftDate: t('giftDateInvalidError'),
-    futureGiftDate: t('giftDateFutureError'),
-  };
-
   const handleNext = () => {
     if (!isRestrictedOperationAllowed('payment_submit')) return;
     if (stage === 1) {
       const nextErrors = validateGiftPartiesStep(
         { donorTin, donorName, doneeTin, doneeName },
-        {
-          invalidTin: t('invalidTinError'),
-          requiredDonorName: t('requiredDonorNameError'),
-          requiredDoneeName: t('requiredDoneeNameError'),
-        }
+        { invalidTin: t('invalidTinError'), requiredDonorName: t('requiredDonorNameError'), requiredDoneeName: t('requiredDoneeNameError') }
       );
-      if (Object.keys(nextErrors).length > 0) {
-        setErrors(nextErrors);
-        return;
-      }
-      setErrors({});
-      setStage(2);
+      if (Object.keys(nextErrors).length > 0) { setErrors(nextErrors); return; }
+      setErrors({}); setStage(2);
     } else if (stage === 2) {
-      const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, valuationMessages);
-      if (Object.keys(nextErrors).length > 0) {
-        setErrors(nextErrors);
-        return;
-      }
-      setErrors({});
-      setStage(3);
+      const nextErrors = validateGiftValuationStep({ giftAmountInput, description, giftDate }, {
+        amountMin: t('amountMinError', { amount: '1,000' }), amountInvalid: t('amountInvalidError'), requiredDescription: t('requiredGiftDescriptionError'), requiredGiftDate: t('dateRequiredError'), invalidGiftDate: t('giftDateInvalidError'), futureGiftDate: t('giftDateFutureError'),
+      });
+      if (Object.keys(nextErrors).length > 0) { setErrors(nextErrors); return; }
+      setErrors({}); setStage(3);
     }
   };
 
@@ -123,6 +116,11 @@ export const GiftTaxView: React.FC = () => {
           subtitle="4-Stage structured gift tax declaration and payment with donor/donee mapping."
           stepIndicator={`Stage ${stage} of 4`}
         />
+        {seed.rejected && (
+          <div role="alert" className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+            {isBn ? 'অনুরোধকৃত দানকর লেনদেনটি বর্তমান অ্যাকাউন্টের সাথে মেলে না বা অবৈধ।' : 'Requested transaction reference is unavailable or does not belong to the active account.'}
+          </div>
+        )}
 
         {stage === 1 && (
           <GiftTaxPartiesStep

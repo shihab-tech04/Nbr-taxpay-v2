@@ -81,6 +81,7 @@ export const BeneficiaryListActionPanels: React.FC<BeneficiaryListActionPanelsPr
                 disableClearable
                 options={otherLists.map((l) => ({ value: l.id, label: l.name }))}
                 onChange={onChangeTransferToListId}
+                helperText={!transferToListId ? (isBn ? 'মুছে ফেলার আগে স্পষ্টভাবে তালিকা নির্বাচন করুন।' : 'Explicit destination selection required before deletion.') : undefined}
                 required
               />
             </>

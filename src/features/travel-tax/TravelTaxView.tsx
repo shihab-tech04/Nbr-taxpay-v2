@@ -33,7 +33,7 @@ export const TravelTaxView: React.FC = () => {
   };
 
   const summaryLines =
-    flow.breakdown.items.length > 0
+    flow.hasValidatedTotal && flow.breakdown.items.length > 0
       ? flow.breakdown.items.map((p, idx) => ({
           id: p.id,
           label: `#${idx + 1} ${p.passengerName}`,
@@ -44,10 +44,10 @@ export const TravelTaxView: React.FC = () => {
           id: p.id,
           label: `#${idx + 1} ${p.passengerName}`,
           meta: `${p.passportMasked} · ${p.passportType}`,
-          amountText: isBn ? 'হিসাবাধীন' : 'Pending date',
+          amountText: t('pendingValidationLabel'),
         }));
 
-  const summaryTotal = flow.completedTx?.totalAmount ?? (flow.breakdown.valid ? flow.breakdown.totalAmount : 0);
+  const summaryTotal = flow.completedTx?.totalAmount ?? (flow.hasValidatedTotal ? flow.breakdown.totalAmount : 0);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-12">
@@ -67,6 +67,7 @@ export const TravelTaxView: React.FC = () => {
         summaryEmptyText={isBn ? 'মূল্যায়ন শুরু করতে অন্তত একজন যাত্রী নিশ্চিত করুন।' : 'Confirm at least one passenger to preview assessment totals.'}
         summaryTotalLabel={t('totalPayable')}
         summaryTotalAmount={summaryTotal}
+        summaryTotalValidated={flow.hasValidatedTotal}
       >
         {flow.step === 'stages' && flow.stage === 1 && (
           <TravelPassengerStep

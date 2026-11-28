@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { getDhakaTodayYmd } from '../../design-system/dates/dateUtils';
 import { sanitizePassport } from '../../design-system/forms';
 import { useApp } from '../../shared/AppContext';
@@ -26,11 +26,21 @@ export function useTravelTaxFlow() {
   const msg = getTravelTaxMsg(lang);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const routeState = (location.state ?? null) as TravelRouteState | null;
   const { user, isAuthenticated, activeScope, drafts, transactions, addTransaction, saveDraft } = useApp();
 
   const [seed] = useState(() =>
-    resolveTravelRouteSeed({ routeState, activeScope, isAuthenticated, drafts, transactions, lang })
+    resolveTravelRouteSeed({
+      routeState,
+      draftIdParam: searchParams.get('draftId'),
+      reuseRefParam: searchParams.get('reuseRef'),
+      activeScope,
+      isAuthenticated,
+      drafts,
+      transactions,
+      lang,
+    })
   );
   const [routeSeedError, setRouteSeedError] = useState<string>(seed.error ?? '');
   const [stage, setStage] = useState<TravelStage>(seed.initialStage);
@@ -52,6 +62,10 @@ export function useTravelTaxFlow() {
   const submitLockRef = useRef(false);
 
   const breakdown = calculateTravelBreakdown(confirmedPassengers, details.travelDate);
+  const detailsErrorsCurrent = validateTravelDetails(details, confirmedPassengers, getDhakaTodayYmd(), lang);
+  const hasValidatedTotal = Boolean(
+    completedTx || (breakdown.valid && (stage >= 2 || step !== 'stages') && Object.keys(detailsErrorsCurrent).length === 0)
+  );
 
   const handleCheckBdPassport = () => {
     if (!sanitizePassport(draft.passportNumber, 12)) return;
@@ -156,7 +170,7 @@ export function useTravelTaxFlow() {
     isAuthenticated, isDirty, routeSeedError, stage, setStage, step, setStep, confirmedPassengers, entryOpen, editingId,
     draft, setDraft, passengerErrors, setPassengerErrors, details, setDetails, detailsErrors, setDetailsErrors,
     receiptMobile, setReceiptMobile, mobileError, setMobileError, submitError, paymentChannel, setPaymentChannel,
-    completedTx, showReceipt, setShowReceipt, certOpen, setCertOpen, breakdown, handleCheckBdPassport,
+    completedTx, showReceipt, setShowReceipt, certOpen, setCertOpen, breakdown, hasValidatedTotal, handleCheckBdPassport,
     handleConfirmPassenger, handleEditConfirmed, handleProceedFromDetails, handleProceedFromPreview,
     handleConfirmChannelPayment: () => runFinalSubmission(paymentChannel),
     handleOpenAddAnother: () => { setEditingId(null); setDraft(emptyDraftPassenger()); setPassengerErrors({}); setEntryOpen(true); },

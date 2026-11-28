@@ -9,13 +9,14 @@ import { AppButton } from '../../design-system/buttons';
 import { AppStateView } from '../../design-system/feedback';
 import { PUBLIC_PREVIEW } from '../../shared/previewMode';
 import { DashboardMetrics } from './components/DashboardMetrics';
+import { DashboardCorrectionSummary } from './components/DashboardCorrectionSummary';
 import { RecentPaymentsTable } from './components/RecentPaymentsTable';
 
 export const DashboardView: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isBn = i18n.language === 'bn';
   const navigate = useNavigate();
-  const { user, isAuthenticated, transactions, beneficiaries, drafts, unreadNotificationCount } = useApp();
+  const { user, isAuthenticated, transactions, beneficiaries, drafts, corrections, unreadNotificationCount } = useApp();
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
 
   if (!isAuthenticated) {
@@ -98,6 +99,8 @@ export const DashboardView: React.FC = () => {
           draftsCount={drafts.length}
           beneficiariesCount={beneficiaries.length}
         />
+
+        <DashboardCorrectionSummary corrections={corrections} />
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 space-y-4">
           <div className="flex items-center justify-between">

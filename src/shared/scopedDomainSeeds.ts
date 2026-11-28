@@ -6,6 +6,7 @@ import type {
   PaymentDraft,
   PaymentTransaction,
   SupportTicket,
+  UnverifiedCorrectionInquiry,
 } from '../types/tax';
 import {
   INITIAL_BENEFICIARIES,
@@ -22,6 +23,7 @@ export interface ScopedDomainData {
   transactions: PaymentTransaction[];
   drafts: PaymentDraft[];
   corrections: CorrectionRequest[];
+  unverifiedInquiries: UnverifiedCorrectionInquiry[];
   supportTickets: SupportTicket[];
   notifications: AppNotification[];
 }
@@ -41,14 +43,14 @@ const USER1_NOTIFICATIONS: AppNotification[] = [
     titleEn: 'Challan Correction Under Review (NBR-CHL-2026-881920)', titleBn: 'চালান সংশোধন আবেদন পর্যালোচনাধীন (NBR-CHL-2026-881920)',
     bodyEn: 'Assessment Year correction request is queued for Office review.',
     bodyBn: 'কর বর্ষ সংশোধনের আবেদনটি অফিস পর্যালোচনার জন্য প্রক্রিয়াধীন রয়েছে।',
-    createdAt: '2026-04-12T09:00:00Z', targetRoute: '/corrections', targetRef: 'NBR-CHL-2026-881920',
+    createdAt: '2026-04-12T09:00:00Z', targetRoute: '/corrections?ticketId=cor-1', targetRef: 'NBR-CHL-2026-881920',
   },
   {
     id: 'notif-user1-draft1', ownerScope: 'acct_882349102384', kind: 'draft',
     titleEn: 'Saved Tax Draft Pending Completion', titleBn: 'সংরক্ষিত কর খসড়া অসম্পূর্ণ রয়েছে',
     bodyEn: 'Advance Income Tax Q2 (AY 2026-2027 · ৳ 15,000) can be resumed anytime.',
     bodyBn: 'অগ্রিম আয়কর Q2 (কর বর্ষ ২০২৬-২০২৭ · ৳ ১৫,০০০) যেকোনো সময় পুনরায় শুরু করা যাবে।',
-    createdAt: '2026-11-20T10:00:00Z', targetRoute: '/drafts', targetRef: 'dr-1',
+    createdAt: '2026-11-20T10:00:00Z', targetRoute: '/drafts?draftId=dr-1', targetRef: 'dr-1',
     amount: 15000, assessmentYear: '2026-2027',
   },
 ];
@@ -80,6 +82,7 @@ const SECONDARY_SEED: ScopedDomainData = {
     updatedAt: '2026-11-22',
   }],
   corrections: [],
+  unverifiedInquiries: [],
   supportTickets: [],
   notifications: [
     {
@@ -95,7 +98,7 @@ const SECONDARY_SEED: ScopedDomainData = {
       titleEn: 'Saved Draft Ready to Resume (Chattogram Q3)', titleBn: 'সংরক্ষিত খসড়া পুনরায় শুরু করতে প্রস্তুত',
       bodyEn: 'Advance Tax - Chattogram Q3 (৳ 9,500) is saved in your drafts.',
       bodyBn: 'অগ্রিম কর - চট্টগ্রাম Q3 (৳ ৯,৫০০) আপনার খসড়ায় সংরক্ষিত রয়েছে।',
-      createdAt: '2026-11-22T08:30:00Z', targetRoute: '/drafts', targetRef: 'dr-sec-1',
+      createdAt: '2026-11-22T08:30:00Z', targetRoute: '/drafts?draftId=dr-sec-1', targetRef: 'dr-sec-1',
       amount: 9500, assessmentYear: '2026-2027',
     },
   ],
@@ -107,6 +110,7 @@ export const EMPTY_WALKIN_DATA: ScopedDomainData = {
   transactions: [],
   drafts: [],
   corrections: [],
+  unverifiedInquiries: [],
   supportTickets: [],
   notifications: [],
 };
@@ -119,6 +123,7 @@ export function getSeedForScope(scope: string): ScopedDomainData {
       transactions: [...INITIAL_TRANSACTIONS],
       drafts: [...INITIAL_DRAFTS],
       corrections: [...INITIAL_CORRECTIONS],
+      unverifiedInquiries: [],
       supportTickets: [...INITIAL_SUPPORT],
       notifications: [...USER1_NOTIFICATIONS],
     };
@@ -130,6 +135,7 @@ export function getSeedForScope(scope: string): ScopedDomainData {
       transactions: [...SECONDARY_SEED.transactions],
       drafts: [...SECONDARY_SEED.drafts],
       corrections: [...SECONDARY_SEED.corrections],
+      unverifiedInquiries: [],
       supportTickets: [...SECONDARY_SEED.supportTickets],
       notifications: [...SECONDARY_SEED.notifications],
     };

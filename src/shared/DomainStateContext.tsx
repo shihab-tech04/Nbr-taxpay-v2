@@ -1,18 +1,11 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import type {
-  AppNotification, Beneficiary, BeneficiaryList, CorrectionRequest, PaymentDraft, PaymentTransaction, SupportTicket,
-} from '../types/tax';
-import {
-  createExperimentalBeneficiary, createExperimentalBeneficiaryList, createExperimentalCorrection,
-  createExperimentalDraft, createExperimentalSupportTicket, createExperimentalTransaction,
-} from './mockLedgerAdapter';
+import type { AppNotification, Beneficiary, BeneficiaryList, CorrectionRequest, PaymentDraft, PaymentTransaction, SupportTicket, UnverifiedCorrectionInquiry } from '../types/tax';
+import { createExperimentalBeneficiary, createExperimentalBeneficiaryList, createExperimentalCorrection, createExperimentalDraft, createExperimentalSupportTicket, createExperimentalTransaction, createExperimentalUnverifiedInquiry } from './mockLedgerAdapter';
 import { resolveAccountStorageScope } from './accountSession';
 import { isRestrictedOperationAllowed } from './previewPolicy';
 import { hasCorruptScopedDomainStorage, readScopedDomainData, writeScopedDomainData, type ScopedDomainData } from './scopedDomainStorage';
 import { claimWalkInTransactionWithResult, type WalkInClaimResult } from './walkInClaim';
-import {
-  buildCorrectionNotification, buildDraftNotification, buildPaymentNotification, prependScopedNotification, sortNotificationsNewest,
-} from './domainNotifications';
+import { buildCorrectionNotification, buildDraftNotification, buildPaymentNotification, prependScopedNotification, sortNotificationsNewest } from './domainNotifications';
 import { bulkDeleteBeneficiariesInDomain, bulkMoveBeneficiariesInDomain, deleteListFromDomain } from './domainMutations';
 import { useSession } from './SessionContext';
 
@@ -36,7 +29,9 @@ export interface DomainStateContextValue {
   saveDraft: (draft: Omit<PaymentDraft, 'id' | 'updatedAt'>) => void;
   deleteDraft: (id: string) => void;
   corrections: CorrectionRequest[];
-  addCorrection: (c: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>) => void;
+  addCorrection: (c: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>) => CorrectionRequest | null;
+  unverifiedInquiries: UnverifiedCorrectionInquiry[];
+  addUnverifiedInquiry: (inq: Omit<UnverifiedCorrectionInquiry, 'id' | 'ticketNumber' | 'createdAt' | 'status' | 'ownerScope'>) => UnverifiedCorrectionInquiry | null;
   supportTickets: SupportTicket[];
   addSupportTicket: (s: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => void;
   notifications: AppNotification[];
@@ -148,11 +143,19 @@ export const DomainStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (isRestrictedOperationAllowed('draft_write')) updateScoped((curr) => ({ ...curr, drafts: curr.drafts.filter((item) => item.id !== id) }));
   }, [updateScoped]);
 
-  const addCorrection = useCallback((cData: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>) => {
-    if (!isRestrictedOperationAllowed('correction_write')) return;
-    const created = createExperimentalCorrection(cData);
-    updateScoped((curr) => ({ ...curr, corrections: [created, ...curr.corrections], notifications: isAuthenticated && activeScope !== 'walkin' ? prependScopedNotification(curr.notifications, buildCorrectionNotification(activeScope, created)) : curr.notifications }));
+  const addCorrection = useCallback((cData: Omit<CorrectionRequest, 'id' | 'createdAt' | 'status'>): CorrectionRequest | null => {
+    if (!isRestrictedOperationAllowed('correction_write') || !isAuthenticated) return null;
+    const created = createExperimentalCorrection({ ...cData, ownerScope: cData.ownerScope ?? activeScope });
+    updateScoped((curr) => ({ ...curr, corrections: [created, ...curr.corrections], notifications: activeScope !== 'walkin' ? prependScopedNotification(curr.notifications, buildCorrectionNotification(activeScope, created)) : curr.notifications }));
+    return created;
   }, [activeScope, isAuthenticated, updateScoped]);
+
+  const addUnverifiedInquiry = useCallback((inqData: Omit<UnverifiedCorrectionInquiry, 'id' | 'ticketNumber' | 'createdAt' | 'status' | 'ownerScope'>): UnverifiedCorrectionInquiry | null => {
+    if (!isRestrictedOperationAllowed('correction_write')) return null;
+    const created = createExperimentalUnverifiedInquiry({ ...inqData, ownerScope: activeScope });
+    updateScoped((curr) => ({ ...curr, unverifiedInquiries: [created, ...(curr.unverifiedInquiries ?? [])] }));
+    return created;
+  }, [activeScope, updateScoped]);
 
   const addSupportTicket = useCallback((sData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => {
     if (isRestrictedOperationAllowed('support_ticket_write')) updateScoped((curr) => ({ ...curr, supportTickets: [createExperimentalSupportTicket(sData), ...curr.supportTickets] }));
@@ -178,16 +181,18 @@ export const DomainStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
     beneficiaries: currentData.beneficiaries, addBeneficiary, updateBeneficiary, deleteBeneficiary, bulkMoveBeneficiaries, bulkDeleteBeneficiaries,
     transactions: currentData.transactions, addTransaction, claimWalkInTransaction, claimWalkInTransactionDetailed,
     drafts: currentData.drafts, saveDraft, deleteDraft, corrections: currentData.corrections, addCorrection,
-    supportTickets: currentData.supportTickets, addSupportTicket, notifications, unreadNotificationCount, notificationsError,
-    retryLoadNotifications, markNotificationRead, markAllNotificationsRead,
-  }), [activeScope, currentData, createBeneficiaryList, renameBeneficiaryList, deleteBeneficiaryList, addBeneficiary, updateBeneficiary, deleteBeneficiary, bulkMoveBeneficiaries, bulkDeleteBeneficiaries, addTransaction, claimWalkInTransaction, claimWalkInTransactionDetailed, saveDraft, deleteDraft, addCorrection, addSupportTicket, notifications, unreadNotificationCount, notificationsError, retryLoadNotifications, markNotificationRead, markAllNotificationsRead]);
+    unverifiedInquiries: currentData.unverifiedInquiries ?? [], addUnverifiedInquiry, supportTickets: currentData.supportTickets,
+    addSupportTicket, notifications, unreadNotificationCount, notificationsError, retryLoadNotifications, markNotificationRead, markAllNotificationsRead,
+  }), [activeScope, currentData, createBeneficiaryList, renameBeneficiaryList, deleteBeneficiaryList, addBeneficiary, updateBeneficiary, deleteBeneficiary, bulkMoveBeneficiaries, bulkDeleteBeneficiaries, addTransaction, claimWalkInTransaction, claimWalkInTransactionDetailed, saveDraft, deleteDraft, addCorrection, addUnverifiedInquiry, addSupportTicket, notifications, unreadNotificationCount, notificationsError, retryLoadNotifications, markNotificationRead, markAllNotificationsRead]);
 
   return <DomainStateContext.Provider value={value}>{children}</DomainStateContext.Provider>;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
-export function useDomainState(): DomainStateContextValue {
-  const context = useContext(DomainStateContext);
-  if (!context) throw new Error('useDomainState must be used within a DomainStateProvider');
-  return context;
-}
+export const useDomainState = (): DomainStateContextValue => {
+  const ctx = useContext(DomainStateContext);
+  if (!ctx) throw new Error('useDomainState must be used within a DomainStateProvider');
+  return ctx;
+};
+// eslint-disable-next-line react-refresh/only-export-components
+export const useOptionalDomainState = (): DomainStateContextValue | undefined => useContext(DomainStateContext);
